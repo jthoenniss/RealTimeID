@@ -3,26 +3,32 @@ import RtKernel as ker
 
 
 class RtDlr:
-    def __init__(self, t_max, delta_t, beta, cutoff, m, n, eps, phi=np.pi / 4):
+    def __init__(self, t_max, delta_t, beta, cutoff, m, n, eps = None, phi=np.pi / 4):
+        
+        if eps is None:#if no error is specified, use absolute error vs frequency discretized result
+            self.eps = ker.DiscrError(m,n,t_max,delta_t,beta,cutoff).abs_error_time_integrated()
+        else:
+            self.eps = eps
+
         self.t_max = t_max
         self.delta_t = delta_t
         self.beta = beta
         self.cutoff = cutoff
-        self.eps = eps
         self.m = m
         self.n = n
+        self.phi = phi
+
         # define dictionary with parameters needed to initialize RtKernel object
         opts = dict(
-            t_max=t_max,
-            delta_t=delta_t,
-            beta=beta,
-            cutoff=cutoff,
-            m=m,
-            n=n,
-            eps=eps,
-            phi=phi
+            t_max = self.t_max,
+            delta_t = self.delta_t,
+            beta= self.beta,
+            cutoff=self.cutoff,
+            m=self.m,
+            n=self.n,
+            eps=self.eps,
+            phi=self.phi
         )
-
         # Initialize RtKernel object with given parameters
         rt_kernel = ker.RtKernel(**opts)  # local object, not accessible outside __init__
 
