@@ -116,6 +116,37 @@ def set_time_grid(t_max, delta_t):
     """
     return np.arange(delta_t, t_max + delta_t, delta_t)
 
+def cont_integral(t, beta, cutoff, phi = np.pi/4):
+        """
+        Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
+        Parameters:
+        - t (float): time argument
+        - beta (float): inverse temperature
+        - cutoff (float): energy cutoff up to which kernel is integrated
+        - phi (float): rotations angle in complex plane
+
+        Returns:
+        - (np.complex_): Result of integration in interval [0,cutoff]
+        """
+        # compute real part by using integration routine
+        right_segment_cont_real, _ = integrate.quad(
+            lambda x: np.real(
+                np.exp(1.0j * phi) * distr(t, x, beta, phi)
+            ),
+            0,
+            cutoff,  # factor np.exp(1.j * phi) comes from integration measure
+        )
+
+        # compute imaginary part by using integration routine
+        right_segment_cont_imag, _ = integrate.quad(
+            lambda x: np.imag(
+                np.exp(1.0j * phi) * distr(t, x, beta, phi)
+            ),
+            0,
+            cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+        )
+
+        return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
 class DiscrError:
     def __init__(self, m, n, t_max, delta_t, beta, cutoff, phi=np.pi / 4):
