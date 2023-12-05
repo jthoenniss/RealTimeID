@@ -3,14 +3,14 @@ import RtKernel as ker
 
 
 class RtDlr:
-    def __init__(self, t_max, delta_t, beta, cutoff, m, n, eps = None, phi=np.pi / 4):
+    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps = None, phi=np.pi / 4):
         
         if eps is None:#if no error is specified, use absolute error vs frequency discretized result
-            self.eps = ker.DiscrError(m,n,t_max,delta_t,beta,cutoff).abs_error_time_integrated()
+            self.eps = ker.DiscrError(m,n,N_max,delta_t,beta,cutoff).abs_error_time_integrated()
         else:
             self.eps = eps
 
-        self.t_max = t_max
+        self.N_max = N_max
         self.delta_t = delta_t
         self.beta = beta
         self.cutoff = cutoff
@@ -20,7 +20,7 @@ class RtDlr:
 
         # define dictionary with parameters needed to initialize RtKernel object
         opts = dict(
-            t_max = self.t_max,
+            N_max = self.N_max,
             delta_t = self.delta_t,
             beta= self.beta,
             cutoff=self.cutoff,
@@ -73,4 +73,4 @@ class RtDlr:
         Returns:
         - (DiscError): error object w.r.t. continous frequencey integration
         """
-        return ker.DiscrError(self.m,self.n,self.t_max,self.delta_t,self.beta,self.cutoff)
+        return ker.DiscrError(self.m,self.n,self.N_max,self.delta_t,self.beta,self.cutoff)

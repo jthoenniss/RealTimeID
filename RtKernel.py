@@ -104,17 +104,17 @@ def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, cutoff):
     return cutoff * np.array(cheb_points)
 
 
-def set_time_grid(t_max, delta_t):
+def set_time_grid(N_max, delta_t):
     """
     Initializes the dicrete-time grid for fixed final time and time step
     Parameters:
-    - t_max (float): maximal time
+    - N_max (int): nbr. of time steps up to final time
     - delta_t (float): time step
 
     Returns:
     np.array(): array containing the time points
     """
-    return np.arange(delta_t, t_max + delta_t, delta_t)
+    return np.arange(1, N_max + 1) * delta_t
 
 def cont_integral(t, beta, cutoff, phi = np.pi/4):
         """
@@ -149,10 +149,10 @@ def cont_integral(t, beta, cutoff, phi = np.pi/4):
         return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
 class DiscrError:
-    def __init__(self, m, n, t_max, delta_t, beta, cutoff, phi=np.pi / 4):
+    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4):
         self.m = m
         self.n = n
-        self.t_max = t_max
+        self.N_max = N_max
         self.delta_t = delta_t
         self.beta = beta
         self.cutoff = cutoff
@@ -249,7 +249,7 @@ class DiscrError:
         Returns:
         np.complex_: Absolute time-integrated devation between continous integration result and discrete approximation
         """
-        times = set_time_grid(self.t_max, self.delta_t)
+        times = set_time_grid(self.N_max, self.delta_t)
         abs_error_time_integrated = self.delta_t * np.sum(
             [self.abs_error(t) for t in times]
         )
@@ -257,10 +257,10 @@ class DiscrError:
 
 
 class RtKernel:
-    def __init__(self, t_max, delta_t, beta, cutoff, m, n, eps, phi=np.pi / 4):
+    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps, phi=np.pi / 4):
         """
         Parameters:
-        - t_max (float): maximal time up to which dynamics is computed
+        - N_max (int): nbr. of time steps up to final time
         - delta_t (float): time discretization step
         - beta (float): inverse temperature
         - cutoff (float): maximal energy considered
@@ -278,7 +278,7 @@ class RtKernel:
         )  # create fine grid according to superexponential formula
 
         # initialize time grid
-        self.times = set_time_grid(t_max, delta_t)
+        self.times = set_time_grid(N_max, delta_t)
 
         # create kernel matrix K on fine grid
         K = np.array(
