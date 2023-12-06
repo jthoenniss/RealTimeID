@@ -42,6 +42,7 @@ class RtDlr:
             "idx",
             "P",
             "coarse_grid",
+            "times",
         ]
 
         # Copy variables from RtKernel instance "rt_kernel"
