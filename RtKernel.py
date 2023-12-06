@@ -246,7 +246,7 @@ class DiscrError:
     def abs_error_time_integrated(self, cont_integral = None):
         """
         Compute the absolute time-integrated deviation between the continous intgeral and the discrete approximation. Time-integration is performed on discrete time grid "times"
-        Paramters:
+        Parameters:
         - np.array(float) [optional]: array containing continuous integration result for all points on time grid
 
         Returns:
