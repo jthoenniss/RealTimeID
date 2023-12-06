@@ -157,6 +157,7 @@ class DiscrError:
         self.beta = beta
         self.cutoff = cutoff
         self.phi = phi
+        self.times = set_time_grid(self.N_max, self.delta_t)#set time grid with N_max time steps and time step delta_t
 
     def cont_integral(self, t):
         """
@@ -238,21 +239,30 @@ class DiscrError:
         """
         val_cont = self.cont_integral(t)
         val_disc = self.discrete_integral(t)
+    
         return abs(val_cont - val_disc)
 
-    def abs_error_time_integrated(self):
+    def abs_error_time_integrated(self, cont_integral = None):
         """
         Compute the absolute time-integrated deviation between the continous intgeral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Paramters:
-        - None
+        - np.array(float) [optional]: array containing continuous integration result for all points on time grid
 
         Returns:
         np.complex_: Absolute time-integrated devation between continous integration result and discrete approximation
         """
-        times = set_time_grid(self.N_max, self.delta_t)
-        abs_error_time_integrated = self.delta_t * np.sum(
-            [self.abs_error(t) for t in times]
-        )
+        abs_error_time_integrated = 0.0
+
+        #if no values for continuous integral are specified, compute them here, i.e .call the fucntion abs_error()
+        if cont_integral is None:
+            abs_error_time_integrated = self.delta_t * np.sum(
+                [self.abs_error(t) for t in self.times]
+            )
+        #if values for continuous integral are speficied, use these values and compute only discrete integral values below
+        else:
+            discr_integral = np.array([self.discrete_integral(t) for t in self.times])
+            abs_error_time_integrated = self.delta_t * np.sum(abs(cont_integral - discr_integral))
+
         return abs_error_time_integrated
 
 
