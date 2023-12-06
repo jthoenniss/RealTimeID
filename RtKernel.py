@@ -149,7 +149,7 @@ def cont_integral(t, beta, cutoff, phi = np.pi/4):
         return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
 class DiscrError:
-    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4):
+    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4, h = None):
         self.m = m
         self.n = n
         self.N_max = N_max
@@ -159,6 +159,10 @@ class DiscrError:
         self.phi = phi
         self.times = set_time_grid(self.N_max, self.delta_t)#set time grid with N_max time steps and time step delta_t
 
+        if h is None:
+            self.h = (np.log(cutoff) / self.m) 
+        else:
+            self.h = h
     def cont_integral(self, t):
         """
         Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
@@ -205,23 +209,20 @@ class DiscrError:
         Returns:
         np.complex_: Discrete approximation result to frequency integral at fixed time t
         """
-        h = (
-            np.log(self.cutoff) / self.m
-        )  # compute the discretization parameter h based on cutoff and number of frequency intervals
-
+        
         # compute the discrete approximation to the frequency integral at fixed time t
         right_segment = np.sum(
             [
                 distr(
                     t,
-                    np.exp(h * k - np.exp(-h * k)) * np.exp(1.0j * self.phi),
+                    np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi),
                     self.beta,
                     phi=0,
                 )  # set phi=0, because the argument to the phase is already included here and should not be added again in the function distr()
-                * h
+                * self.h
                 * np.exp(1.0j * self.phi)
-                * (1 + np.exp(-h * k))
-                * np.exp(h * k - np.exp(-h * k))
+                * (1 + np.exp(-self.h * k))
+                * np.exp(self.h * k - np.exp(-self.h * k))
                 for k in range(-self.n, self.m + 1)
             ]
         )
