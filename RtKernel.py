@@ -168,10 +168,6 @@ class DiscrError:
         Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
         Parameters:
         - t (float): time argument
-        - beta (float): inverse temperature
-        - phi (float): rotations angle in complex plane
-        - cutoff (float): energy cutoff up to which kernel is integrated
-
         Returns:
         - (np.complex_): Result of integration in interval [0,cutoff]
         """
@@ -199,13 +195,7 @@ class DiscrError:
         """
         Computes the discrete approximation to the frequency intergal at fixed time t
         Parameters:
-            - m (int): number of discretization intervals for omega > 1
-            - n (int): number of discretization intervals for omega < 1
             - t (float): time point argument
-            - beta (float): inverse temperature
-            - cutoff (float): maximal energy considered
-            - phi (float): rotation angle in complex plane
-
         Returns:
         np.complex_: Discrete approximation result to frequency integral at fixed time t
         """
@@ -234,41 +224,58 @@ class DiscrError:
         Compute the absolute deviation between the continous intgeral and the discrete approximation at fixed time t
         Paramters:
         - t (float): time argument
-
+       
         Returns:
-        np.complex_: Absolute devation between continous integration result and discrete approximation at time t
+        - float: Absolute devation between continous integration result and discrete approximation at time t
         """
-        val_cont = self.cont_integral(t)
-        val_disc = self.discrete_integral(t)
+       
+        cont_val = self.cont_integral(t)
+        discr_val = self.discrete_integral(t)
+        
+        return abs(cont_val - discr_val)
     
-        return abs(val_cont - val_disc)
-
-    def abs_error_time_integrated(self, cont_integral = None):
+    def time_integrate(self, integral_vals):
         """
-        Compute the absolute time-integrated deviation between the continous intgeral and the discrete approximation. Time-integration is performed on discrete time grid "times"
+        Compute the time-integrated value based on a time-series:
+        - np.array(float): time series to be integrated
+       
+        Returns:
+        - float: time-integrated value
+        """
+        time_integrated_value = self.delta_t * np.sum(integral_vals)
+        return time_integrated_value
+
+    def error_time_integrated(self, cont_integral = None, error_type = 'rel'):
+        """
+        Compute the time-integrated deviation between the continous integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
         - np.array(float) [optional]: array containing continuous integration result for all points on time grid
+        - error_type (string): Choose between 'rel' (default) and 'abs' for relative or absolute error, respectively.
 
         Returns:
-        np.complex_: Absolute time-integrated devation between continous integration result and discrete approximation
+        - float: time-integrated error between continous integration result and discrete approximation
         """
-        abs_error_time_integrated = 0.0
 
-        #if no values for continuous integral are specified, compute them here, i.e .call the fucntion abs_error()
+        #compute discrete integral approxation
+        discr_integral = np.array([self.discrete_integral(t) for t in self.times])
+
+        #if no values for continuous integral are specified, compute them here
         if cont_integral is None:
-            abs_error_time_integrated = self.delta_t * np.sum(
-                [self.abs_error(t) for t in self.times]
-            )
-        #if values for continuous integral are speficied, use these values and compute only discrete integral values below
-        else:
-            discr_integral = np.array([self.discrete_integral(t) for t in self.times])
-            abs_error_time_integrated = self.delta_t * np.sum(abs(cont_integral - discr_integral))
+            cont_integral = np.array([self.cont_integral(t) for t in self.times])
+        
+        error_time_integrated = self.time_integrate(abs(cont_integral - discr_integral))#absolute time-integrated error
 
-        return abs_error_time_integrated
+        if error_type == 'rel':#relative error defined such that it is always \leq 1
+            norm = self.time_integrate(abs(cont_integral) + abs(discr_integral))
+            error_time_integrated *= 1./norm #turn into relative time-integrated error
+        
+        return error_time_integrated
+    
+
 
 
 class RtKernel:
-    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps, phi=np.pi / 4):
+    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps, h, phi=np.pi / 4):
         """
         Parameters:
         - N_max (int): nbr. of time steps up to final time
@@ -279,11 +286,12 @@ class RtKernel:
         - n (int): number of discretization intervals for omega < 1
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
         - phi (float): rotation angle in complex plane
+        - h (float): Discretization parameter
         """
         # initialize frequency grid
-        self.h = (
-            np.log(cutoff) / m
-        )  # choose discretization parameter h such that the highest frequency is the cutoff
+     
+        self.h = h
+
         self.fine_grid = np.array(
             [np.exp(self.h * k - np.exp(-self.h * k)) for k in range(-n, m + 1)]
         )  # create fine grid according to superexponential formula

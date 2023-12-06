@@ -3,12 +3,28 @@ import RtKernel as ker
 
 
 class RtDlr:
-    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps = None, phi=np.pi / 4):
-        
-        if eps is None:#if no error is specified, use absolute error vs frequency discretized result
-            self.eps = ker.DiscrError(m,n,N_max,delta_t,beta,cutoff).abs_error_time_integrated()
+    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps = None, phi=np.pi / 4, h = None):
+        """
+        Parameters:
+        - N_max (int): nbr. of time steps up to final time
+        - delta_t (float): time discretization step
+        - beta (float): inverse temperature
+        - cutoff (float): maximal energy considered
+        - m (int): number of discretization intervals for omega > 1
+        - n (int): number of discretization intervals for omega < 1
+        - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
+        - phi (float): rotation angle in complex plane
+        - h (float): Discretization parameter
+        """
+        if eps is None:#if no error is specified, use relative error vs frequency discretized result
+            self.eps = ker.DiscrError(m,n,N_max,delta_t,beta,cutoff).error_time_integrated()
         else:
             self.eps = eps
+
+        if h is None:
+            self.h = (np.log(cutoff) / m) # choose discretization parameter h such that the highest frequency is the cutoff
+        else:
+            self.h = h
 
         self.N_max = N_max
         self.delta_t = delta_t
@@ -27,6 +43,7 @@ class RtDlr:
             m=self.m,
             n=self.n,
             eps=self.eps,
+            h = self.h,
             phi=self.phi
         )
 
@@ -37,7 +54,6 @@ class RtDlr:
         
 
         members = [
-            "h",
             "fine_grid",
             "times",
             "num_singular_values_above_threshold",
