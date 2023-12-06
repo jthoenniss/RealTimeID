@@ -29,8 +29,12 @@ class RtDlr:
             eps=self.eps,
             phi=self.phi
         )
+
         # Initialize RtKernel object with given parameters
+        #Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
+        assert eps < 1, "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
         rt_kernel = ker.RtKernel(**opts)  # local object, not accessible outside __init__
+        
 
         members = [
             "h",

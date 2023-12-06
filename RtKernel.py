@@ -319,7 +319,7 @@ class RtKernel:
         # perform ID on K
         self.ID_rank, self.idx, self.proj = sli.interp_decomp(
             K, eps
-        )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 30. Nov. 2023)
+        )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
 
         self.P = np.hstack([np.eye(self.ID_rank), self.proj])[
             :, np.argsort(self.idx)
