@@ -116,40 +116,38 @@ def set_time_grid(N_max, delta_t):
     """
     return np.arange(1, N_max + 1) * delta_t
 
-def cont_integral(t, beta, cutoff, phi = np.pi/4):
-        """
-        Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
-        Parameters:
-        - t (float): time argument
-        - beta (float): inverse temperature
-        - cutoff (float): energy cutoff up to which kernel is integrated
-        - phi (float): rotations angle in complex plane
 
-        Returns:
-        - (np.complex_): Result of integration in interval [0,cutoff]
-        """
-        # compute real part by using integration routine
-        right_segment_cont_real, _ = integrate.quad(
-            lambda x: np.real(
-                np.exp(1.0j * phi) * distr(t, x, beta, phi)
-            ),
-            0,
-            cutoff,  # factor np.exp(1.j * phi) comes from integration measure
-        )
+def cont_integral(t, beta, cutoff, phi=np.pi / 4):
+    """
+    Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
+    Parameters:
+    - t (float): time argument
+    - beta (float): inverse temperature
+    - cutoff (float): energy cutoff up to which kernel is integrated
+    - phi (float): rotations angle in complex plane
 
-        # compute imaginary part by using integration routine
-        right_segment_cont_imag, _ = integrate.quad(
-            lambda x: np.imag(
-                np.exp(1.0j * phi) * distr(t, x, beta, phi)
-            ),
-            0,
-            cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
-        )
+    Returns:
+    - (np.complex_): Result of integration in interval [0,cutoff]
+    """
+    # compute real part by using integration routine
+    right_segment_cont_real, _ = integrate.quad(
+        lambda x: np.real(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
+        0,
+        cutoff,  # factor np.exp(1.j * phi) comes from integration measure
+    )
 
-        return right_segment_cont_real + 1.0j * right_segment_cont_imag
+    # compute imaginary part by using integration routine
+    right_segment_cont_imag, _ = integrate.quad(
+        lambda x: np.imag(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
+        0,
+        cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+    )
+
+    return right_segment_cont_real + 1.0j * right_segment_cont_imag
+
 
 class DiscrError:
-    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4, h = None):
+    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4, h=None):
         self.m = m
         self.n = n
         self.N_max = N_max
@@ -157,12 +155,15 @@ class DiscrError:
         self.beta = beta
         self.cutoff = cutoff
         self.phi = phi
-        self.times = set_time_grid(self.N_max, self.delta_t)#set time grid with N_max time steps and time step delta_t
+        self.times = set_time_grid(
+            self.N_max, self.delta_t
+        )  # set time grid with N_max time steps and time step delta_t
 
         if h is None:
-            self.h = (np.log(cutoff) / self.m) 
+            self.h = np.log(cutoff) / self.m
         else:
             self.h = h
+
     def cont_integral(self, t):
         """
         Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
@@ -199,7 +200,7 @@ class DiscrError:
         Returns:
         np.complex_: Discrete approximation result to frequency integral at fixed time t
         """
-        
+
         # compute the discrete approximation to the frequency integral at fixed time t
         right_segment = np.sum(
             [
@@ -224,28 +225,28 @@ class DiscrError:
         Compute the absolute deviation between the continous intgeral and the discrete approximation at fixed time t
         Paramters:
         - t (float): time argument
-       
+
         Returns:
         - float: Absolute devation between continous integration result and discrete approximation at time t
         """
-       
+
         cont_val = self.cont_integral(t)
         discr_val = self.discrete_integral(t)
-        
+
         return abs(cont_val - discr_val)
-    
+
     def time_integrate(self, integral_vals):
         """
         Compute the time-integrated value based on a time-series:
         - np.array(float): time series to be integrated
-       
+
         Returns:
         - float: time-integrated value
         """
         time_integrated_value = self.delta_t * np.sum(integral_vals)
         return time_integrated_value
 
-    def error_time_integrated(self, cont_integral = None, error_type = 'rel'):
+    def error_time_integrated(self, cont_integral=None, error_type="rel"):
         """
         Compute the time-integrated deviation between the continous integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
@@ -256,22 +257,24 @@ class DiscrError:
         - float: time-integrated error between continous integration result and discrete approximation
         """
 
-        #compute discrete integral approxation
+        # compute discrete integral approxation
         discr_integral = np.array([self.discrete_integral(t) for t in self.times])
 
-        #if no values for continuous integral are specified, compute them here
+        # if no values for continuous integral are specified, compute them here
         if cont_integral is None:
             cont_integral = np.array([self.cont_integral(t) for t in self.times])
-        
-        error_time_integrated = self.time_integrate(abs(cont_integral - discr_integral))#absolute time-integrated error
 
-        if error_type == 'rel':#relative error defined such that it is always \leq 1
+        error_time_integrated = self.time_integrate(
+            abs(cont_integral - discr_integral)
+        )  # absolute time-integrated error
+
+        if error_type == "rel":  # relative error defined such that it is always \leq 1
             norm = self.time_integrate(abs(cont_integral) + abs(discr_integral))
-            error_time_integrated *= 1./norm #turn into relative time-integrated error
-        
-        return error_time_integrated
-    
+            error_time_integrated *= (
+                1.0 / norm
+            )  # turn into relative time-integrated error
 
+        return error_time_integrated
 
 
 class RtKernel:
@@ -289,7 +292,7 @@ class RtKernel:
         - h (float): Discretization parameter
         """
         # initialize frequency grid
-     
+
         self.h = h
 
         self.fine_grid = np.array(
@@ -335,5 +338,3 @@ class RtKernel:
 
         # compute coarse grid
         self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
-
-  
