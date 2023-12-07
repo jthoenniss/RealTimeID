@@ -4,14 +4,14 @@ import RtKernel as ker
 
 class RtDlr:
     def __init__(
-        self, N_max, delta_t, beta, upper_cutoff, m, n, eps=None, phi=np.pi / 4, h=None
+        self, N_max, delta_t, beta, upper_upper_cutoff, m, n, eps=None, phi=np.pi / 4, h=None
     ):
         """
         Parameters:
         - N_max (int): nbr. of time steps up to final time
         - delta_t (float): time discretization step
         - beta (float): inverse temperature
-        - cutoff (float): maximal energy considered
+        - upper_cutoff (float): maximal energy considered
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
@@ -22,22 +22,22 @@ class RtDlr:
             eps is None
         ):  # if no error is specified, use relative error vs frequency discretized result
             self.eps = ker.DiscrError(
-                m, n, N_max, delta_t, beta, cutoff
+                m, n, N_max, delta_t, beta, upper_cutoff
             ).error_time_integrated()
         else:
             self.eps = eps
 
         if h is None:
             self.h = (
-                np.log(cutoff) / m
-            )  # choose discretization parameter h such that the highest frequency is the cutoff
+                np.log(upper_cutoff) / m
+            )  # choose discretization parameter h such that the highest frequency is the upper_cutoff
         else:
             self.h = h
 
         self.N_max = N_max
         self.delta_t = delta_t
         self.beta = beta
-        self.cutoff = cutoff
+        self.upper_cutoff = upper_cutoff
         self.m = m
         self.n = n
         self.phi = phi
@@ -47,7 +47,7 @@ class RtDlr:
             N_max=self.N_max,
             delta_t=self.delta_t,
             beta=self.beta,
-            cutoff=self.cutoff,
+            upper_cutoff=self.upper_cutoff,
             m=self.m,
             n=self.n,
             eps=self.eps,
@@ -106,5 +106,5 @@ class RtDlr:
         - (DiscError): error object w.r.t. continous frequencey integration
         """
         return ker.DiscrError(
-            self.m, self.n, self.N_max, self.delta_t, self.beta, self.cutoff
+            self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
         )
