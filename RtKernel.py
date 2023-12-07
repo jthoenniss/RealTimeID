@@ -223,7 +223,7 @@ class DiscrError:
     def abs_error(self, t):
         """
         Compute the absolute deviation between the continous intgeral and the discrete approximation at fixed time t
-        Paramters:
+        Parameters:
         - t (float): time argument
 
         Returns:
