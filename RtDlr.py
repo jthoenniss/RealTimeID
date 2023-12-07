@@ -4,7 +4,7 @@ import RtKernel as ker
 
 class RtDlr:
     def __init__(
-        self, N_max, delta_t, beta, cutoff, m, n, eps=None, phi=np.pi / 4, h=None
+        self, N_max, delta_t, beta, upper_cutoff, m, n, eps=None, phi=np.pi / 4, h=None
     ):
         """
         Parameters:
