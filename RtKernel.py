@@ -194,7 +194,7 @@ class DiscrError:
 
     def discrete_integral(self, t):
         """
-        Computes the discrete approximation to the frequency intergal at fixed time t
+        Computes the discrete approximation to the frequency integral at fixed time t
         Parameters:
             - t (float): time point argument
         Returns:
@@ -219,6 +219,17 @@ class DiscrError:
         )
 
         return right_segment
+    
+    def discrete_integral_time_integrated(self, t_array):
+        """
+        Computes the TIME-INTERGATED discrete approximation to the frequency integral
+        Parameters:
+            - t_array (array(float)): array of time point arguments
+        Returns:
+        np.complex_: TIME-INTERGATED discrete approximation result to frequency integral 
+        """
+
+        return self.delta_t * np.sum([self.discrete_integral(t) for t in t_array])
 
     def abs_error(self, t):
         """
