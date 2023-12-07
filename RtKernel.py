@@ -219,17 +219,6 @@ class DiscrError:
         )
 
         return right_segment
-    
-    def discrete_integral_time_integrated(self, t_array):
-        """
-        Computes the TIME-INTERGATED discrete approximation to the frequency integral
-        Parameters:
-            - t_array (array(float)): array of time point arguments
-        Returns:
-        np.complex_: TIME-INTERGATED discrete approximation result to frequency integral 
-        """
-
-        return self.delta_t * np.sum([self.discrete_integral(t) for t in t_array])
 
     def abs_error(self, t):
         """
@@ -257,7 +246,7 @@ class DiscrError:
         time_integrated_value = self.delta_t * np.sum(integral_vals)
         return time_integrated_value
 
-    def error_time_integrated(self, cont_integral=None, error_type="rel"):
+    def error_time_integrated(self, cont_integral=None, discr_integral = None, error_type="rel"):
         """
         Compute the time-integrated deviation between the continous integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
@@ -268,8 +257,9 @@ class DiscrError:
         - float: time-integrated error between continous integration result and discrete approximation
         """
 
-        # compute discrete integral approxation
-        discr_integral = np.array([self.discrete_integral(t) for t in self.times])
+        # if no values for discrete integral are specified, compute them here
+        if discr_integral is None:
+            discr_integral = np.array([self.discrete_integral(t) for t in self.times])
 
         # if no values for continuous integral are specified, compute them here
         if cont_integral is None:
