@@ -74,6 +74,8 @@ class RtDlr:
             "P",
             "coarse_grid",
             "times",
+            "K",
+            "K_reconstr",
         ]
 
         # Copy variables from RtKernel instance "rt_kernel"
@@ -90,7 +92,7 @@ class RtDlr:
         """
         Evaluate the spectral density at the frequency points of the fine grid
         """
-        spec_dens_at_fine_grid = [ker.spec_dens(w_f) for w_f in self.fine_grid]
+        spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f) for w_f in self.fine_grid])
         return spec_dens_at_fine_grid
 
     def coupl_eff(self):
@@ -108,3 +110,4 @@ class RtDlr:
         return ker.DiscrError(
             self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
         )
+    
