@@ -91,12 +91,17 @@ class RtDlr:
     def spec_dens_fine(self, phi = None):
         """
         Evaluate the spectral density at the frequency points of the fine grid
+        Parameters:
+        - phi (float): rotation angle in complex plane
+
+        Returns:
+        - np.complex: spectral density evaluated at complex frequencys of fine grid (rotated into complex plane)
         """
         if phi is None:
             phi_cmplx = self.phi
         else:
             phi_cmplx = phi
-            
+
         spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f * np.exp(1.j * phi_cmplx)) for w_f in self.fine_grid])
         return spec_dens_at_fine_grid
 
