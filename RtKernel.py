@@ -77,7 +77,7 @@ def generate_chebyshev_grid_in_interval(a, b, m):
     return np.sort(chebyshev_nodes)
 
 
-def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, cutoff):
+def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, upper_cutoff):
     """
     Generate a composite Chebyshev grid with Chebyshev nodes in each interval.
     Intervals are dyadically refined towards origin.
@@ -101,7 +101,7 @@ def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, cutoff):
         )
         cheb_points.extend(cheb_nodes_in_interval)
 
-    return cutoff * np.array(cheb_points)
+    return upper_cutoff * np.array(cheb_points)
 
 
 def set_time_grid(N_max, delta_t):
@@ -117,60 +117,60 @@ def set_time_grid(N_max, delta_t):
     return np.arange(1, N_max + 1) * delta_t
 
 
-def cont_integral(t, beta, cutoff, phi=np.pi / 4):
+def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     """
-    Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
+    Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
     Parameters:
     - t (float): time argument
     - beta (float): inverse temperature
-    - cutoff (float): energy cutoff up to which kernel is integrated
+    - upper_cutoff (float): energy upper_cutoff up to which kernel is integrated
     - phi (float): rotations angle in complex plane
 
     Returns:
-    - (np.complex_): Result of integration in interval [0,cutoff]
+    - (np.complex_): Result of integration in interval [0,upper_cutoff]
     """
     # compute real part by using integration routine
     right_segment_cont_real, _ = integrate.quad(
         lambda x: np.real(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
         0,
-        cutoff,  # factor np.exp(1.j * phi) comes from integration measure
+        upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
     )
 
     # compute imaginary part by using integration routine
     right_segment_cont_imag, _ = integrate.quad(
         lambda x: np.imag(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
         0,
-        cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+        upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
     )
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
 
 class DiscrError:
-    def __init__(self, m, n, N_max, delta_t, beta, cutoff, phi=np.pi / 4, h=None):
+    def __init__(self, m, n, N_max, delta_t, beta, upper_cutoff, phi=np.pi / 4, h=None):
         self.m = m
         self.n = n
         self.N_max = N_max
         self.delta_t = delta_t
         self.beta = beta
-        self.cutoff = cutoff
+        self.upper_cutoff = upper_cutoff
         self.phi = phi
         self.times = set_time_grid(
             self.N_max, self.delta_t
         )  # set time grid with N_max time steps and time step delta_t
 
         if h is None:
-            self.h = np.log(cutoff) / self.m
+            self.h = np.log(upper_cutoff) / self.m
         else:
             self.h = h
 
     def cont_integral(self, t):
         """
-        Perform frequency integral in continuous-frequency limit in interval [0,cutoff], at fixed time t
+        Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
         Parameters:
         - t (float): time argument
         Returns:
-        - (np.complex_): Result of integration in interval [0,cutoff]
+        - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
         # compute real part by using integration routine
         right_segment_cont_real, _ = integrate.quad(
@@ -178,7 +178,7 @@ class DiscrError:
                 np.exp(1.0j * self.phi) * distr(t, x, self.beta, self.phi)
             ),
             0,
-            self.cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+            self.upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
         )
 
         # compute imaginary part by using integration routine
@@ -187,7 +187,7 @@ class DiscrError:
                 np.exp(1.0j * self.phi) * distr(t, x, self.beta, self.phi)
             ),
             0,
-            self.cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+            self.upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
         )
 
         return right_segment_cont_real + 1.0j * right_segment_cont_imag
@@ -279,13 +279,13 @@ class DiscrError:
 
 
 class RtKernel:
-    def __init__(self, N_max, delta_t, beta, cutoff, m, n, eps, h, phi=np.pi / 4):
+    def __init__(self, N_max, delta_t, beta, upper_cutoff, m, n, eps, h, phi=np.pi / 4):
         """
         Parameters:
         - N_max (int): nbr. of time steps up to final time
         - delta_t (float): time discretization step
         - beta (float): inverse temperature
-        - cutoff (float): maximal energy considered
+        - upper_cutoff (float): maximal energy considered
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
