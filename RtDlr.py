@@ -88,11 +88,16 @@ class RtDlr:
         """
         return self.coarse_grid
 
-    def spec_dens_fine(self):
+    def spec_dens_fine(self, phi = None):
         """
         Evaluate the spectral density at the frequency points of the fine grid
         """
-        spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f) for w_f in self.fine_grid])
+        if phi is None:
+            phi_cmplx = self.phi
+        else:
+            phi_cmplx = phi
+            
+        spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f * np.exp(1.j * phi_cmplx)) for w_f in self.fine_grid])
         return spec_dens_at_fine_grid
 
     def coupl_eff(self):
