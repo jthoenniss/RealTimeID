@@ -214,6 +214,7 @@ class DiscrError:
                 * np.exp(1.0j * self.phi)
                 * (1 + np.exp(-self.h * k))
                 * np.exp(self.h * k - np.exp(-self.h * k))
+                * spec_dens(omega = np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi))
                 for k in range(-self.n, self.m + 1)
             ]
         )
