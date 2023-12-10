@@ -2,6 +2,7 @@ import numpy as np
 import RtKernel as ker
 import scipy.linalg.interpolative as sli
 
+
 class RtDlr:
     def __init__(
         self, N_max, delta_t, beta, upper_cutoff, m, n, eps=None, phi=np.pi / 4, h=None
@@ -87,7 +88,7 @@ class RtDlr:
         """
         return self.coarse_grid
 
-    def spec_dens_fine(self, phi = None):
+    def spec_dens_fine(self, phi=None):
         """
         Evaluate the spectral density at the frequency points of the fine grid
         Parameters:
@@ -101,7 +102,9 @@ class RtDlr:
         else:
             phi_cmplx = phi
 
-        spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f * np.exp(1.j * phi_cmplx)) for w_f in self.fine_grid])
+        spec_dens_at_fine_grid = np.array(
+            [ker.spec_dens(w_f * np.exp(1.0j * phi_cmplx)) for w_f in self.fine_grid]
+        )
         return spec_dens_at_fine_grid
 
     def get_projection_matrix(self):
@@ -130,7 +133,7 @@ class RtDlr:
         return ker.DiscrError(
             self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
         )
-    
+
     def reconstr_interp_matrix(self):
         """
         Parameters:
@@ -139,10 +142,36 @@ class RtDlr:
         2D matrix with np.complex_: ID reconstructed matrix
         """
 
-        #_____reconstruct interpolation matrix_________
+        # _____reconstruct interpolation matrix_________
         B = sli.reconstruct_skel_matrix(self.K, self.ID_rank, self.idx)
-        #reconstructed interpolation matrix:
+        # reconstructed interpolation matrix:
         K_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
 
         return K_reconstr
-    
+
+    def reconstruct_propag(self, compute_error=False):
+        """
+        Reconstruct the propagator with ID approximation. Optionally also compute error to original propagator
+        Parameters:
+        compute_error (bool): flag that decides wheather the relative time-integrated error to original propagator is computed
+
+        Returns:
+        - np.array(np.complex_): propagator at all time points of fine grid
+        - float: relative error between original and reconstructed Green's function [only if compute_error flag is set to 'True']
+        """
+        K_reconstr = self.reconstr_interp_matrix()  # ID-reconstructed kernel matrix
+        Gamma = self.spec_dens_fine()  # spectral denstiy evaluated on fine grid points
+
+        G_reconstr = (
+            K_reconstr @ Gamma
+        )  # this yields the propagators where the array elements correspond to the different time points
+
+        yield G_reconstr  # return reconstructed Green's function
+
+        if compute_error:  # evaluate error if flag is true
+            G_orig = self.K @ Gamma
+            error_rel = ker.DiscrError(
+                self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
+            ).error_time_integrated(cont_integral=G_orig, discr_integral=G_reconstr)
+
+            yield error_rel
