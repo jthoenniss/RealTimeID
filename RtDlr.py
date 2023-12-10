@@ -1,6 +1,6 @@
 import numpy as np
 import RtKernel as ker
-
+import scipy.linalg.interpolative as sli
 
 class RtDlr:
     def __init__(
@@ -71,11 +71,10 @@ class RtDlr:
             "singular_values",
             "ID_rank",
             "idx",
-            "P",
+            "proj",
             "coarse_grid",
             "times",
             "K",
-            "K_reconstr",
         ]
 
         # Copy variables from RtKernel instance "rt_kernel"
@@ -105,11 +104,22 @@ class RtDlr:
         spec_dens_at_fine_grid = np.array([ker.spec_dens(w_f * np.exp(1.j * phi_cmplx)) for w_f in self.fine_grid])
         return spec_dens_at_fine_grid
 
+    def get_projection_matrix(self):
+        """
+        Compute the projection matrix needed to compute effective couplings
+        """
+        P = np.hstack([np.eye(self.ID_rank), self.proj])[
+            :, np.argsort(self.idx)
+        ]  # projection matrix
+
+        return P
+
     def coupl_eff(self):
         """
         Compute effective couplings: multiply vector of spectral density at fine grid points with projection matrix P.
         """
-        coupl_eff = self.P @ self.spec_dens_fine()
+        P = self.get_projection_matrix()
+        coupl_eff = P @ self.spec_dens_fine()
         return coupl_eff
 
     def get_error(self):
@@ -120,4 +130,19 @@ class RtDlr:
         return ker.DiscrError(
             self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
         )
+    
+    def reconstr_interp_matrix(self):
+        """
+        Parameters:
+
+        Returns:
+        2D matrix with np.complex_: ID reconstructed matrix
+        """
+
+        #_____reconstruct interpolation matrix_________
+        B = sli.reconstruct_skel_matrix(self.K, self.ID_rank, self.idx)
+        #reconstructed interpolation matrix:
+        K_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
+
+        return K_reconstr
     

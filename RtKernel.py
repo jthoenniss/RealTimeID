@@ -210,11 +210,11 @@ class DiscrError:
                     self.beta,
                     phi=0,
                 )  # set phi=0, because the argument to the phase is already included here and should not be added again in the function distr()
-                * self.h
+                * self.h#the following lines are from the integration measure
                 * np.exp(1.0j * self.phi)
                 * (1 + np.exp(-self.h * k))
                 * np.exp(self.h * k - np.exp(-self.h * k))
-                * spec_dens(omega = np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi))
+                * spec_dens(omega = np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi))#spectral density evaluated at complex frequency
                 for k in range(-self.n, self.m + 1)
             ]
         )
@@ -334,17 +334,7 @@ class RtKernel:
             self.K, eps
         )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
 
-        self.P = np.hstack([np.eye(self.ID_rank), self.proj])[
-            :, np.argsort(self.idx)
-        ]  # projection matrix
-
         # compute coarse grid
         self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
 
 
-
-        #_____reconstruct interpolation matrix_________
-        B = sli.reconstruct_skel_matrix(self.K, self.ID_rank, self.idx)
-        P = sli.reconstruct_interp_matrix(self.idx, self.proj)
-        #reconstructed interpolation matrix:
-        self.K_reconstr = np.dot(B, P)
