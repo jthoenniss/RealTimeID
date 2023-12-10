@@ -236,42 +236,43 @@ class DiscrError:
 
         return abs(cont_val - discr_val)
 
-    def time_integrate(self, integral_vals):
+    def time_integrate(self, time_series):
         """
         Compute the time-integrated value based on a time-series:
-        - np.array(float): time series to be integrated
+        - times_series(np.array(float)): time series to be integrated
 
         Returns:
         - float: time-integrated value
         """
-        time_integrated_value = self.delta_t * np.sum(integral_vals)
+        time_integrated_value = self.delta_t * np.sum(time_series)
         return time_integrated_value
 
-    def error_time_integrated(self, cont_integral=None, discr_integral = None, error_type="rel"):
+    def error_time_integrated(self, time_series_exact=None, time_series_approx = None, error_type="rel"):
         """
-        Compute the time-integrated deviation between the continous integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
+        Compute the time-integrated deviation between two time series, e.g. between a continous frequency integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
-        - np.array(float) [optional]: array containing continuous integration result for all points on time grid
+        - times_series_exact (np.array(float)) [optional]: array containing exact time series for all points on time grid. If not specified, compute continous-frequency integral below.
+        - times_series_approx(np.array(float)) [optional]: array containing approximate time series for all points on time grid. If not specified, compute discrete-frequency integral below.
         - error_type (string): Choose between 'rel' (default) and 'abs' for relative or absolute error, respectively.
 
         Returns:
-        - float: time-integrated error between continous integration result and discrete approximation
+        - float: time-integrated error between exact and approximate time series
         """
 
         # if no values for discrete integral are specified, compute them here
-        if discr_integral is None:
-            discr_integral = np.array([self.discrete_integral(t) for t in self.times])
+        if time_series_approx is None:
+            time_series_approx = np.array([self.discrete_integral(t) for t in self.times])
 
         # if no values for continuous integral are specified, compute them here
-        if cont_integral is None:
-            cont_integral = np.array([self.cont_integral(t) for t in self.times])
+        if time_series_exact is None:
+            time_series_exact = np.array([self.cont_integral(t) for t in self.times])
 
         error_time_integrated = self.time_integrate(
-            abs(cont_integral - discr_integral)
+            abs(time_series_exact - time_series_approx)
         )  # absolute time-integrated error
 
         if error_type == "rel":  # relative error defined such that it is always \leq 1
-            norm = self.time_integrate(abs(cont_integral) + abs(discr_integral))
+            norm = self.time_integrate(abs(time_series_exact) + abs(time_series_approx))
             error_time_integrated *= (
                 1.0 / norm
             )  # turn into relative time-integrated error

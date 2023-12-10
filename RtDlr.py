@@ -172,6 +172,6 @@ class RtDlr:
             G_orig = self.K @ Gamma
             error_rel = ker.DiscrError(
                 self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
-            ).error_time_integrated(cont_integral=G_orig, discr_integral=G_reconstr)
+            ).error_time_integrated(time_series_exact=G_orig, time_series_approx=G_reconstr)
 
             yield error_rel
