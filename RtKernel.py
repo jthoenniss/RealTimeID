@@ -131,14 +131,14 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     """
     # compute real part by using integration routine
     right_segment_cont_real, _ = integrate.quad(
-        lambda x: np.real(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
+        lambda x: np.real(np.exp(1.0j * phi) * distr(t, x, beta, phi) * spec_dens(omega = x * np.exp(1.j*phi))),
         0,
         upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
     )
 
     # compute imaginary part by using integration routine
     right_segment_cont_imag, _ = integrate.quad(
-        lambda x: np.imag(np.exp(1.0j * phi) * distr(t, x, beta, phi)),
+        lambda x: np.imag(np.exp(1.0j * phi) * distr(t, x, beta, phi) * spec_dens(omega = x * np.exp(1.j*phi))),
         0,
         upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
     )
