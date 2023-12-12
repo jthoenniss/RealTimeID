@@ -33,7 +33,7 @@ def spec_dens(omega):
     int: spectral density evaluated at this frequency
     """
 
-    return 1
+    return 1.
 
 
 def svd_check_singular_values(matrix, relative_error):
@@ -206,9 +206,9 @@ class DiscrError:
             [
                 distr(
                     t,
-                    np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi),
+                    np.exp(self.h * k - np.exp(-self.h * k)),
                     self.beta,
-                    phi=0,
+                    phi=self.phi,
                 )  # set phi=0, because the argument to the phase is already included here and should not be added again in the function distr()
                 * self.h#the following lines are from the integration measure
                 * np.exp(1.0j * self.phi)
