@@ -34,7 +34,7 @@ def spec_dens(omega):
     int: spectral density evaluated at this frequency
     """
 
-    return 1.
+    return 1.0
 
 
 def svd_check_singular_values(matrix, relative_error):
@@ -132,21 +132,30 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     """
     # compute real part by using integration routine
     right_segment_cont_real, _ = integrate.quad(
-        lambda x: np.real(np.exp(1.0j * phi) * distr(t, x, beta, phi) * spec_dens(omega = x * np.exp(1.j*phi))),
+        lambda x: np.real(
+            np.exp(1.0j * phi)
+            * distr(t, x, beta, phi)
+            * spec_dens(omega=x * np.exp(1.0j * phi))
+        ),
         0,
         upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
     )
 
     # compute imaginary part by using integration routine
     right_segment_cont_imag, _ = integrate.quad(
-        lambda x: np.imag(np.exp(1.0j * phi) * distr(t, x, beta, phi) * spec_dens(omega = x * np.exp(1.j*phi))),
+        lambda x: np.imag(
+            np.exp(1.0j * phi)
+            * distr(t, x, beta, phi)
+            * spec_dens(omega=x * np.exp(1.0j * phi))
+        ),
         0,
         upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
     )
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
-def point_density(grid, lower_limit, upper_limit, interval_spacing='lin'):
+
+def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
     """
     Calculate point density within specified intervals.
 
@@ -160,19 +169,29 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing='lin'):
         numpy.ndarray: Array containing point density within each interval.
         numpy.ndarray: Array containing the midpoints of the intervals in which the density is evaluated
     """
-    if interval_spacing == 'lin':
+    if interval_spacing == "lin":
         limits = np.array([math.floor(lower_limit), math.ceil(upper_limit)])
-        point_density = np.array([np.sum((grid >= a) & (grid < (a + 1)) for a in limits)])
+        point_density = np.array(
+            [np.sum((grid >= a) & (grid < (a + 1)) for a in limits)]
+        )
         point_density_grid = np.array([a + 0.5 for a in limits])
 
-    elif interval_spacing == 'log':
-        assert isinstance(lower_limit, int) and isinstance(upper_limit, int), 'Lower and upper limit must be integers signifying the power of 10'
+    elif interval_spacing == "log":
+        assert isinstance(lower_limit, int) and isinstance(
+            upper_limit, int
+        ), "Lower and upper limit must be integers signifying the power of 10"
         limits = np.arange(lower_limit, upper_limit)
-        point_density = np.array([np.sum((grid >= 10.**a) & (grid < 10.**(a + 1))) for a in limits])
-        point_density_grid = np.array([(10.**a + 10.**(a+1))/2. for a in limits])
+        point_density = np.array(
+            [np.sum((grid >= 10.0**a) & (grid < 10.0 ** (a + 1))) for a in limits]
+        )
+        point_density_grid = np.array(
+            [(10.0**a + 10.0 ** (a + 1)) / 2.0 for a in limits]
+        )
 
     else:
-        raise ValueError("Invalid interval spacing parameter specified. Use 'lin' or 'log'.")
+        raise ValueError(
+            "Invalid interval spacing parameter specified. Use 'lin' or 'log'."
+        )
 
     return point_density, point_density_grid
 
@@ -241,11 +260,14 @@ class DiscrError:
                     self.beta,
                     phi=self.phi,
                 )  # set phi=0, because the argument to the phase is already included here and should not be added again in the function distr()
-                * self.h#the following lines are from the integration measure
+                * self.h  # the following lines are from the integration measure
                 * np.exp(1.0j * self.phi)
                 * (1 + np.exp(-self.h * k))
                 * np.exp(self.h * k - np.exp(-self.h * k))
-                * spec_dens(omega = np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi))#spectral density evaluated at complex frequency
+                * spec_dens(
+                    omega=np.exp(self.h * k - np.exp(-self.h * k))
+                    * np.exp(1.0j * self.phi)
+                )  # spectral density evaluated at complex frequency
                 for k in range(-self.n, self.m + 1)
             ]
         )
@@ -278,7 +300,9 @@ class DiscrError:
         time_integrated_value = self.delta_t * np.sum(time_series)
         return time_integrated_value
 
-    def error_time_integrated(self, time_series_exact=None, time_series_approx = None, error_type="rel"):
+    def error_time_integrated(
+        self, time_series_exact=None, time_series_approx=None, error_type="rel"
+    ):
         """
         Compute the time-integrated deviation between two time series, e.g. between a continous frequency integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
@@ -292,7 +316,9 @@ class DiscrError:
 
         # if no values for discrete integral are specified, compute them here
         if time_series_approx is None:
-            time_series_approx = np.array([self.discrete_integral(t) for t in self.times])
+            time_series_approx = np.array(
+                [self.discrete_integral(t) for t in self.times]
+            )
 
         # if no values for continuous integral are specified, compute them here
         if time_series_exact is None:
@@ -355,7 +381,7 @@ class RtKernel:
             ]
         )
 
-        #__________perform SVD on kernel K and count number of singular values above error threshold____________
+        # __________perform SVD on kernel K and count number of singular values above error threshold____________
         (
             self.num_singular_values_above_threshold,
             self.singular_values,
@@ -368,5 +394,3 @@ class RtKernel:
 
         # compute coarse grid
         self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
-
-
