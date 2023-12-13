@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import integrate
 import scipy.linalg.interpolative as sli
+import math
 
 
 def distr(t, x, beta, phi=0):
@@ -144,6 +145,36 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     )
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
+
+def point_density(grid, lower_limit, upper_limit, interval_spacing='lin'):
+    """
+    Calculate point density within specified intervals.
+
+    Parameters:
+        grid (numpy.ndarray): Input data array.
+        lower_limit: Lower limit of the interval. For interval_spacing = 'log', specify exponent, i.e. lower limit is then 10**lower_limit.
+        upper_limit: Upper limit of the interval. For interval_spacing = 'log', specify exponent, i.e. upper limit is then 10**upper_limit.
+        interval_spacing (str): Type of interval spacing ('lin' or 'log').
+
+    Returns:
+        numpy.ndarray: Array containing point density within each interval.
+        numpy.ndarray: Array containing the midpoints of the intervals in which the density is evaluated
+    """
+    if interval_spacing == 'lin':
+        limits = np.array([math.floor(lower_limit), math.ceil(upper_limit)])
+        point_density = np.array([np.sum((grid >= a) & (grid < (a + 1)) for a in limits)])
+        point_density_grid = np.array([a + 0.5 for a in limits])
+
+    elif interval_spacing == 'log':
+        assert isinstance(lower_limit, int) and isinstance(upper_limit, int), 'Lower and upper limit must be integers signifying the power of 10'
+        limits = np.arange(lower_limit, upper_limit)
+        point_density = np.array([np.sum((grid >= 10.**a) & (grid < 10.**(a + 1))) for a in limits])
+        point_density_grid = np.array([(10.**a + 10.**(a+1))/2. for a in limits])
+
+    else:
+        raise ValueError("Invalid interval spacing parameter specified. Use 'lin' or 'log'.")
+
+    return point_density, point_density_grid
 
 
 class DiscrError:
