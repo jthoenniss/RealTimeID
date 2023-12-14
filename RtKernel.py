@@ -197,7 +197,18 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
 
 
 class DiscrError:
-    def __init__(self, m, n, N_max, delta_t, beta, upper_cutoff, phi=np.pi / 4, h=None):
+    def __init__(
+        self,
+        m,
+        n,
+        N_max,
+        delta_t,
+        beta,
+        upper_cutoff,
+        phi=np.pi / 4,
+        times=None,
+        h=None,
+    ):
         self.m = m
         self.n = n
         self.N_max = N_max
@@ -205,14 +216,11 @@ class DiscrError:
         self.beta = beta
         self.upper_cutoff = upper_cutoff
         self.phi = phi
-        self.times = set_time_grid(
-            self.N_max, self.delta_t
-        )  # set time grid with N_max time steps and time step delta_t
-
-        if h is None:
-            self.h = np.log(upper_cutoff) / self.m
-        else:
-            self.h = h
+        self.error = None
+        self.times = (
+            set_time_grid(self.N_max, self.delta_t) if times is None else times
+        )
+        self.h = (np.log(upper_cutoff) / self.m) if h is None else h
 
     def cont_integral(self, t):
         """
@@ -286,7 +294,6 @@ class DiscrError:
 
         cont_val = self.cont_integral(t)
         discr_val = self.discrete_integral(t)
-
         return abs(cont_val - discr_val)
 
     def time_integrate(self, time_series):
@@ -301,7 +308,11 @@ class DiscrError:
         return time_integrated_value
 
     def error_time_integrated(
-        self, time_series_exact=None, time_series_approx=None, error_type="rel"
+        self,
+        time_series_exact=None,
+        time_series_approx=None,
+        error_type="rel",
+        set_state_variable=False,
     ):
         """
         Compute the time-integrated deviation between two time series, e.g. between a continous frequency integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
@@ -309,7 +320,7 @@ class DiscrError:
         - times_series_exact (np.array(float)) [optional]: array containing exact time series for all points on time grid. If not specified, compute continous-frequency integral below.
         - times_series_approx(np.array(float)) [optional]: array containing approximate time series for all points on time grid. If not specified, compute discrete-frequency integral below.
         - error_type (string): Choose between 'rel' (default) and 'abs' for relative or absolute error, respectively.
-
+        - set_state_variable (bool): If True, the error between the two time series is stored as state variable.
         Returns:
         - float: time-integrated error between exact and approximate time series
         """
@@ -334,7 +345,87 @@ class DiscrError:
                 1.0 / norm
             )  # turn into relative time-integrated error
 
+        if set_state_variable:  # set state variable
+            self.error = error_time_integrated
+
         return error_time_integrated
+
+    def optimize(self, time_series_exact=None):
+        """
+        Optimize the number of modes (m and n) to balance accuracy and computational cost.
+
+        Parameters:
+            time_series_exact (numpy.ndarray): Array containing the exact values of the continuous integral. If not provided, it will be computed below
+
+        Returns:
+            None
+        """
+        # Compute continuous integral if not provided
+        cont_integral = (
+            time_series_exact
+            if time_series_exact is not None
+            else np.array([self.cont_integral(t) for t in self.times])
+        )
+
+        discr_integral_init = np.array(
+            [self.discrete_integral(t) for t in self.times]
+        )  # discrete frequency integral approximation in the limit of large m and n
+
+        err = self.error_time_integrated(
+            time_series_exact=cont_integral, time_series_approx=discr_integral_init
+        )  # compute error between discrete integral and continuous integral
+
+        m_init, n_init = self.m, self.n
+        m_final, n_final = m_init, n_init
+
+        # Optimization for m while n is fixed to n_init
+        for _ in range(m_init):
+            self.m -= 1
+
+            # Check if the error to the discrete integral in the large m,n limit differs by more than epsilon
+            rel_val_diff = self.error_time_integrated(
+                time_series_exact=discr_integral_init,
+                time_series_approx=None,
+                error_type="rel",
+            )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n
+            if (
+                rel_val_diff > 0.1 * err
+            ):  # reduce m until the error from finite m becomes on the order of 10% of the discretization error due to finite h, and thus remains othe subdominant error
+                # If the value differs, halt iteration through m
+                m_final = self.m + 1
+                # for the optimization of n, temporarily reset self.m to m_init
+                self.m = m_init
+                break
+
+        # Optimization for n while m is fixed to m_init
+        for _ in range(n_init):
+            self.n -= 1
+
+            # Check if the error to the discrete integral in the large m,n limit differs by more than epsilon
+            rel_val_diff = self.error_time_integrated(
+                time_series_exact=discr_integral_init,
+                time_series_approx=None,
+                error_type="rel",
+            )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n
+            if (
+                rel_val_diff > 0.1 * err
+            ):  # reduce m until the error from finite m becomes on the order of 10% of the discretization error due to finite h, and thus remains othe subdominant error
+                # If the value differs, halt iteration through n
+                n_final = self.n + 1
+                break
+
+        # Update m and n with the optimized values
+        self.m, self.n = m_final, n_final
+
+        # compute the relative time integrated error w.r.t. continous integral
+        self.rel_error_to_cont = self.error_time_integrated(
+            time_series_exact=cont_integral,
+            time_series_approx=None,
+            error_type="rel",
+            set_state_variable=True,
+        )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n. Set state variable.
+
+        return self
 
 
 class RtKernel:
