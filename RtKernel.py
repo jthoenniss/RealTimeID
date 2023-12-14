@@ -198,29 +198,39 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
 
 class DiscrError:
     def __init__(
-        self,
-        m,
-        n,
-        N_max,
-        delta_t,
-        beta,
-        upper_cutoff,
-        phi=np.pi / 4,
-        times=None,
-        h=None,
+        self, m, n, N_max, delta_t, beta, upper_cutoff, times, h, phi=np.pi / 4
     ):
+        """
+        Parameters:
+        - m (int): number of discretization intervals for omega > 1
+        - n (int): number of discretization intervals for omega < 1
+        - N_max (int): nbr. of time steps up to final time
+        - delta_t (float): time discretization step
+        - beta (float): inverse temperature
+        - upper_cutoff (float): maximal energy considered in continous integration
+        - times (numpy.ndarray): Array containing the points on the time grid
+        - h (float): Discretization parameter
+        - phi (float): rotation angle in complex plane
+
+        Note: Either "N_max" and "delta_t" OR "times" needs to be specified to define the time grid. If all is specified, the argument "times" is used as time grid.
+        """
+
         self.m = m
         self.n = n
-        self.N_max = N_max
-        self.delta_t = delta_t
+
+        self.N_max = len(times) if times is not None else N_max
+        self.delta_t = (
+            times[1] - times[0] if times is not None else delta_t
+        )  # compute it from time grid if provided, otherwise use argument
         self.beta = beta
         self.upper_cutoff = upper_cutoff
-        self.phi = phi
-        self.error = None
         self.times = (
-            set_time_grid(self.N_max, self.delta_t) if times is None else times
-        )
-        self.h = (np.log(upper_cutoff) / self.m) if h is None else h
+            times if times is not None else set_time_grid(N_max, delta_t)
+        )  # Use provided time grid or generate one if not provided
+        self.h = h
+        self.phi = phi
+
+        self.error = None  # to store the error w.r.t.to exact result
 
     def cont_integral(self, t):
         """

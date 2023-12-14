@@ -12,7 +12,7 @@ class RtDlr:
         - N_max (int): nbr. of time steps up to final time
         - delta_t (float): time discretization step
         - beta (float): inverse temperature
-        - upper_cutoff (float): maximal energy considered
+        - upper_cutoff (float): maximal energy considered in continous integration
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
