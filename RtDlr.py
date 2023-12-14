@@ -13,7 +13,7 @@ class RtDlr:
         - n (int): number of discretization intervals for omega < 1
         - beta (float): inverse temperature
         - times (numpy.ndarray): Array containing the points on the time grid
-        - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
+        - eps (float): error used for interpolvative decomposition (ID) and singular value decomposition (SVD). When initialized through DiscrError object, this error is the rel. error between the discrete and continous-frequency integral
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         """
