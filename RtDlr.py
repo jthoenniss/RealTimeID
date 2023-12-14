@@ -5,82 +5,76 @@ import scipy.linalg.interpolative as sli
 
 class RtDlr:
     def __init__(
-        self, N_max, delta_t, beta, upper_cutoff, m, n, eps=None, phi=np.pi / 4, h=None
+        self, m=None, n=None, beta=None, times=None, eps=None, h=None, phi=None
     ):
         """
         Parameters:
-        - N_max (int): nbr. of time steps up to final time
-        - delta_t (float): time discretization step
-        - beta (float): inverse temperature
-        - upper_cutoff (float): maximal energy considered in continous integration
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
+        - beta (float): inverse temperature
+        - times (numpy.ndarray): Array containing the points on the time grid
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
-        - phi (float): rotation angle in complex plane
         - h (float): Discretization parameter
+        - phi (float): rotation angle in complex plane
         """
-        if (
-            eps is None
-        ):  # if no error is specified, use relative error vs frequency discretized result
-            self.eps = ker.DiscrError(
-                m, n, N_max, delta_t, beta, upper_cutoff
-            ).error_time_integrated()
+        if isinstance(
+            m, ker.DiscrError
+        ):  # Check if m is an object of the class DiscrError
+            # Extract values from the DiscrError object
+            members_DiscrError = ["m", "n", "beta", "times", "eps", "h", "phi"]
+            # Copy variables from DiscrError object
+            for member in members_DiscrError:
+                setattr(self, member, getattr(m, member))
         else:
+            # Use the explicitly provided values
+            self.m = m
+            self.n = n
+            self.beta = beta
+            self.times = times
             self.eps = eps
-
-        if h is None:
-            self.h = (
-                np.log(upper_cutoff) / m
-            )  # choose discretization parameter h such that the highest frequency is the upper_cutoff
-        else:
             self.h = h
+            self.phi = (
+                phi if phi is not None else np.pi / 4
+            )  # Use provided phi or default value
 
-        self.N_max = N_max
-        self.delta_t = delta_t
-        self.beta = beta
-        self.upper_cutoff = upper_cutoff
-        self.m = m
-        self.n = n
-        self.phi = phi
-
-        # define dictionary with parameters needed to initialize RtKernel object
-        opts = dict(
-            N_max=self.N_max,
-            delta_t=self.delta_t,
-            beta=self.beta,
-            upper_cutoff=self.upper_cutoff,
-            m=self.m,
-            n=self.n,
-            eps=self.eps,
-            h=self.h,
-            phi=self.phi,
-        )
-
+        # __________________________________________________
         # Initialize RtKernel object with given parameters
+        opts = {
+            "m": self.m,
+            "n": self.n,
+            "beta": self.beta,
+            "times": self.times,
+            "eps": self.eps,
+            "h": self.h,
+            "phi": self.phi,
+        }
+
         # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
         assert (
-            eps < 1
+            self.eps < 1
         ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
+
         rt_kernel = ker.RtKernel(
             **opts
         )  # local object, not accessible outside __init__
 
-        members = [
+        # __________________________________________________
+        # Copy the state variables from the RtKernel object
+        members_RtKernel = [
             "fine_grid",
-            "times",
             "num_singular_values_above_threshold",
             "singular_values",
             "ID_rank",
             "idx",
             "proj",
             "coarse_grid",
-            "times",
             "K",
         ]
 
         # Copy variables from RtKernel instance "rt_kernel"
-        for member in members:
+        for member in members_RtKernel:
             setattr(self, member, getattr(rt_kernel, member))
+        # ____________________________________________________
 
     def get_coarse_grid(self):
         """
@@ -170,8 +164,9 @@ class RtDlr:
 
         if compute_error:  # evaluate error if flag is true
             G_orig = self.K @ Gamma
-            error_rel = ker.DiscrError(
-                self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
-            ).error_time_integrated(time_series_exact=G_orig, time_series_approx=G_reconstr)
+
+            error_rel = np.sum(abs(G_orig - G_reconstr)) / np.sum(
+                abs(G_orig) + abs(G_reconstr)
+            )  # in the relative error, the time steps cancels out and is thus not needed here.
 
             yield error_rel

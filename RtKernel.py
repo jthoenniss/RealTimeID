@@ -230,7 +230,7 @@ class DiscrError:
         self.h = h
         self.phi = phi
 
-        self.error = None  # to store the error w.r.t.to exact result
+        self.eps = None  # to store the eps w.r.t.to exact result
 
     def cont_integral(self, t):
         """
@@ -322,7 +322,7 @@ class DiscrError:
         time_series_exact=None,
         time_series_approx=None,
         error_type="rel",
-        set_state_variable=False,
+        store_eps=False,
     ):
         """
         Compute the time-integrated deviation between two time series, e.g. between a continous frequency integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
@@ -355,8 +355,8 @@ class DiscrError:
                 1.0 / norm
             )  # turn into relative time-integrated error
 
-        if set_state_variable:  # set state variable
-            self.error = error_time_integrated
+        if store_eps:  # set state variable
+            self.eps = error_time_integrated
 
         return error_time_integrated
 
@@ -432,36 +432,37 @@ class DiscrError:
             time_series_exact=cont_integral,
             time_series_approx=None,
             error_type="rel",
-            set_state_variable=True,
+            store_eps=True,
         )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n. Set state variable.
 
         return self
 
 
 class RtKernel:
-    def __init__(self, N_max, delta_t, beta, upper_cutoff, m, n, eps, h, phi=np.pi / 4):
+    def __init__(self, m, n, beta, times, eps, h, phi=np.pi / 4):
         """
         Parameters:
-        - N_max (int): nbr. of time steps up to final time
-        - delta_t (float): time discretization step
-        - beta (float): inverse temperature
-        - upper_cutoff (float): maximal energy considered
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
+        - beta (float): inverse temperature
+        - times (numpy.ndarray): Array containing the points on the time grid
         - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
-        - phi (float): rotation angle in complex plane
         - h (float): Discretization parameter
+        - phi (float): rotation angle in complex plane
         """
+        
+        self.m, self.n = m, n
+        self.beta = beta
+        self.times = times
+        self.eps = eps
+        self.h = h  
+        self.phi = phi
+
         # initialize frequency grid
-
-        self.h = h
-
         self.fine_grid = np.array(
-            [np.exp(self.h * k - np.exp(-self.h * k)) for k in range(-n, m + 1)]
+            [np.exp(self.h * k - np.exp(-self.h * k)) for k in range(-self.n, self.m + 1)]
         )  # create fine grid according to superexponential formula
 
-        # initialize time grid
-        self.times = set_time_grid(N_max, delta_t)
 
         # create kernel matrix K on fine grid
         self.K = np.array(
@@ -469,14 +470,14 @@ class RtKernel:
                 [
                     distr(
                         t,
-                        np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * phi),
+                        np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi),
                         beta,
                     )
                     * self.h
-                    * np.exp(1.0j * phi)
+                    * np.exp(1.0j * self.phi)
                     * (1 + np.exp(-self.h * k))
                     * np.exp(self.h * k - np.exp(-self.h * k))
-                    for k in range(-n, m + 1)
+                    for k in range(-self.n, self.m + 1)
                 ]
                 for t in self.times
             ]
@@ -486,11 +487,11 @@ class RtKernel:
         (
             self.num_singular_values_above_threshold,
             self.singular_values,
-        ) = svd_check_singular_values(self.K, eps)
+        ) = svd_check_singular_values(self.K, self.eps)
 
         # perform ID on K
         self.ID_rank, self.idx, self.proj = sli.interp_decomp(
-            self.K, eps
+            self.K, self.eps
         )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
 
         # compute coarse grid
