@@ -8,15 +8,31 @@ def create_numpy_arrays(D):
     Create NumPy arrays from a list of objects.
 
     Parameters:
-    - D (list): List of objects with attributes eps, m, n, h.
+    -  D (np.ndarray): Structured array of objects with attributes eps, m, n, h.
 
     Returns:
     - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals).
     """
+    #Retain original shape of D
+    shape_orig = D.shape  
+    
+    #Flatten D for convenience
+    D = D.flatten()
+
     data = [(d.eps, int(d.m), int(d.n), d.h) for d in D]
     dtypes = [float, int, int, float]
 
-    return tuple(np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes))
+    errors, m_vals, n_vals, h_vals = tuple(
+        np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes)
+    )
+
+    # reshape arrays to original shape when returning
+    return (
+        errors.reshape(shape_orig),
+        m_vals.reshape(shape_orig),
+        n_vals.reshape(shape_orig),
+        h_vals.reshape(shape_orig),
+    )
 
 
 def check_error_condition(eps_current, eps_previous):
@@ -54,11 +70,11 @@ def update_parameters(params, updates):
     for name, value in updates.items():
         params[name] = value
         if name == "h":
-            #when h is varied, also update m and n 
+            # when h is varied, also update m and n
             params["m"] = int(10.0 / value)
             params["n"] = int(5.0 / value)
 
-    #If m and n are varied simultaneously, throw warning.
+    # If m and n are varied simultaneously, throw warning.
     updated_params = set(updates.keys())
     intersection = updated_params.intersection({"h", "m", "n"})
     if len(intersection) > 1:
