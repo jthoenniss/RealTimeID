@@ -39,7 +39,7 @@ def check_error_condition(eps_current, eps_previous):
     return False
 
 
-def update_grid_parameters(params, updates):
+def update_parameters(params, updates):
     """
     Update grid parameters with new values.
 
