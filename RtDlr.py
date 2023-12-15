@@ -4,11 +4,9 @@ import scipy.linalg.interpolative as sli
 
 
 class RtDlr(ker.RtKernel):
-    def __init__(
-        self, m=None, n=None, beta=None, times=None, eps=None, h=None, phi=None
-    ):
+    def __init__(self, params):
         """
-        Parameters:
+        Params (passed as dictionary or implicitly as part of a DiscrError object):
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
         - beta (float): inverse temperature
@@ -17,15 +15,26 @@ class RtDlr(ker.RtKernel):
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         """
-        if isinstance(  # in case the arguments are not specified explicitly but object is initilaized with RtKernel object
-            m, ker.DiscrError
-        ):  
-            # Extract values from the DiscrError object
-            members_DiscrError = ["m", "n", "beta", "times", "eps", "h", "phi"]
+        members_DiscrError = ["m", "n", "beta", "times", "eps", "h", "phi"]
 
-            m, n, beta, times, eps, h, phi = [
-                getattr(m, member) for member in members_DiscrError
-            ]
+        #for intitialization via dict containing these variables
+        if isinstance(params, dict):
+            #Extract values from dictionary
+            m, n, beta, times, eps, h, phi = (
+                params.get(member) for member in members_DiscrError
+            )
+
+        #for initialization using DiscrError object
+        elif isinstance(params, ker.DiscrError):
+            # Extract values from the DiscrError object
+            m, n, beta, times, eps, h, phi = (
+                getattr(params, member) for member in members_DiscrError
+            )
+
+        else:
+            raise ValueError(
+                "Invalid type for params. Should be either a dictionary or an instance of class DiscrError."
+            )
 
         # initialize object of parent class RtKernel
         super().__init__(m, n, beta, times, eps, h, phi)
@@ -74,14 +83,6 @@ class RtDlr(ker.RtKernel):
         coupl_eff = P @ self.spec_dens_fine()
         return coupl_eff
 
-    def get_error(self):
-        """
-        Returns:
-        - (DiscError): error object w.r.t. continous frequencey integration
-        """
-        return ker.DiscrError(
-            self.m, self.n, self.N_max, self.delta_t, self.beta, self.upper_cutoff
-        )
 
     def reconstr_interp_matrix(self):
         """
