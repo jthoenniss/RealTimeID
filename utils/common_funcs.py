@@ -243,12 +243,13 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
         assert isinstance(lower_limit, int) and isinstance(
             upper_limit, int
         ), "Lower and upper limit must be integers signifying the power of 10"
-        limits = np.arange(lower_limit, upper_limit)
+        del_a = 0.5
+        limits = np.arange(lower_limit, upper_limit, del_a)
         point_density = np.array(
-            [np.sum((grid >= 10.0**a) & (grid < 10.0 ** (a + 1))) for a in limits]
+            [np.sum((grid >= 10.0**a) & (grid < 10.0 ** (a + del_a))) for a in limits]
         )
         point_density_grid = np.array(
-            [(10.0**a + 10.0 ** (a + 1)) / 2.0 for a in limits]
+            [(10.0**a + 10.0 ** (a + del_a)) / 2.0 for a in limits]
         )
 
     else:
