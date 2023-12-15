@@ -8,10 +8,10 @@ def create_numpy_arrays(D):
     Create NumPy arrays from a list of objects.
 
     Parameters:
-    -  D (np.ndarray): Structured array of objects with attributes eps, m, n, h.
+    -  D (np.ndarray): Structured array of objects with attributes eps, m, n, h, ID_rank.
 
     Returns:
-    - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals).
+    - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals, ID_ranks).
     """
     #Retain original shape of D
     shape_orig = D.shape  
@@ -19,10 +19,10 @@ def create_numpy_arrays(D):
     #Flatten D for convenience
     D = D.flatten()
 
-    data = [(d.eps, int(d.m), int(d.n), d.h) for d in D]
-    dtypes = [float, int, int, float]
+    data = [(d.eps, d.m, d.n, d.h, d.ID_rank) for d in D]
+    dtypes = [float, int, int, float, int]
 
-    errors, m_vals, n_vals, h_vals = tuple(
+    errors, m_vals, n_vals, h_vals, ID_ranks = tuple(
         np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes)
     )
 
@@ -32,6 +32,7 @@ def create_numpy_arrays(D):
         m_vals.reshape(shape_orig),
         n_vals.reshape(shape_orig),
         h_vals.reshape(shape_orig),
+        ID_ranks.reshape(shape_orig),
     )
 
 
