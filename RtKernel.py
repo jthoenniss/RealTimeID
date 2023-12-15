@@ -197,8 +197,19 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
 
 
 class DiscrError:
+    DEFAULT_PHI = np.pi / 4
+
     def __init__(
-        self, m, n, N_max, delta_t, beta, upper_cutoff, times, h, phi=np.pi / 4
+        self,
+        m: int,
+        n: int,
+        N_max: int,
+        delta_t: float,
+        beta: float,
+        upper_cutoff: float,
+        times: np.ndarray,
+        h: float,
+        phi=DEFAULT_PHI,
     ):
         """
         Parameters:
@@ -215,21 +226,22 @@ class DiscrError:
         Note: Either "N_max" and "delta_t" OR "times" needs to be specified to define the time grid. If all is specified, the argument "times" is used as time grid.
         """
 
+        # Determine the time grid based on provided information or generate one
+        if times is None:
+            self.times = set_time_grid(N_max, delta_t)
+            self.N_max = N_max
+            self.delta_t = delta_t
+        else:
+            self.times = times
+            self.N_max = len(times)
+            self.delta_t = times[1] - times[0] if len(times) > 1 else 0.0
+
         self.m = m
         self.n = n
-
-        self.N_max = len(times) if times is not None else N_max
-        self.delta_t = (
-            times[1] - times[0] if times is not None else delta_t
-        )  # compute it from time grid if provided, otherwise use argument
         self.beta = beta
         self.upper_cutoff = upper_cutoff
-        self.times = (
-            times if times is not None else set_time_grid(N_max, delta_t)
-        )  # Use provided time grid or generate one if not provided
         self.h = h
         self.phi = phi
-
         self.eps = None  # to store the eps w.r.t.to exact result
 
     def cont_integral(self, t):
@@ -438,8 +450,10 @@ class DiscrError:
         return self
 
 
-class RtKernel:#class that compute the ID and SVD for given parameters.
-    def __init__(self, m, n, beta, times, eps, h, phi=np.pi / 4):
+class RtKernel:  # class that compute the ID and SVD for given parameters.
+    DEFAULT_PHI = np.pi / 4
+
+    def __init__(self, m, n, beta, times, eps, h, phi=DEFAULT_PHI):
         """
         Parameters:
         - m (int): number of discretization intervals for omega > 1
@@ -450,19 +464,21 @@ class RtKernel:#class that compute the ID and SVD for given parameters.
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         """
-        
+
         self.m, self.n = m, n
         self.beta = beta
         self.times = times
         self.eps = eps
-        self.h = h  
+        self.h = h
         self.phi = phi
 
         # initialize frequency grid
         self.fine_grid = np.array(
-            [np.exp(self.h * k - np.exp(-self.h * k)) for k in range(-self.n, self.m + 1)]
+            [
+                np.exp(self.h * k - np.exp(-self.h * k))
+                for k in range(-self.n, self.m + 1)
+            ]
         )  # create fine grid according to superexponential formula
-
 
         # create kernel matrix K on fine grid
         self.K = np.array(
@@ -470,7 +486,8 @@ class RtKernel:#class that compute the ID and SVD for given parameters.
                 [
                     distr(
                         t,
-                        np.exp(self.h * k - np.exp(-self.h * k)) * np.exp(1.0j * self.phi),
+                        np.exp(self.h * k - np.exp(-self.h * k))
+                        * np.exp(1.0j * self.phi),
                         beta,
                     )
                     * self.h
