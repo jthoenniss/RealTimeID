@@ -1,6 +1,7 @@
 import numpy as np
-import math #for floor and ceiling
+import math  # for floor and ceiling
 from scipy import integrate
+
 
 def create_numpy_arrays(D):
     """
@@ -38,20 +39,32 @@ def check_error_condition(eps_current, eps_previous):
     return False
 
 
-
-def update_grid_parameters(params, h):
+def update_grid_parameters(params, updates):
     """
-    Update grid parameters in the given dictionary.
+    Update grid parameters with new values.
 
     Parameters:
     - params (dict): Dictionary containing grid parameters.
-    - h (float): New value for the discretization parameter 'h'.
+    - updates (dict): Dictionary containing parameter names and their new values.
+
+    Returns:
+    - None
     """
-    params["h"] = h
-    params["m"] = int(10.0 / h)
-    params["n"] = int(5.0 / h)
 
+    for name, value in updates.items():
+        params[name] = value
+        if name == "h":
+            #when h is varied, also update m and n 
+            params["m"] = int(10.0 / value)
+            params["n"] = int(5.0 / value)
 
+    #If m and n are varied simultaneously, throw warning.
+    updated_params = set(updates.keys())
+    intersection = updated_params.intersection({"h", "m", "n"})
+    if len(intersection) > 1:
+        print(
+            f"Warning: Attempting to update the parameters {intersection} simultaneously. Double check that this is intended."
+        )
 
 
 def distr(t, x, beta, phi=0):
@@ -244,4 +257,3 @@ def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
         )
 
     return point_density, point_density_grid
-
