@@ -3,7 +3,7 @@ import RtKernel as ker
 import scipy.linalg.interpolative as sli
 
 
-class RtDlr:
+class RtDlr(ker.RtKernel):
     def __init__(
         self, m=None, n=None, beta=None, times=None, eps=None, h=None, phi=None
     ):
@@ -17,63 +17,18 @@ class RtDlr:
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         """
-        if isinstance(
+        if isinstance(  # in case the arguments are not specified explicitly but object is initilaized with RtKernel object
             m, ker.DiscrError
-        ):  # Check if m is an object of the class DiscrError
+        ):  
             # Extract values from the DiscrError object
             members_DiscrError = ["m", "n", "beta", "times", "eps", "h", "phi"]
-            # Copy variables from DiscrError object
-            for member in members_DiscrError:
-                setattr(self, member, getattr(m, member))
-        else:
-            # Use the explicitly provided values
-            self.m = m
-            self.n = n
-            self.beta = beta
-            self.times = times
-            self.eps = eps
-            self.h = h
-            self.phi = (
-                phi if phi is not None else np.pi / 4
-            )  # Use provided phi or default value
 
-        # __________________________________________________
-        # Initialize RtKernel object with given parameters
-        opts = {
-            "m": self.m,
-            "n": self.n,
-            "beta": self.beta,
-            "times": self.times,
-            "eps": self.eps,
-            "h": self.h,
-            "phi": self.phi,
-        }
+            m, n, beta, times, eps, h, phi = [
+                getattr(m, member) for member in members_DiscrError
+            ]
 
-        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
-        assert (
-            self.eps < 1
-        ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
-
-        rt_kernel = ker.RtKernel(
-            **opts
-        )  # local object, not accessible outside __init__
-
-        # __________________________________________________
-        # Copy the state variables from the RtKernel object
-        members_RtKernel = [
-            "fine_grid",
-            "num_singular_values_above_threshold",
-            "singular_values",
-            "ID_rank",
-            "idx",
-            "proj",
-            "coarse_grid",
-            "K",
-        ]
-
-        # Copy variables from RtKernel instance "rt_kernel"
-        for member in members_RtKernel:
-            setattr(self, member, getattr(rt_kernel, member))
+        # initialize object of parent class RtKernel
+        super().__init__(m, n, beta, times, eps, h, phi)
         # ____________________________________________________
 
     def get_coarse_grid(self):

@@ -438,7 +438,7 @@ class DiscrError:
         return self
 
 
-class RtKernel:
+class RtKernel:#class that compute the ID and SVD for given parameters.
     def __init__(self, m, n, beta, times, eps, h, phi=np.pi / 4):
         """
         Parameters:
@@ -489,6 +489,10 @@ class RtKernel:
             self.singular_values,
         ) = svd_check_singular_values(self.K, self.eps)
 
+        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
+        assert (
+            self.eps < 1
+        ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
         # perform ID on K
         self.ID_rank, self.idx, self.proj = sli.interp_decomp(
             self.K, self.eps
