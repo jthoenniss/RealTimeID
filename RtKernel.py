@@ -1,199 +1,5 @@
 import numpy as np
-from scipy import integrate
-import scipy.linalg.interpolative as sli
-import math
-
-
-def distr(t, x, beta, phi=0):
-    """
-    Compute time-dependent Kernel, e^{i*t*omega} * (1-n_F(omega)), where n_F is Fermi-Dirac distribution
-    Note: omega is parametrized as x * e^{i*phi}, where x is real
-
-    Parameters:
-    - t (float): time argument
-    - x (float): frequency argument
-    - beta (float): inverse temperature
-    - phi (float): rotation angle in complex plane
-
-    Returns:
-    int: Kernel evaluated at specified paramters
-    """
-    return np.exp(1.0j * x * t * np.exp(1.0j * phi)) / (
-        1 + np.exp(-beta * x * np.exp(1.0j * phi))
-    )
-
-
-def spec_dens(omega):
-    """
-    Compute spectral density as function of frequency
-
-    Parameters:
-    - frequency omega
-
-    Returns:
-    int: spectral density evaluated at this frequency
-    """
-
-    return 1.0
-
-
-def svd_check_singular_values(matrix, relative_error):
-    """
-    Compute the Singular Value Decomposition (SVD) rank of a matrix.
-
-    Parameters:
-    - matrix (numpy.ndarray): Input matrix for which the SVD rank is computed.
-    - relative_error (float): Desired relative error threshold.
-
-    Returns:
-    int: The computed SVD rank based on the specified relative error.
-    """
-    # Perform SVD
-    _, singular_values, _ = np.linalg.svd(matrix)
-
-    # Compute the total sum of squared singular values
-    total_sum = np.sum(singular_values)
-
-    svd_rank = np.sum([singular_values / total_sum > relative_error])
-
-    return svd_rank, singular_values
-
-
-def generate_chebyshev_grid_in_interval(a, b, m):
-    """
-    Generate a Chebyshev grid of order m within the interval [a, b].
-
-    Parameters:
-    - a (float): Start of the interval.
-    - b (float): End of the interval.
-    - m (int): Order of the Chebyshev grid.
-
-    Returns:
-    numpy.ndarray: Chebyshev nodes within the interval.
-    """
-    k_values = np.arange(1, m + 1)
-    chebyshev_nodes = 0.5 * (a + b) + 0.5 * (b - a) * np.cos(
-        (2 * k_values - 1) * np.pi / (2 * m)
-    )
-    return np.sort(chebyshev_nodes)
-
-
-def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, upper_cutoff):
-    """
-    Generate a composite Chebyshev grid with Chebyshev nodes in each interval.
-    Intervals are dyadically refined towards origin.
-
-    Parameters:
-    - M_intervals (int): Number of intervals in the composite grid.
-    - m_chebyshev (int): Order of the Chebyshev grid in each interval.
-
-    Returns:
-    numpy.ndarray: Composite Chebyshev grid with nodes.
-    """
-    cheb_points = []
-
-    for i in range(1, M_intervals + 1):
-        a_i = 0.0 if i == 1 else 1 / 2 ** (M_intervals - i + 1)
-        b_i = 1.0 if i == M_intervals else 1 / 2 ** (M_intervals - i)
-
-        # Generate Chebyshev nodes in the interval [a_i, b_i]
-        cheb_nodes_in_interval = generate_chebyshev_grid_in_interval(
-            a_i, b_i, m_chebyshev
-        )
-        cheb_points.extend(cheb_nodes_in_interval)
-
-    return upper_cutoff * np.array(cheb_points)
-
-
-def set_time_grid(N_max, delta_t):
-    """
-    Initializes the dicrete-time grid for fixed final time and time step
-    Parameters:
-    - N_max (int): nbr. of time steps up to final time
-    - delta_t (float): time step
-
-    Returns:
-    np.array(): array containing the time points
-    """
-    return np.arange(1, N_max + 1) * delta_t
-
-
-def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
-    """
-    Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
-    Parameters:
-    - t (float): time argument
-    - beta (float): inverse temperature
-    - upper_cutoff (float): energy upper_cutoff up to which kernel is integrated
-    - phi (float): rotations angle in complex plane
-
-    Returns:
-    - (np.complex_): Result of integration in interval [0,upper_cutoff]
-    """
-    # compute real part by using integration routine
-    right_segment_cont_real, _ = integrate.quad(
-        lambda x: np.real(
-            np.exp(1.0j * phi)
-            * distr(t, x, beta, phi)
-            * spec_dens(omega=x * np.exp(1.0j * phi))
-        ),
-        0,
-        upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
-    )
-
-    # compute imaginary part by using integration routine
-    right_segment_cont_imag, _ = integrate.quad(
-        lambda x: np.imag(
-            np.exp(1.0j * phi)
-            * distr(t, x, beta, phi)
-            * spec_dens(omega=x * np.exp(1.0j * phi))
-        ),
-        0,
-        upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
-    )
-
-    return right_segment_cont_real + 1.0j * right_segment_cont_imag
-
-
-def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
-    """
-    Calculate point density within specified intervals.
-
-    Parameters:
-        grid (numpy.ndarray): Input data array.
-        lower_limit: Lower limit of the interval. For interval_spacing = 'log', specify exponent, i.e. lower limit is then 10**lower_limit.
-        upper_limit: Upper limit of the interval. For interval_spacing = 'log', specify exponent, i.e. upper limit is then 10**upper_limit.
-        interval_spacing (str): Type of interval spacing ('lin' or 'log').
-
-    Returns:
-        numpy.ndarray: Array containing point density within each interval.
-        numpy.ndarray: Array containing the midpoints of the intervals in which the density is evaluated
-    """
-    if interval_spacing == "lin":
-        limits = np.array([math.floor(lower_limit), math.ceil(upper_limit)])
-        point_density = np.array(
-            [np.sum((grid >= a) & (grid < (a + 1)) for a in limits)]
-        )
-        point_density_grid = np.array([a + 0.5 for a in limits])
-
-    elif interval_spacing == "log":
-        assert isinstance(lower_limit, int) and isinstance(
-            upper_limit, int
-        ), "Lower and upper limit must be integers signifying the power of 10"
-        limits = np.arange(lower_limit, upper_limit)
-        point_density = np.array(
-            [np.sum((grid >= 10.0**a) & (grid < 10.0 ** (a + 1))) for a in limits]
-        )
-        point_density_grid = np.array(
-            [(10.0**a + 10.0 ** (a + 1)) / 2.0 for a in limits]
-        )
-
-    else:
-        raise ValueError(
-            "Invalid interval spacing parameter specified. Use 'lin' or 'log'."
-        )
-
-    return point_density, point_density_grid
+from utils import common_funcs as cf
 
 
 class DiscrError:
@@ -228,7 +34,7 @@ class DiscrError:
 
         # Determine the time grid based on provided information or generate one
         if times is None:
-            self.times = set_time_grid(N_max, delta_t)
+            self.times = cf.set_time_grid(N_max, delta_t)
             self.N_max = N_max
             self.delta_t = delta_t
         else:
@@ -252,25 +58,7 @@ class DiscrError:
         Returns:
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
-        # compute real part by using integration routine
-        right_segment_cont_real, _ = integrate.quad(
-            lambda x: np.real(
-                np.exp(1.0j * self.phi) * distr(t, x, self.beta, self.phi)
-            ),
-            0,
-            self.upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
-        )
-
-        # compute imaginary part by using integration routine
-        right_segment_cont_imag, _ = integrate.quad(
-            lambda x: np.imag(
-                np.exp(1.0j * self.phi) * distr(t, x, self.beta, self.phi)
-            ),
-            0,
-            self.upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
-        )
-
-        return right_segment_cont_real + 1.0j * right_segment_cont_imag
+        return cf.cont_integral(t, self.beta, self.upper_cutoff, phi=self.phi)
 
     def discrete_integral(self, t):
         """
@@ -284,7 +72,7 @@ class DiscrError:
         # compute the discrete approximation to the frequency integral at fixed time t
         right_segment = np.sum(
             [
-                distr(
+                cf.distr(
                     t,
                     np.exp(self.h * k - np.exp(-self.h * k)),
                     self.beta,
@@ -294,7 +82,7 @@ class DiscrError:
                 * np.exp(1.0j * self.phi)
                 * (1 + np.exp(-self.h * k))
                 * np.exp(self.h * k - np.exp(-self.h * k))
-                * spec_dens(
+                * cf.spec_dens(
                     omega=np.exp(self.h * k - np.exp(-self.h * k))
                     * np.exp(1.0j * self.phi)
                 )  # spectral density evaluated at complex frequency
@@ -449,71 +237,3 @@ class DiscrError:
 
         return self
 
-
-class RtKernel:  # class that compute the ID and SVD for given parameters.
-    DEFAULT_PHI = np.pi / 4
-
-    def __init__(self, m, n, beta, times, eps, h, phi=DEFAULT_PHI):
-        """
-        Parameters:
-        - m (int): number of discretization intervals for omega > 1
-        - n (int): number of discretization intervals for omega < 1
-        - beta (float): inverse temperature
-        - times (numpy.ndarray): Array containing the points on the time grid
-        - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
-        - h (float): Discretization parameter
-        - phi (float): rotation angle in complex plane
-        """
-
-        self.m, self.n = m, n
-        self.beta = beta
-        self.times = times
-        self.eps = eps
-        self.h = h
-        self.phi = phi
-
-        # initialize frequency grid
-        self.fine_grid = np.array(
-            [
-                np.exp(self.h * k - np.exp(-self.h * k))
-                for k in range(-self.n, self.m + 1)
-            ]
-        )  # create fine grid according to superexponential formula
-
-        # create kernel matrix K on fine grid
-        self.K = np.array(
-            [
-                [
-                    distr(
-                        t,
-                        np.exp(self.h * k - np.exp(-self.h * k))
-                        * np.exp(1.0j * self.phi),
-                        beta,
-                    )
-                    * self.h
-                    * np.exp(1.0j * self.phi)
-                    * (1 + np.exp(-self.h * k))
-                    * np.exp(self.h * k - np.exp(-self.h * k))
-                    for k in range(-self.n, self.m + 1)
-                ]
-                for t in self.times
-            ]
-        )
-
-        # __________perform SVD on kernel K and count number of singular values above error threshold____________
-        (
-            self.num_singular_values_above_threshold,
-            self.singular_values,
-        ) = svd_check_singular_values(self.K, self.eps)
-
-        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
-        assert (
-            self.eps < 1
-        ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
-        # perform ID on K
-        self.ID_rank, self.idx, self.proj = sli.interp_decomp(
-            self.K, self.eps
-        )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
-
-        # compute coarse grid
-        self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])

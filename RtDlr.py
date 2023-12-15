@@ -1,9 +1,80 @@
 import numpy as np
 import RtKernel as ker
 import scipy.linalg.interpolative as sli
+from utils import common_funcs as cf
 
 
-class RtDlr(ker.RtKernel):
+
+class RtKernel:  # class that compute the ID and SVD for given parameters.
+    DEFAULT_PHI = np.pi / 4
+
+    def __init__(self, m, n, beta, times, eps, h, phi=DEFAULT_PHI):
+        """
+        Parameters:
+        - m (int): number of discretization intervals for omega > 1
+        - n (int): number of discretization intervals for omega < 1
+        - beta (float): inverse temperature
+        - times (numpy.ndarray): Array containing the points on the time grid
+        - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
+        - h (float): Discretization parameter
+        - phi (float): rotation angle in complex plane
+        """
+
+        self.m, self.n = m, n
+        self.beta = beta
+        self.times = times
+        self.eps = eps
+        self.h = h
+        self.phi = phi
+
+        # initialize frequency grid
+        self.fine_grid = np.array(
+            [
+                np.exp(self.h * k - np.exp(-self.h * k))
+                for k in range(-self.n, self.m + 1)
+            ]
+        )  # create fine grid according to superexponential formula
+
+        # create kernel matrix K on fine grid
+        self.K = np.array(
+            [
+                [
+                    cf.distr(
+                        t,
+                        np.exp(self.h * k - np.exp(-self.h * k))
+                        * np.exp(1.0j * self.phi),
+                        beta,
+                    )
+                    * self.h
+                    * np.exp(1.0j * self.phi)
+                    * (1 + np.exp(-self.h * k))
+                    * np.exp(self.h * k - np.exp(-self.h * k))
+                    for k in range(-self.n, self.m + 1)
+                ]
+                for t in self.times
+            ]
+        )
+
+        # __________perform SVD on kernel K and count number of singular values above error threshold____________
+        (
+            self.num_singular_values_above_threshold,
+            self.singular_values,
+        ) = cf.svd_check_singular_values(self.K, self.eps)
+
+        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
+        assert (
+            self.eps < 1
+        ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
+        # perform ID on K
+        self.ID_rank, self.idx, self.proj = sli.interp_decomp(
+            self.K, self.eps
+        )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
+
+        # compute coarse grid
+        self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
+
+
+class RtDlr(RtKernel):
     def __init__(self, params):
         """
         Params (passed as dictionary or implicitly as part of a DiscrError object):
@@ -61,7 +132,7 @@ class RtDlr(ker.RtKernel):
             phi_cmplx = phi
 
         spec_dens_at_fine_grid = np.array(
-            [ker.spec_dens(w_f * np.exp(1.0j * phi_cmplx)) for w_f in self.fine_grid]
+            [cf.spec_dens(w_f * np.exp(1.0j * phi_cmplx)) for w_f in self.fine_grid]
         )
         return spec_dens_at_fine_grid
 
