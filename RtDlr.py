@@ -1,5 +1,5 @@
 import numpy as np
-import RtKernel as ker
+import DiscrError as de
 import scipy.linalg.interpolative as sli
 from utils import common_funcs as cf
 
@@ -96,7 +96,7 @@ class RtDlr(RtKernel):
             )
 
         #for initialization using DiscrError object
-        elif isinstance(params, ker.DiscrError):
+        elif isinstance(params, de.DiscrError):
             # Extract values from the DiscrError object
             m, n, beta, times, eps, h, phi = (
                 getattr(params, member) for member in members_DiscrError
