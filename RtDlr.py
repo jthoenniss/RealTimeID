@@ -1,3 +1,20 @@
+"""
+This module defines the `RtKernel` class and its inherited class `RtDlr`.
+
+### RtKernel:
+The `RtKernel` class is responsible for creating the Green's function kernel, 
+incorporating real-time arguments and fermionic statistics, including 
+temperature-dependent beta. Its primary function is to perform the Interpolative Decomposition (ID) 
+and Singular Value Decomposition (SVD), storing the relevant data.
+
+### RtDlr:
+The `RtDlr` class encompasses various initialization routines and functions 
+that compute quantities based on the ID decomposition. It facilitates the analysis of the effective, 
+ID-reconstructed kernel, Green's function, and more. This class serves as an extension of the `RtKernel` class, 
+inheriting its functionality.
+"""
+
+
 import numpy as np
 import DiscrError as de
 import scipy.linalg.interpolative as sli
@@ -76,7 +93,7 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
 class RtDlr(RtKernel):
     def __init__(self, *args, **kwargs):
         """
-        Parameters are passed as  
+        Parameters are passed as
         a) dictionary: "dlr.RtDlr(dict)",
         b) implicitly as part of a DiscrError object: "dlr.RtDlr(discr_error)",
         c) as as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
@@ -122,7 +139,7 @@ class RtDlr(RtKernel):
 
     def _initialize_from_none(self):
         # Do not call the base class initializer. Set all associated attributes to trivial values.
-        
+
         # Integer attributes
         integer_attributes = [
             "m",
