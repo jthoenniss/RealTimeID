@@ -74,52 +74,74 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
 
 
 class RtDlr(RtKernel):
-    def __init__(self, params):
+    def __init__(self, *args, **kwargs):
         """
-        Params (passed as dictionary or implicitly as part of a DiscrError object):
+        Parameters are passed as  
+        a) dictionary: "dlr.RtDlr(dict)",
+        b) implicitly as part of a DiscrError object: "dlr.RtDlr(discr_error)",
+        c) as as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
+
+        Necessary arguments are:
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
         - beta (float): inverse temperature
         - times (numpy.ndarray): Array containing the points on the time grid
-        - eps (float): error used for interpolvative decomposition (ID) and singular value decomposition (SVD). When initialized through DiscrError object, this error is the rel. error between the discrete and continous-frequency integral
+        - eps (float): error used for interpolative decomposition (ID) and singular value decomposition (SVD).
+          When initialized through DiscrError object, this error is the rel. error between the discrete
+          and continuous-frequency integral
         - h (float): Discretization parameter
-        - phi (float): rotation angle in complex plane
+        - phi (float): rotation angle in the complex plane
         """
-        
-        if isinstance(params, dict):
-            # pass the dictionary to the base class initializer as it is
-            super().__init__(**params)
-
-        elif isinstance(params, de.DiscrError):
-            # Extract values from the DiscrError object and create a dictionary
-            args_RtKernel = ["m", "n", "beta", "times", "eps", "h", "phi"]
-            params_RtKernel = {
-                member: getattr(params, member) for member in args_RtKernel
-            }
-            super().__init__(**params_RtKernel)
-
-        elif params is None:
-            # do not call base class initializer. Set all associated attributes to trivial values.
-            # Integer attributes
-            integer_attributes = ["m", "n", "num_singular_values_above_threshold", "ID_rank"]
-            for member in integer_attributes:
-                setattr(self, member, 0)
-
-            # Float attributes
-            float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
-            for member in float_attributes:
-                setattr(self, member, np.NaN)
-
-            # Array attributes
-            array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
-            for member in array_attributes:
-                setattr(self, member, np.array([]))
-
-
+        if args:
+            self._initialize_from_args(args)
+        elif kwargs:
+            super().__init__(**kwargs)
         else:
             raise ValueError(
-                "Invalid type for params. Should be either a dictionary or an instance of class DiscrError."
+                "Invalid parameters. Provide either a dictionary or an instance of DiscrError."
             )
+
+    # Function definitions used in initilization:
+    def _initialize_from_args(self, args):
+        if isinstance(args[0], de.DiscrError):
+            self._initialize_from_discr_error(args[0])
+        elif isinstance(args[0], dict):
+            super().__init__(**args[0])
+        elif args[0] is None:
+            self._initialize_from_none()
+        else:
+            raise ValueError(
+                "Invalid type for args[0]. Should be either a dictionary or an instance of DiscrError."
+            )
+
+    def _initialize_from_discr_error(self, discr_error):
+        params_rt_kernel = ["m", "n", "beta", "times", "eps", "h", "phi"]
+        super().__init__(
+            **{member: getattr(discr_error, member) for member in params_rt_kernel}
+        )
+
+    def _initialize_from_none(self):
+        # Do not call the base class initializer. Set all associated attributes to trivial values.
+        
+        # Integer attributes
+        integer_attributes = [
+            "m",
+            "n",
+            "num_singular_values_above_threshold",
+            "ID_rank",
+        ]
+        for member in integer_attributes:
+            setattr(self, member, 0)
+
+        # Float attributes
+        float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
+        for member in float_attributes:
+            setattr(self, member, np.NaN)
+
+        # Array attributes
+        array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
+        for member in array_attributes:
+            setattr(self, member, np.array([]))
 
         # ____________________________________________________
 
