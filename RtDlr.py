@@ -4,7 +4,6 @@ import scipy.linalg.interpolative as sli
 from utils import common_funcs as cf
 
 
-
 class RtKernel:  # class that compute the ID and SVD for given parameters.
     DEFAULT_PHI = np.pi / 4
 
@@ -86,29 +85,42 @@ class RtDlr(RtKernel):
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         """
-        members_DiscrError = ["m", "n", "beta", "times", "eps", "h", "phi"]
-
-        #for intitialization via dict containing these variables
+        
         if isinstance(params, dict):
-            #Extract values from dictionary
-            m, n, beta, times, eps, h, phi = (
-                params.get(member) for member in members_DiscrError
-            )
+            # pass the dictionary to the base class initializer as it is
+            super().__init__(**params)
 
-        #for initialization using DiscrError object
         elif isinstance(params, de.DiscrError):
-            # Extract values from the DiscrError object
-            m, n, beta, times, eps, h, phi = (
-                getattr(params, member) for member in members_DiscrError
-            )
+            # Extract values from the DiscrError object and create a dictionary
+            args_RtKernel = ["m", "n", "beta", "times", "eps", "h", "phi"]
+            params_RtKernel = {
+                member: getattr(params, member) for member in args_RtKernel
+            }
+            super().__init__(**params_RtKernel)
+
+        elif params is None:
+            # do not call base class initializer. Set all associated attributes to trivial values.
+            # Integer attributes
+            integer_attributes = ["m", "n", "num_singular_values_above_threshold", "ID_rank"]
+            for member in integer_attributes:
+                setattr(self, member, 0)
+
+            # Float attributes
+            float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
+            for member in float_attributes:
+                setattr(self, member, np.NaN)
+
+            # Array attributes
+            array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
+            for member in array_attributes:
+                setattr(self, member, np.array([]))
+
 
         else:
             raise ValueError(
                 "Invalid type for params. Should be either a dictionary or an instance of class DiscrError."
             )
 
-        # initialize object of parent class RtKernel
-        super().__init__(m, n, beta, times, eps, h, phi)
         # ____________________________________________________
 
     def get_coarse_grid(self):
@@ -153,7 +165,6 @@ class RtDlr(RtKernel):
         P = self.get_projection_matrix()
         coupl_eff = P @ self.spec_dens_fine()
         return coupl_eff
-
 
     def reconstr_interp_matrix(self):
         """
