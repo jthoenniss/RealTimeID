@@ -152,20 +152,21 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         )  # add factors stemming from the variable transformation from \omega to k (multiply rows of K elementwise).
         return fine_grid, K
 
-    def perform_svd(self):
+    def perform_svd(self, eps = None):
         """
         Performs SVD on `self.K`, returning the count of singular values above `self.eps` and the values themselves.
 
         Returns:
             Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
         """
+        _eps = self.eps if eps is None else eps
         (
             num_singular_values_above_threshold,
             singular_values,
-        ) = cf.svd_check_singular_values(self.K, self.eps)
+        ) = cf.svd_check_singular_values(self.K, _eps)
         return num_singular_values_above_threshold, singular_values
 
-    def perform_ID(self):
+    def perform_ID(self, eps = None):
         """
         Performs interpolative decomposition (ID) on `self.K` using `self.eps` as the error threshold.
         # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
@@ -173,7 +174,8 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         Returns:
             Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
-        ID_rank, idx, proj = sli.interp_decomp(self.K, self.eps)
+        _eps = self.eps if eps is None else eps
+        ID_rank, idx, proj = sli.interp_decomp(self.K, _eps)
         return ID_rank, idx, proj
 
     def compute_coarse_grid(self):
