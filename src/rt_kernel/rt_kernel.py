@@ -122,10 +122,10 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
 
         k_values = np.arange(-self.n, self.m + 1)
         t_grid = self.times[:, np.newaxis]  # reshape for broadcasting
-        fine_grid, K = self._compute_kernel_matrix(k_values, t_grid)
+        fine_grid, K = self._compute_kernel_matrix(t_grid, k_values)
         return fine_grid, K
 
-    def _compute_kernel_matrix(self, k_values, t_grid):
+    def _compute_kernel_matrix(self, t_grid, k_values):
         r"""
         Computes the kernel matrix using 'k_valus', which defines the exponentially discretized frequency grid, the time grid, and class attributes.
 
@@ -150,7 +150,7 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
         K *= (
             self.h * (1 + exp_k_values) * fine_grid_complex
-        )  # add factors stemming from the variable transformation from \omega to k.
+        )  # add factors stemming from the variable transformation from \omega to k (multiply rows of K elementwise).
         return fine_grid, K
 
     def perform_svd(self):
