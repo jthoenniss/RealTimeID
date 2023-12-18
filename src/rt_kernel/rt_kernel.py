@@ -16,7 +16,7 @@ inheriting its functionality.
 
 
 import numpy as np
-import DiscrError as de
+from src.discr_error import DiscrError as de
 import scipy.linalg.interpolative as sli
 from utils import common_funcs as cf
 from parameter_validator import ParameterValidator
