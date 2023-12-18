@@ -18,9 +18,8 @@ inheriting its functionality.
 import numpy as np
 from src.discr_error import DiscrError as de
 import scipy.linalg.interpolative as sli
-from utils import common_funcs as cf
-from parameter_validator import ParameterValidator
-
+from src.utils import common_funcs as cf
+from  src.rt_kernel.parameter_validator import ParameterValidator
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
     DEFAULT_PHI = np.pi / 4

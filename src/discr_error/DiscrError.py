@@ -1,5 +1,5 @@
 import numpy as np
-from utils import common_funcs as cf
+from src.utils import common_funcs as cf
 
 
 class DiscrError:
