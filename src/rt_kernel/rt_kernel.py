@@ -19,12 +19,14 @@ import numpy as np
 import DiscrError as de
 import scipy.linalg.interpolative as sli
 from utils import common_funcs as cf
+from parameter_validator import ParameterValidator
 
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
     DEFAULT_PHI = np.pi / 4
     MAX_EPS = 1.0
 
+    #_________Initialize class_______
     def __init__(
         self,
         m: int,
@@ -56,32 +58,46 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         - h (float): Discretization parameter
         - phi (float): Rotation angle in the complex plane
         """
-
-        self.validate_parameters(eps)  # check that error parameter is valid
+        #initialize all parameters (implicitly checked for validity in initialize_parameters)
         self.initialize_parameters(m, n, beta, times, eps, h, phi)
+
+        #compute the fine grid and the kernel matrix K
         self.fine_grid, self.K = self.create_kernel()
 
-        # __________perform SVD on kernel K and count number of singular values above error threshold____________
+        # Perform SVD on kernel K and count number of singular values above error threshold____________
         (
             self.num_singular_values_above_threshold,
             self.singular_values,
         ) = self.perform_svd()
 
-        # ______perform ID on kernel K
+        # Perform ID on kernel K
         self.ID_rank, self.idx, self.proj = self.perform_ID()
-        #compute coarse ID grid
+        # compute coarse ID grid
         self.coarse_grid = self.compute_coarse_grid()
-
-    def validate_parameters(self, eps: float):
-        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
-        if not 0 < eps < RtKernel.MAX_EPS:
-            raise ValueError(
-                f"'eps' must be between 0 and {RtKernel.MAX_EPS}, got {eps}"
-            )
+    #_______________End Initialization Routine___________________________
+        
 
     def initialize_parameters(
-        self, m: int, n: int, beta: float, times: np.ndarray, eps: float, h: float, phi
+        self,
+        m: int,
+        n: int,
+        beta: float,
+        times: np.ndarray,
+        eps: float,
+        h: float,
+        phi: float,
     ):
+        """
+        Initializes class parameters after validation and stores them as attributes.
+        """
+        #check if all parameters are valid
+        ParameterValidator.validate_m_n(m,n)
+        ParameterValidator.validate_beta(beta)
+        ParameterValidator.validate_times(times)
+        ParameterValidator.validate_eps(eps)
+        ParameterValidator.validate_h_phi(h, phi)
+
+        #Store attributes
         self.m, self.n = m, n
         self.beta = beta
         self.times = times
@@ -93,23 +109,46 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         """
         Create the kernel matrix on the fine grid in the complex plane.
 
-        This method uses class attributes such as the rotation angle (`phi`),
-        discretization parameter (`h`), inverse temperature (`beta`), and
-        the frequency (`m`, `n`) and time (`times`) grids to generate the kernel matrix.
+        This method computes a kernel matrix using class attributes, incorporating
+        a complex rotation specified by `phi`. The kernel is calculated over
+        a range of frequency values (defined by `m` and `n`) and time values
+        (defined by `times`).
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: A tuple containing the fine grid array
+            and the computed kernel matrix.
         """
+
         k_values = np.arange(-self.n, self.m + 1)
         t_grid = self.times[:, np.newaxis]  # reshape for broadcasting
-        fine_grid, K = self.compute_kernel_matrix(k_values, t_grid)
+        fine_grid, K = self._compute_kernel_matrix(k_values, t_grid)
         return fine_grid, K
 
-    def compute_kernel_matrix(self, k_values, t_grid):
-        fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
-        fine_grid_complex = fine_grid * np.exp(1.0j * self.phi)
-        K = cf.distr(t_grid, fine_grid_complex, self.beta)
-        K *= self.h * (1 + np.exp(-self.h * k_values)) * fine_grid_complex
+    def _compute_kernel_matrix(self, k_values, t_grid):
+        r"""
+        Computes the kernel matrix using 'k_valus', which defines the exponentially discretized frequency grid, the time grid, and class attributes.
+
+        Parameters:
+            k_values (np.ndarray): Integer values defining the exponential frequency grid that is defined via $\omega_k = \exp{(h k - \exp{- h k})}.$
+            t_grid (np.ndarray): Time grid for kernel computation.
+
+        Returns:
+            Tuple[np.ndarray, np.ndarray]: The fine grid and computed kernel matrix.
+        """
+        exp_k_values = np.exp(-self.h * k_values)#precompute as it is needed repeatedly
+        fine_grid = np.exp(self.h * k_values - exp_k_values)#exponential frequency grid with as many points as 'k_values' has entries
+        fine_grid_complex = fine_grid * np.exp(1.0j * self.phi)#fine grid rotated into complex plane by angle phi.
+        K = cf.distr(t_grid, fine_grid_complex, self.beta)#kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
+        K *= self.h * (1 + exp_k_values) * fine_grid_complex#add factors stemming from the variable transformation from \omega to k.
         return fine_grid, K
 
     def perform_svd(self):
+        """
+        Performs SVD on `self.K`, returning the count of singular values above `self.eps` and the values themselves.
+
+        Returns:
+            Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
+        """
         (
             num_singular_values_above_threshold,
             singular_values,
@@ -117,14 +156,22 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         return num_singular_values_above_threshold, singular_values
 
     def perform_ID(self):
-        # perform ID on K
+        """
+        Performs interpolative decomposition (ID) on `self.K` using `self.eps` as the error threshold.
+        # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
+
+        Returns:
+            Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
+        """
         ID_rank, idx, proj = sli.interp_decomp(
             self.K, self.eps
-        )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
+        )      
         return ID_rank, idx, proj
 
     def compute_coarse_grid(self):
-        # compute coarse grid
+        """
+        Compute coarse grid which consists of the frequencies selected by the ID from the fine grid
+        """
         coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
 
         return coarse_grid
