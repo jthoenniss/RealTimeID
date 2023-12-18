@@ -31,8 +31,11 @@ class ParameterValidator:
             raise ValueError(f"'eps' must be between 0 and {ParameterValidator.MAX_EPS}, got {eps}")
 
     @staticmethod
-    def validate_h_phi(h: float, phi: float):
+    def validate_h(h: float):
         if not isinstance(h, (float, int)) or h <= 0:
             raise ValueError(f"'h' must be a positive number, got {h}")
+
+    @staticmethod  
+    def validate_phi(phi: float):
         if not isinstance(phi, (float, int)):
             raise ValueError(f"'phi' must be a number, got {phi}")

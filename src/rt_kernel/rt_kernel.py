@@ -95,7 +95,8 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         ParameterValidator.validate_beta(beta)
         ParameterValidator.validate_times(times)
         ParameterValidator.validate_eps(eps)
-        ParameterValidator.validate_h_phi(h, phi)
+        ParameterValidator.validate_h(h)
+        ParameterValidator.validate_phi(phi)
 
         #Store attributes
         self.m, self.n = m, n
