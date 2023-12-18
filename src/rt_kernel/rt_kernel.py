@@ -23,7 +23,6 @@ from src.rt_kernel.parameter_validator import ParameterValidator
 
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
-    DEFAULT_PHI = np.pi / 4
     MAX_EPS = 1.0
 
     # _________Initialize class_______
@@ -35,7 +34,7 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         times: np.ndarray,
         eps: float,
         h: float,
-        phi: float = DEFAULT_PHI,
+        phi: float,
     ):
         r"""
         Initialize the RtKernel class with given parameters.
@@ -286,18 +285,14 @@ class RtDlr(RtKernel):
         """
         return self.coarse_grid
 
-    def spec_dens_fine(self, phi=None):
+    def spec_dens_fine(self):
         """
         Evaluate the spectral density at the frequency points of the fine grid
-        Parameters:
-        - phi (float): rotation angle in complex plane
-
+        
         Returns:
         - numpy.ndarray: Spectral density evaluated at complex frequencies of the fine grid (rotated into the complex plane).
         """
-        phi_cmplx = self.phi if phi is None else phi
-
-        rotated_frequencies = self.fine_grid * np.exp(1.0j * phi_cmplx)
+        rotated_frequencies = self.fine_grid * np.exp(1.0j * self.phi)
         spec_dens_at_fine_grid = cf.spec_dens(rotated_frequencies)
 
         return spec_dens_at_fine_grid
@@ -346,8 +341,8 @@ class RtDlr(RtKernel):
         - float: relative error between original and reconstructed Green's function [only if compute_error flag is set to 'True']
         """
         K_reconstr = self.reconstr_interp_matrix()  # ID-reconstructed kernel matrix
-        Gamma = self.spec_dens_fine()  # spectral denstiy evaluated on fine grid points
-
+        Gamma = self.spec_dens_fine()  # spectral density evaluated on fine grid points
+        
         G_reconstr = (
             K_reconstr @ Gamma
         )  # this yields the propagators where the array elements correspond to the different time points
