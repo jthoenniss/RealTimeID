@@ -23,19 +23,65 @@ from utils import common_funcs as cf
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
     DEFAULT_PHI = np.pi / 4
+    MAX_EPS = 1.0
 
-    def __init__(self, m, n, beta, times, eps, h, phi=DEFAULT_PHI):
-        """
+    def __init__(
+        self,
+        m: int,
+        n: int,
+        beta: float,
+        times: np.ndarray,
+        eps: float,
+        h: float,
+        phi: float = DEFAULT_PHI,
+    ):
+        r"""
+        Initialize the RtKernel class with given parameters.
+
+        The kernel is calculated using the formula:
+
+        $$ K(t, \omega) = \exp(i \omega t) \frac{1}{1 + \exp(-\beta \omega)} $$
+
+        where:
+        - $\omega$ is the frequency,
+        - $t$ is the time,
+        - $\beta$ is the inverse temperature (1/T) [$k_B = 1$].
+
         Parameters:
-        - m (int): number of discretization intervals for omega > 1
-        - n (int): number of discretization intervals for omega < 1
-        - beta (float): inverse temperature
+        - m (int): Number of discretization intervals for $\omega > 1$
+        - n (int): Number of discretization intervals for $\omega < 1$
+        - beta (float): Inverse temperature ($\beta$)
         - times (numpy.ndarray): Array containing the points on the time grid
-        - eps (float): error for interpolvative decomposition (ID) and singular value decomposition (SVD)
+        - eps (float): Error for interpolative decomposition (ID) and singular value decomposition (SVD)
         - h (float): Discretization parameter
-        - phi (float): rotation angle in complex plane
+        - phi (float): Rotation angle in the complex plane
         """
 
+        self.validate_parameters(eps)  # check that error parameter is valid
+        self.initialize_parameters(m, n, beta, times, eps, h, phi)
+        self.fine_grid, self.K = self.create_kernel()
+
+        # __________perform SVD on kernel K and count number of singular values above error threshold____________
+        (
+            self.num_singular_values_above_threshold,
+            self.singular_values,
+        ) = self.perform_svd()
+
+        # ______perform ID on kernel K
+        self.ID_rank, self.idx, self.proj = self.perform_ID()
+        #compute coarse ID grid
+        self.coarse_grid = self.compute_coarse_grid()
+
+    def validate_parameters(self, eps: float):
+        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
+        if not 0 < eps < RtKernel.MAX_EPS:
+            raise ValueError(
+                f"'eps' must be between 0 and {RtKernel.MAX_EPS}, got {eps}"
+            )
+
+    def initialize_parameters(
+        self, m: int, n: int, beta: float, times: np.ndarray, eps: float, h: float, phi
+    ):
         self.m, self.n = m, n
         self.beta = beta
         self.times = times
@@ -43,51 +89,45 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         self.h = h
         self.phi = phi
 
-        # initialize frequency grid
-        self.fine_grid = np.array(
-            [
-                np.exp(self.h * k - np.exp(-self.h * k))
-                for k in range(-self.n, self.m + 1)
-            ]
-        )  # create fine grid according to superexponential formula
+    def create_kernel(self):
+        """
+        Create the kernel matrix on the fine grid in the complex plane.
 
-        # create kernel matrix K on fine grid
-        self.K = np.array(
-            [
-                [
-                    cf.distr(
-                        t,
-                        np.exp(self.h * k - np.exp(-self.h * k))
-                        * np.exp(1.0j * self.phi),
-                        beta,
-                    )
-                    * self.h
-                    * np.exp(1.0j * self.phi)
-                    * (1 + np.exp(-self.h * k))
-                    * np.exp(self.h * k - np.exp(-self.h * k))
-                    for k in range(-self.n, self.m + 1)
-                ]
-                for t in self.times
-            ]
-        )
+        This method uses class attributes such as the rotation angle (`phi`),
+        discretization parameter (`h`), inverse temperature (`beta`), and
+        the frequency (`m`, `n`) and time (`times`) grids to generate the kernel matrix.
+        """
+        k_values = np.arange(-self.n, self.m + 1)
+        t_grid = self.times[:, np.newaxis]  # reshape for broadcasting
+        fine_grid, K = self.compute_kernel_matrix(k_values, t_grid)
+        return fine_grid, K
 
-        # __________perform SVD on kernel K and count number of singular values above error threshold____________
+    def compute_kernel_matrix(self, k_values, t_grid):
+        fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
+        fine_grid_complex = fine_grid * np.exp(1.0j * self.phi)
+        K = cf.distr(t_grid, fine_grid_complex, self.beta)
+        K *= self.h * (1 + np.exp(-self.h * k_values)) * fine_grid_complex
+        return fine_grid, K
+
+    def perform_svd(self):
         (
-            self.num_singular_values_above_threshold,
-            self.singular_values,
+            num_singular_values_above_threshold,
+            singular_values,
         ) = cf.svd_check_singular_values(self.K, self.eps)
+        return num_singular_values_above_threshold, singular_values
 
-        # Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank (see documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html" (access: 6. Dec. 2023))
-        assert (
-            self.eps < 1
-        ), "'eps' needs to be smaller than 1 to be interpreted as an error and not as a rank (see scipy documentation for ID)"
+    def perform_ID(self):
         # perform ID on K
-        self.ID_rank, self.idx, self.proj = sli.interp_decomp(
+        ID_rank, idx, proj = sli.interp_decomp(
             self.K, self.eps
         )  # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
+        return ID_rank, idx, proj
 
+    def compute_coarse_grid(self):
         # compute coarse grid
-        self.coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
+        coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
+
+        return coarse_grid
 
 
 class RtDlr(RtKernel):
