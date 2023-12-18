@@ -108,13 +108,15 @@ def spec_dens(omega):
     Compute spectral density as function of frequency
 
     Parameters:
-    - frequency omega
+    - numpy.ndarray: Array containing frequency points
 
     Returns:
-    int: spectral density evaluated at this frequency
+    - numpy.ndarray: Array containing spectral density evaluated at these frequency points
     """
+    if not isinstance(omega,np.ndarray):
+        raise TypeError(f"Frequency argument should be numpy.ndarray. Received {omega}.")    
 
-    return 1.0
+    return 1.0 * omega
 
 
 def svd_check_singular_values(matrix, relative_error):
