@@ -3,7 +3,7 @@ Real time interpolative decomposition for quantum impurity problems
 
 
 
-## Environment Variable Setup____________________________
+## Environment Variable Setup
 
 ### Why Is This Necessary?
 To ensure seamless functionality and portability of our project, we utilize the `REALTIMEID_PATH` environment variable. This approach dynamically configures the project's root directory, enabling consistent and correct module imports across various setups. It's a crucial step for maintaining the flexibility of the project across different systems and for simplifying collaborative development.
