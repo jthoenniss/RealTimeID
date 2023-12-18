@@ -19,13 +19,14 @@ import numpy as np
 from src.discr_error import DiscrError as de
 import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
-from  src.rt_kernel.parameter_validator import ParameterValidator
+from src.rt_kernel.parameter_validator import ParameterValidator
+
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
     DEFAULT_PHI = np.pi / 4
     MAX_EPS = 1.0
 
-    #_________Initialize class_______
+    # _________Initialize class_______
     def __init__(
         self,
         m: int,
@@ -57,10 +58,10 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         - h (float): Discretization parameter
         - phi (float): Rotation angle in the complex plane
         """
-        #initialize all parameters (implicitly checked for validity in initialize_parameters)
+        # initialize all parameters (implicitly checked for validity in initialize_parameters)
         self.initialize_parameters(m, n, beta, times, eps, h, phi)
 
-        #compute the fine grid and the kernel matrix K
+        # compute the fine grid and the kernel matrix K
         self.fine_grid, self.K = self.create_kernel()
 
         # Perform SVD on kernel K and count number of singular values above error threshold____________
@@ -73,8 +74,8 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         self.ID_rank, self.idx, self.proj = self.perform_ID()
         # compute coarse ID grid
         self.coarse_grid = self.compute_coarse_grid()
-    #_______________End Initialization Routine___________________________
-        
+
+    # _______________End Initialization Routine___________________________
 
     def initialize_parameters(
         self,
@@ -89,15 +90,15 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         """
         Initializes class parameters after validation and stores them as attributes.
         """
-        #check if all parameters are valid
-        ParameterValidator.validate_m_n(m,n)
+        # check if all parameters are valid
+        ParameterValidator.validate_m_n(m, n)
         ParameterValidator.validate_beta(beta)
         ParameterValidator.validate_times(times)
         ParameterValidator.validate_eps(eps)
         ParameterValidator.validate_h(h)
         ParameterValidator.validate_phi(phi)
 
-        #Store attributes
+        # Store attributes
         self.m, self.n = m, n
         self.beta = beta
         self.times = times
@@ -135,11 +136,21 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         Returns:
             Tuple[np.ndarray, np.ndarray]: The fine grid and computed kernel matrix.
         """
-        exp_k_values = np.exp(-self.h * k_values)#precompute as it is needed repeatedly
-        fine_grid = np.exp(self.h * k_values - exp_k_values)#exponential frequency grid with as many points as 'k_values' has entries
-        fine_grid_complex = fine_grid * np.exp(1.0j * self.phi)#fine grid rotated into complex plane by angle phi.
-        K = cf.distr(t_grid, fine_grid_complex, self.beta)#kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
-        K *= self.h * (1 + exp_k_values) * fine_grid_complex#add factors stemming from the variable transformation from \omega to k.
+        exp_k_values = np.exp(
+            -self.h * k_values
+        )  # precompute as it is needed repeatedly
+        fine_grid = np.exp(
+            self.h * k_values - exp_k_values
+        )  # exponential frequency grid with as many points as 'k_values' has entries
+        fine_grid_complex = fine_grid * np.exp(
+            1.0j * self.phi
+        )  # fine grid rotated into complex plane by angle phi.
+        K = cf.distr(
+            t_grid, fine_grid_complex, self.beta
+        )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
+        K *= (
+            self.h * (1 + exp_k_values) * fine_grid_complex
+        )  # add factors stemming from the variable transformation from \omega to k.
         return fine_grid, K
 
     def perform_svd(self):
@@ -163,9 +174,7 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         Returns:
             Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
-        ID_rank, idx, proj = sli.interp_decomp(
-            self.K, self.eps
-        )      
+        ID_rank, idx, proj = sli.interp_decomp(self.K, self.eps)
         return ID_rank, idx, proj
 
     def compute_coarse_grid(self):
@@ -178,11 +187,14 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
 
 
 class RtDlr(RtKernel):
+    # Define required parameters as a class variable
+    REQUIRED_PARAMS = ["m", "n", "beta", "times", "eps", "h", "phi"]
+
     def __init__(self, *args, **kwargs):
         """
         Parameters are passed as
         a) dictionary: "dlr.RtDlr(dict)",
-        b) implicitly as part of a DiscrError object: "dlr.RtDlr(discr_error)",
+        b) implicitly as attributes of an object, e.g. of type DiscrError: "dlr.RtDlr(discr_error)",
         c) as as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
 
         Necessary arguments are:
@@ -199,51 +211,70 @@ class RtDlr(RtKernel):
         if args:
             self._initialize_from_args(args)
         elif kwargs:
-            super().__init__(**kwargs)
+            self._validate_and_initialize(kwargs)
         else:
-            raise ValueError(
-                "Invalid parameters. Provide either a dictionary or an instance of DiscrError."
-            )
+            self._initialize_with_defaults()
 
     # Function definitions used in initilization:
     def _initialize_from_args(self, args):
-        if isinstance(args[0], de.DiscrError):
-            self._initialize_from_discr_error(args[0])
-        elif isinstance(args[0], dict):
-            super().__init__(**args[0])
+        """
+        Initializes the object from the first argument in 'args'.
+
+        The method supports initialization in three ways:
+        1. From a dictionary: Interprets the first argument as parameter key-value pairs.
+        2. From an object: Uses attributes of the first argument if it's not a dictionary.
+        3. With defaults: Initializes with default values if the first argument is None.
+        """
+        if isinstance(args[0], dict):
+            self._validate_and_initialize(**args[0])
         elif args[0] is None:
-            self._initialize_from_none()
+            self._initialize_with_defaults()
         else:
-            raise ValueError(
-                "Invalid type for args[0]. Should be either a dictionary or an instance of DiscrError."
-            )
+            self._initialize_from_object(args[0])
 
-    def _initialize_from_discr_error(self, discr_error):
-        params_rt_kernel = ["m", "n", "beta", "times", "eps", "h", "phi"]
+    def _initialize_from_object(self, obj):
+        """
+        Initialize the class from an object 'obj' (e.g. of type DiscrError) from which we extract the attributes.
+        """
+        init_params = {
+            param: getattr(obj, param)
+            for param in RtDlr.REQUIRED_PARAMS
+            if hasattr(obj, param)
+        }  # check for each required attribute in RtDlr.REQUIRED_PARAMS
+        self._validate_and_initialize(
+            init_params
+        )  # check if all required attributes are there, if yes, initialize, otherwise error will be thrown
+
+    def _validate_and_initialize(self, params):
+        """
+        Validate parameters (i.e. check if all required arguments are present) and initialize the class.
+        """
+        ParameterValidator.validate_required_params(
+            params, RtDlr.REQUIRED_PARAMS
+        )  # check if all required attributes are there,
         super().__init__(
-            **{member: getattr(discr_error, member) for member in params_rt_kernel}
-        )
+            **params
+        )  # if the previous step didn't raise an exception, initialize
 
-    def _initialize_from_none(self):
-        # Do not call the base class initializer. Set all associated attributes to trivial values.
-
-        # Integer attributes
+    def _initialize_with_defaults(self):
+        """
+        Private method to initialize with default values when no arguments are provided or argument is None.
+        In this case, the initializer of the parent class Rt_Kernel is not called.
+        """
+        # Default initialization of integer, float, and array attributes
         integer_attributes = [
             "m",
             "n",
             "num_singular_values_above_threshold",
             "ID_rank",
         ]
+        float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
+        array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
+
         for member in integer_attributes:
             setattr(self, member, 0)
-
-        # Float attributes
-        float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
         for member in float_attributes:
-            setattr(self, member, np.NaN)
-
-        # Array attributes
-        array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
+            setattr(self, member, 0.0)
         for member in array_attributes:
             setattr(self, member, np.array([]))
 
@@ -262,16 +293,13 @@ class RtDlr(RtKernel):
         - phi (float): rotation angle in complex plane
 
         Returns:
-        - np.complex: spectral density evaluated at complex frequencys of fine grid (rotated into complex plane)
+        - numpy.ndarray: Spectral density evaluated at complex frequencies of the fine grid (rotated into the complex plane).
         """
-        if phi is None:
-            phi_cmplx = self.phi
-        else:
-            phi_cmplx = phi
+        phi_cmplx = self.phi if phi is None else phi
 
-        spec_dens_at_fine_grid = np.array(
-            [cf.spec_dens(w_f * np.exp(1.0j * phi_cmplx)) for w_f in self.fine_grid]
-        )
+        rotated_frequencies = self.fine_grid * np.exp(1.0j * phi_cmplx)
+        spec_dens_at_fine_grid = cf.spec_dens(rotated_frequencies)
+
         return spec_dens_at_fine_grid
 
     def get_projection_matrix(self):

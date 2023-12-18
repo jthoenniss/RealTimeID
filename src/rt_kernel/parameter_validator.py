@@ -39,3 +39,22 @@ class ParameterValidator:
     def validate_phi(phi: float):
         if not isinstance(phi, (float, int)):
             raise ValueError(f"'phi' must be a number, got {phi}")
+
+
+
+
+    @staticmethod
+    def validate_required_params(params, required_params):
+        """
+        Validate if all required parameters are present.
+
+        Parameters:
+            params (dict): Parameters to validate.
+            required_params (list): List of required parameter names.
+        
+        Raises:
+            ValueError: If any required parameter is missing.
+        """
+        missing_params = [p for p in required_params if p not in params]
+        if missing_params:
+            raise ValueError(f"Missing required parameter(s): {', '.join(missing_params)}")
