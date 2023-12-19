@@ -31,14 +31,10 @@ class DiscrError:
         """
 
         # Determine the time grid based on provided information or generate one
-        if times is None:
-            self.times = cf.set_time_grid(N_max, delta_t)
-            self.N_max = N_max
-            self.delta_t = delta_t
-        else:
-            self.times = times
-            self.N_max = len(times)
-            self.delta_t = times[1] - times[0] if len(times) > 1 else 0.0
+        self.times = times if times is not None else cf.set_time_grid(N_max, delta_t)
+        self.N_max = len(self.times)
+        self.delta_t = np.diff(self.times).mean() if len(self.times) > 1 else 0.0
+
 
         self.m = m
         self.n = n
@@ -66,8 +62,7 @@ class DiscrError:
         Returns:
         np.complex_ (or in np.ndrray): Discrete approximation result to frequency integral at fixed time t
         """
-        if isinstance(t, np.ndarray):
-            t = t[:, np.newaxis]  # enable broadcasting
+        t_array = np.asarray(t)[:, np.newaxis]#if t is a scalar, convert to numpy array and reshape to enable broadcasting
 
         k_values = np.arange(-self.n, self.m + 1)
         exp_k_values = np.exp(
@@ -80,7 +75,7 @@ class DiscrError:
             1.0j * self.phi
         )  # fine grid rotated into complex plane by angle phi.
         K = cf.distr(
-            t, fine_grid_complex, self.beta
+            t_array, fine_grid_complex, self.beta
         )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
         K *= (
             self.h
@@ -91,24 +86,11 @@ class DiscrError:
             )  # spectral density evaluated at complex frequency
         )
 
-        sum_over_axis = 1 if isinstance(t, np.ndarray) else 0
-        right_segment = np.sum(K, axis=sum_over_axis)
+        # Sum over the frequency axis
+        right_segment = np.sum(K, axis=1)
 
-        return right_segment
-
-    def abs_error(self, t):
-        """
-        Compute the absolute deviation between the continous intgeral and the discrete approximation at fixed time t
-        Parameters:
-        - t (float): time argument
-
-        Returns:
-        - float: Absolute devation between continous integration result and discrete approximation at time t
-        """
-
-        cont_val = self.cont_integral(t)
-        discr_val = self.discrete_integral(t)
-        return abs(cont_val - discr_val)
+        # Return the original shape (float or 1D array)
+        return right_segment if t_array.ndim > 1 else right_segment[0]
 
     def time_integrate(self, time_series):
         """
