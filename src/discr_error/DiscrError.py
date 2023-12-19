@@ -13,7 +13,7 @@ class DiscrError:
         upper_cutoff: float,
         times: np.ndarray,
         h: float,
-        phi:float,
+        phi: float,
     ):
         """
         Parameters:
@@ -66,8 +66,8 @@ class DiscrError:
         Returns:
         np.complex_ (or in np.ndrray): Discrete approximation result to frequency integral at fixed time t
         """
-        if isinstance(t,np.ndarray):
-            t = t[:,np.newaxis]#enable broadcasting
+        if isinstance(t, np.ndarray):
+            t = t[:, np.newaxis]  # enable broadcasting
 
         k_values = np.arange(-self.n, self.m + 1)
         exp_k_values = np.exp(
@@ -83,15 +83,18 @@ class DiscrError:
             t, fine_grid_complex, self.beta
         )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
         K *= (
-            self.h * (1 + exp_k_values) * fine_grid_complex * cf.spec_dens_array(
-                    omega_array=fine_grid_complex)  # spectral density evaluated at complex frequency
-        )  
+            self.h
+            * (1 + exp_k_values)
+            * fine_grid_complex
+            * cf.spec_dens_array(
+                omega_array=fine_grid_complex
+            )  # spectral density evaluated at complex frequency
+        )
 
-        sum_over_axis = 1 if isinstance(t,np.ndarray) else 0
-        right_segment = np.sum(K,axis = sum_over_axis)
+        sum_over_axis = 1 if isinstance(t, np.ndarray) else 0
+        right_segment = np.sum(K, axis=sum_over_axis)
 
         return right_segment
-
 
     def abs_error(self, t):
         """
@@ -237,4 +240,3 @@ class DiscrError:
         )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n. Set state variable.
 
         return self
-
