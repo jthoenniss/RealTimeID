@@ -13,10 +13,10 @@ def create_numpy_arrays(D):
     Returns:
     - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals, ID_ranks).
     """
-    #Retain original shape of D
-    shape_orig = D.shape  
-    
-    #Flatten D for convenience
+    # Retain original shape of D
+    shape_orig = D.shape
+
+    # Flatten D for convenience
     D = D.flatten()
 
     data = [(d.eps, d.m, d.n, d.h, d.ID_rank) for d in D]
@@ -84,23 +84,20 @@ def update_parameters(params, updates):
         )
 
 
-def distr(t, x, beta, phi=0):
+def distr(t, x, beta: float):
     """
     Compute time-dependent Kernel, e^{i*t*omega} * (1-n_F(omega)), where n_F is Fermi-Dirac distribution
     Note: omega is parametrized as x * e^{i*phi}, where x is real
 
     Parameters:
     - t (float): time argument
-    - x (float): frequency argument
+    - x (float/complex): frequency argument
     - beta (float): inverse temperature
-    - phi (float): rotation angle in complex plane
 
     Returns:
     int: Kernel evaluated at specified paramters
     """
-    return np.exp(1.0j * x * t * np.exp(1.0j * phi)) / (
-        1 + np.exp(-beta * x * np.exp(1.0j * phi))
-    )
+    return np.exp(1.0j * x * t) / (1 + np.exp(-beta * x))
 
 
 def spec_dens_scalar(omega_scalar):
@@ -115,6 +112,7 @@ def spec_dens_scalar(omega_scalar):
     """
     return 1.0
 
+
 def spec_dens_array(omega_array):
     """
     Compute spectral density for an array of frequency points.
@@ -127,7 +125,7 @@ def spec_dens_array(omega_array):
     """
     if not isinstance(omega_array, np.ndarray):
         raise ValueError(f"Expected np.ndarray are input, got {type(omega_array)}.")
-    
+
     return np.ones_like(omega_array)
 
 
@@ -228,7 +226,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     right_segment_cont_real, _ = integrate.quad(
         lambda x: np.real(
             np.exp(1.0j * phi)
-            * distr(t, x, beta, phi)
+            * distr(t, x * np.exp(1.j * phi), beta)
             * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,
@@ -239,7 +237,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
     right_segment_cont_imag, _ = integrate.quad(
         lambda x: np.imag(
             np.exp(1.0j * phi)
-            * distr(t, x, beta, phi)
+            * distr(t, x * np.exp(1.j * phi), beta)
             * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,

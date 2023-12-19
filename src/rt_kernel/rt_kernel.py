@@ -20,6 +20,7 @@ from src.discr_error import DiscrError as de
 import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
 from src.rt_kernel.parameter_validator import ParameterValidator
+from src.kernel_matrix.kernel_matrix import KernelMatrix
 
 
 class RtKernel:  # class that compute the ID and SVD for given parameters.
@@ -60,8 +61,13 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         # initialize all parameters (implicitly checked for validity in initialize_parameters)
         self.initialize_parameters(m, n, beta, times, eps, h, phi)
 
-        # compute the fine grid and the kernel matrix K
-        self.fine_grid, self.K = self.create_kernel()
+        # Create a KernelMatrix instance
+        kernel_matrix = KernelMatrix(m=self.m, n=self.n, beta=self.beta, times=self.times, h=self.h, phi=self.phi)
+        #generate fine grid
+        self.fine_grid, _ = kernel_matrix.set_fine_grid()
+        # Compute the kernel matrix
+        self.K = kernel_matrix.get_kernel()
+   
 
         # Perform SVD on kernel K and count number of singular values above error threshold____________
         (
@@ -105,53 +111,6 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         self.h = h
         self.phi = phi
 
-    def create_kernel(self):
-        """
-        Create the kernel matrix on the fine grid in the complex plane.
-
-        This method computes a kernel matrix using class attributes, incorporating
-        a complex rotation specified by `phi`. The kernel is calculated over
-        a range of frequency values (defined by `m` and `n`) and time values
-        (defined by `times`).
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: A tuple containing the fine grid array
-            and the computed kernel matrix.
-        """
-
-        k_values = np.arange(-self.n, self.m + 1)
-        t_grid = self.times[:, np.newaxis]  # reshape for broadcasting
-        fine_grid, K = self._compute_kernel_matrix(t_grid, k_values)
-        return fine_grid, K
-
-    def _compute_kernel_matrix(self, t_grid, k_values):
-        r"""
-        Computes the kernel matrix using 'k_valus', which defines the exponentially discretized frequency grid, the time grid, and class attributes.
-
-        Parameters:
-            k_values (np.ndarray): Integer values defining the exponential frequency grid that is defined via $\omega_k = \exp{(h k - \exp{- h k})}.$
-            t_grid (np.ndarray): Time grid for kernel computation.
-
-        Returns:
-            Tuple[np.ndarray, np.ndarray]: The fine grid and computed kernel matrix.
-        """
-        exp_k_values = np.exp(
-            -self.h * k_values
-        )  # precompute as it is needed repeatedly
-        fine_grid = np.exp(
-            self.h * k_values - exp_k_values
-        )  # exponential frequency grid with as many points as 'k_values' has entries
-        fine_grid_complex = fine_grid * np.exp(
-            1.0j * self.phi
-        )  # fine grid rotated into complex plane by angle phi.
-        K = cf.distr(
-            t_grid, fine_grid_complex, self.beta
-        )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
-        K *= (
-            self.h * (1 + exp_k_values) * fine_grid_complex
-        )  # add factors stemming from the variable transformation from \omega to k (multiply rows of K elementwise).
-        return fine_grid, K
-
     def perform_svd(self, eps = None):
         """
         Performs SVD on `self.K`, returning the count of singular values above `self.eps` and the values themselves.
@@ -182,7 +141,7 @@ class RtKernel:  # class that compute the ID and SVD for given parameters.
         """
         Compute coarse grid which consists of the frequencies selected by the ID from the fine grid
         """
-        coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
+        coarse_grid = self.fine_grid[self.idx[: self.ID_rank]]
 
         return coarse_grid
 

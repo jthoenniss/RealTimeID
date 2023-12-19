@@ -1,6 +1,6 @@
 import numpy as np
 from src.utils import common_funcs as cf
-
+from src.kernel_matrix.kernel_matrix import KernelMatrix
 
 class DiscrError:
     def __init__(
@@ -35,7 +35,6 @@ class DiscrError:
         self.N_max = len(self.times)
         self.delta_t = np.diff(self.times).mean() if len(self.times) > 1 else 0.0
 
-
         self.m = m
         self.n = n
         self.beta = beta
@@ -56,41 +55,23 @@ class DiscrError:
 
     def discrete_integral(self, t):
         """
-        Computes the discrete approximation to the frequency integral at fixed time t
+        Computes the discrete approximation to the frequency integral at fixed time t.
         Parameters:
-            - t (float/np.ndarray): time point argument as single float or array
+        - t (float/np.ndarray): Time point argument as single float or array.
         Returns:
-        np.complex_ (or in np.ndrray): Discrete approximation result to frequency integral at fixed time t
+        - np.complex_ (or np.ndarray): Discrete approximation result to frequency integral at fixed time t.
         """
-        t_array = np.asarray(t)[:, np.newaxis]#if t is a scalar, convert to numpy array and reshape to enable broadcasting
+        # Create a KernelMatrix instance
+        kernel_matrix = KernelMatrix(m=self.m, n=self.n, beta=self.beta, times= t , h=self.h, phi=self.phi)
 
-        k_values = np.arange(-self.n, self.m + 1)
-        exp_k_values = np.exp(
-            -self.h * k_values
-        )  # precompute as it is needed repeatedly
-        fine_grid = np.exp(
-            self.h * k_values - exp_k_values
-        )  # exponential frequency grid with as many points as 'k_values' has entries
-        fine_grid_complex = fine_grid * np.exp(
-            1.0j * self.phi
-        )  # fine grid rotated into complex plane by angle phi.
-        K = cf.distr(
-            t_array, fine_grid_complex, self.beta
-        )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
-        K *= (
-            self.h
-            * (1 + exp_k_values)
-            * fine_grid_complex
-            * cf.spec_dens_array(
-                omega_array=fine_grid_complex
-            )  # spectral density evaluated at complex frequency
-        )
+        # Compute the kernel matrix
+        K = kernel_matrix.get_kernel()
 
         # Sum over the frequency axis
         right_segment = np.sum(K, axis=1)
 
         # Return the original shape (float or 1D array)
-        return right_segment if t_array.ndim > 1 else right_segment[0]
+        return right_segment[0] if np.isscalar(t) else right_segment
 
     def time_integrate(self, time_series):
         """
@@ -123,7 +104,7 @@ class DiscrError:
 
         # if no values for discrete integral are specified, compute them here
         if time_series_approx is None:
-            time_series_approx = self.discrete_integral(self.times) 
+            time_series_approx = self.discrete_integral(self.times)
 
         # if no values for continuous integral are specified, compute them here
         if time_series_exact is None:
@@ -161,12 +142,14 @@ class DiscrError:
             else np.array([self.cont_integral(t) for t in self.times])
         )
 
-        discr_integral_init = self.discrete_integral(self.times) # discrete frequency integral approximation in the limit of large m and n
+        discr_integral_init = self.discrete_integral(
+            self.times
+        )  # discrete frequency integral approximation in the limit of large m and n
 
         err = self.error_time_integrated(
             time_series_exact=cont_integral, time_series_approx=discr_integral_init
         )  # compute error between discrete integral and continuous integral
-
+     
         m_init, n_init = self.m, self.n
         m_final, n_final = m_init, n_init
 
