@@ -88,7 +88,7 @@ class DiscrError:
         )  
 
         sum_over_axis = 1 if isinstance(t,np.ndarray) else 0
-        right_segment = np.sum(K,sum_over_axis)
+        right_segment = np.sum(K,axis = sum_over_axis)
 
         return right_segment
 
