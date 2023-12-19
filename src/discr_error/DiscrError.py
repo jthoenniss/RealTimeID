@@ -141,9 +141,7 @@ class DiscrError:
 
         # if no values for discrete integral are specified, compute them here
         if time_series_approx is None:
-            time_series_approx = np.array(
-                [self.discrete_integral(t) for t in self.times]
-            )
+            time_series_approx = self.discrete_integral(self.times) 
 
         # if no values for continuous integral are specified, compute them here
         if time_series_exact is None:
