@@ -181,9 +181,7 @@ class DiscrError:
             else np.array([self.cont_integral(t) for t in self.times])
         )
 
-        discr_integral_init = np.array(
-            [self.discrete_integral(t) for t in self.times]
-        )  # discrete frequency integral approximation in the limit of large m and n
+        discr_integral_init = self.discrete_integral(self.times) # discrete frequency integral approximation in the limit of large m and n
 
         err = self.error_time_integrated(
             time_series_exact=cont_integral, time_series_approx=discr_integral_init
