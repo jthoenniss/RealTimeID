@@ -3,8 +3,6 @@ from src.utils import common_funcs as cf
 
 
 class DiscrError:
-    DEFAULT_PHI = np.pi / 4
-
     def __init__(
         self,
         m: int,
@@ -15,7 +13,7 @@ class DiscrError:
         upper_cutoff: float,
         times: np.ndarray,
         h: float,
-        phi=DEFAULT_PHI,
+        phi:float,
     ):
         """
         Parameters:
@@ -64,33 +62,36 @@ class DiscrError:
         """
         Computes the discrete approximation to the frequency integral at fixed time t
         Parameters:
-            - t (float): time point argument
+            - t (float/np.ndarray): time point argument as single float or array
         Returns:
-        np.complex_: Discrete approximation result to frequency integral at fixed time t
+        np.complex_ (or in np.ndrray): Discrete approximation result to frequency integral at fixed time t
         """
+        if isinstance(t,np.ndarray):
+            t = t[:,np.newaxis]#enable broadcasting
 
-        # compute the discrete approximation to the frequency integral at fixed time t
-        right_segment = np.sum(
-            [
-                cf.distr(
-                    t,
-                    np.exp(self.h * k - np.exp(-self.h * k)),
-                    self.beta,
-                    phi=self.phi,
-                )  # set phi=0, because the argument to the phase is already included here and should not be added again in the function distr()
-                * self.h  # the following lines are from the integration measure
-                * np.exp(1.0j * self.phi)
-                * (1 + np.exp(-self.h * k))
-                * np.exp(self.h * k - np.exp(-self.h * k))
-                * cf.spec_dens(
-                    omega=np.exp(self.h * k - np.exp(-self.h * k))
-                    * np.exp(1.0j * self.phi)
-                )  # spectral density evaluated at complex frequency
-                for k in range(-self.n, self.m + 1)
-            ]
-        )
+        k_values = np.arange(-self.n, self.m + 1)
+        exp_k_values = np.exp(
+            -self.h * k_values
+        )  # precompute as it is needed repeatedly
+        fine_grid = np.exp(
+            self.h * k_values - exp_k_values
+        )  # exponential frequency grid with as many points as 'k_values' has entries
+        fine_grid_complex = fine_grid * np.exp(
+            1.0j * self.phi
+        )  # fine grid rotated into complex plane by angle phi.
+        K = cf.distr(
+            t, fine_grid_complex, self.beta
+        )  # kernel defined by Fermi-distribution cf.distr and the time-dependent Fourier factor e^{i\phi t}
+        K *= (
+            self.h * (1 + exp_k_values) * fine_grid_complex * cf.spec_dens_array(
+                    omega_array=fine_grid_complex)  # spectral density evaluated at complex frequency
+        )  
+
+        sum_over_axis = 1 if isinstance(t,np.ndarray) else 0
+        right_segment = np.sum(K,sum_over_axis)
 
         return right_segment
+
 
     def abs_error(self, t):
         """

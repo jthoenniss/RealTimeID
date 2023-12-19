@@ -295,7 +295,7 @@ class RtDlr(RtKernel):
         - numpy.ndarray: Spectral density evaluated at complex frequencies of the fine grid (rotated into the complex plane).
         """
         rotated_frequencies = self.fine_grid * np.exp(1.0j * self.phi)
-        spec_dens_at_fine_grid = cf.spec_dens(rotated_frequencies)
+        spec_dens_at_fine_grid = cf.spec_dens_array(rotated_frequencies)
 
         return spec_dens_at_fine_grid
 

@@ -103,20 +103,32 @@ def distr(t, x, beta, phi=0):
     )
 
 
-def spec_dens(omega):
+def spec_dens_scalar(omega_scalar):
     """
-    Compute spectral density as function of frequency
+    Compute spectral density for a single frequency point (float or complex).
 
     Parameters:
-    - numpy.ndarray: Array containing frequency points
+    - omega_float (float or complex): Single frequency point
 
     Returns:
-    - numpy.ndarray: Array containing spectral density evaluated at these frequency points
+    - float : Spectral density evaluated at this frequency point
     """
-    if not isinstance(omega,np.ndarray):
-        raise TypeError(f"Frequency argument should be numpy.ndarray. Received {omega}.")    
+    return 1.0
 
-    return 1.0 * omega
+def spec_dens_array(omega_array):
+    """
+    Compute spectral density for an array of frequency points.
+
+    Parameters:
+    - omega_array (numpy.ndarray): Array of frequency points
+
+    Returns:
+    - numpy.ndarray: Array of spectral densities evaluated at these frequency points
+    """
+    if not isinstance(omega_array, np.ndarray):
+        raise ValueError(f"Expected np.ndarray are input, got {type(omega_array)}.")
+    
+    return np.ones_like(omega_array)
 
 
 def svd_check_singular_values(matrix, relative_error):
@@ -217,7 +229,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
         lambda x: np.real(
             np.exp(1.0j * phi)
             * distr(t, x, beta, phi)
-            * spec_dens(omega=x * np.exp(1.0j * phi))
+            * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,
         upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
@@ -228,7 +240,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
         lambda x: np.imag(
             np.exp(1.0j * phi)
             * distr(t, x, beta, phi)
-            * spec_dens(omega=x * np.exp(1.0j * phi))
+            * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,
         upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
