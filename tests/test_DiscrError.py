@@ -4,7 +4,7 @@ import src.utils.common_funcs as cf
 from src.discr_error.discr_error import DiscrError
 
 
-class TestRtDlr_with_DiscError(unittest.TestCase):
+class TestDiscError(unittest.TestCase):
     def setUp(self):
 
         params_DiscrError = {

@@ -34,6 +34,9 @@ class TestDlrKernel_with_kwargs(unittest.TestCase):
 
 
 class TestDlrKernel_with_DiscError(unittest.TestCase):
+    """
+    This test class checks if initialization is equivalent when using kwargs and when using an instance of DiscrError 
+    """
     def setUp(self):
 
         params_DiscrError = {
