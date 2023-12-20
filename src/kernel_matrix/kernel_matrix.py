@@ -1,5 +1,6 @@
 import numpy as np
 from src.utils import common_funcs as cf
+from src.rt_kernel.parameter_validator import ParameterValidator
 
 class KernelMatrix:
     def __init__(
@@ -7,7 +8,8 @@ class KernelMatrix:
         m: int,
         n: int,
         beta: float,
-        times: np.ndarray,
+        N_max: int,
+        delta_t: float,
         h: float,
         phi: float,
     ):
@@ -18,18 +20,35 @@ class KernelMatrix:
         - m (int): Number of discretization intervals for omega > 1/e.
         - n (int): Number of discretization intervals for omega < 1/e.
         - beta (float): Inverse temperature.
-        - times (np.ndarray): Array containing the points on the time grid.
+        - N_max (int): number of points on time grid
+        - delta_t (float): time step
         - h (float): Discretization parameter.
         - phi (float): Rotation angle in the complex plane.
         """
-        self.m = m
-        self.n = n
+
+        # check if all parameters are valid
+        ParameterValidator.validate_m_n(m, n)
+        ParameterValidator.validate_beta(beta)
+        ParameterValidator.validate_N_max_and_delta_t(N_max, delta_t)
+        ParameterValidator.validate_h(h)
+        ParameterValidator.validate_phi(phi)
+       
+        # Store attributes
+        self.m, self.n = m, n
         self.beta = beta
-        self.times = np.atleast_1d(times)[:, np.newaxis]  # Ensure times is at least 1D and reshape for broadcasting
+        self.N_max = N_max
+        self.delta_t = delta_t
         self.h = h
         self.phi = phi
 
-    def set_fine_grid(self) -> np.ndarray:
+        #set time grid
+        self.times = cf.set_time_grid(N_max = N_max, delta_t= delta_t)
+        #initialize frequency grid
+        self.fine_grid, self.k_values = self._initialize_fine_grid()
+        #initialize matrix kernel
+        self.kernel = self._initialize_kernel()
+
+    def _initialize_fine_grid(self) -> np.ndarray:
         """
         Generates a fine grid for given discretization parameters.
 
@@ -41,19 +60,25 @@ class KernelMatrix:
         fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
         return fine_grid, k_values
 
-    def get_kernel(self) -> np.ndarray:
+    def _initialize_kernel(self) -> np.ndarray:
         """
         Creates the kernel matrix using the Fermi distribution function and spectral density.
 
         Returns:
         - np.ndarray: Kernel matrix.
         """
-
-        fine_grid, k_values = self.set_fine_grid()
-        fine_grid_complex = fine_grid * np.exp(1.0j * self.phi)
+        times_arr = self.times[:, np.newaxis] # enable broadcasting
+        fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
 
         # Kernel defined by Fermi distribution, multiplied by spectral density
-        K = cf.distr(self.times, fine_grid_complex, self.beta) * cf.spec_dens_array(fine_grid_complex)
-        K *= self.h * (1 + np.exp(-self.h * k_values)) * fine_grid_complex
+        K = cf.distr(times_arr, fine_grid_complex, self.beta) * cf.spec_dens_array(fine_grid_complex)
+        K *= self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex #factors from measure
 
         return K
+    
+    def _update_kernel(self):
+        #update frequency grid
+        self.fine_grid, self.k_values = self._initialize_fine_grid()
+        #update matrix kernel
+        self.kernel = self._initialize_kernel()
+

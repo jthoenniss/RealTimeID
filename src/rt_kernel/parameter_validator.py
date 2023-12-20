@@ -24,7 +24,24 @@ class ParameterValidator:
     def validate_times(times: np.ndarray):
         if not isinstance(times, np.ndarray) or times.ndim != 1 or times.size == 0:
             raise ValueError("Attribute 'times' must be a non-empty 1D NumPy array.")
+   
 
+    @staticmethod
+    def validate_N_max_and_delta_t(N_max: int, delta_t: float):
+        if not isinstance(N_max, (int, np.int64)):
+            raise ValueError(f"Attribute 'N_max' must be an int, got {type(N_max).__name__}.")
+
+        if not isinstance(delta_t, (float, int, np.float64)):
+            raise ValueError(f"Attribute 'delta_t' must be a float or int, got {type(delta_t).__name__}.")
+
+        if N_max <= 0:
+            raise ValueError(f"Attribute 'N_max' must be positive, got {N_max}.")
+
+        if delta_t <= 0:
+            raise ValueError(f"Attribute 'delta_t' must be positive, got {delta_t}.")
+
+
+            
     @staticmethod
     def validate_eps(eps: float):
         if not 0 < eps < ParameterValidator.MAX_EPS:
@@ -39,6 +56,11 @@ class ParameterValidator:
     def validate_phi(phi: float):
         if not isinstance(phi, (float, int)):
             raise ValueError(f"'phi' must be a number, got {phi}")
+
+    @staticmethod  
+    def validate_upper_cutoff(upper_cutoff: float):
+        if not isinstance(upper_cutoff, (float, int)) or upper_cutoff <= 0:
+            raise ValueError(f"'upper_cutoff' must be a positive number, got {upper_cutoff}")
 
 
 

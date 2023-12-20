@@ -1,77 +1,69 @@
 import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_matrix.kernel_matrix import KernelMatrix
+from src.rt_kernel.parameter_validator import ParameterValidator
 
-class DiscrError:
+class DiscrError(KernelMatrix):
     def __init__(
         self,
         m: int,
         n: int,
-        N_max: int,
-        delta_t: float,
         beta: float,
         upper_cutoff: float,
-        times: np.ndarray,
+        N_max: int,
+        delta_t: float,
         h: float,
         phi: float,
+        cont_integral_init: np.ndarray = None
     ):
         """
         Parameters:
         - m (int): number of discretization intervals for omega > 1
         - n (int): number of discretization intervals for omega < 1
-        - N_max (int): nbr. of time steps up to final time
-        - delta_t (float): time discretization step
         - beta (float): inverse temperature
         - upper_cutoff (float): maximal energy considered in continous integration
-        - times (numpy.ndarray): Array containing the points on the time grid
+        - N_max (int): number of points on time grid
+        - delta_t (float): time step
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
-
-        Note: Either "N_max" and "delta_t" OR "times" needs to be specified to define the time grid. If all is specified, the argument "times" is used as time grid.
         """
+    
+        super().__init__(m = m, n = n, beta = beta, N_max= N_max, delta_t= delta_t, h = h, phi = phi)
 
-        # Determine the time grid based on provided information or generate one
-        self.times = times if times is not None else cf.set_time_grid(N_max, delta_t)
-        self.N_max = len(self.times)
-        self.delta_t = np.diff(self.times).mean() if len(self.times) > 1 else 0.0
+        #compute discrete integral approximation
+        self.discrete_integral_init = self.discrete_integral()
 
-        self.m = m
-        self.n = n
-        self.beta = beta
-        self.upper_cutoff = upper_cutoff
-        self.h = h
-        self.phi = phi
-        self.eps = None  # to store the eps w.r.t.to exact result
+        #compute continous integral
+        ParameterValidator.validate_upper_cutoff(upper_cutoff)
+        self.upper_cutoff = upper_cutoff#upper frequency cutoff for continuous integration
+        
+        self.cont_integral_init = self.cont_integral() if cont_integral_init is None else cont_integral_init
 
-    def cont_integral(self, t):
+        #compute error between discrete and continuous integral
+        self.eps = self.error_time_integrated() #eps w.r.t. to continuous integral result
+
+
+    def cont_integral(self):
         """
-        Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
-        Parameters:
-        - t (float): time argument
+        Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff]
+       
         Returns:
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
-        return cf.cont_integral(t, self.beta, self.upper_cutoff, phi=self.phi)
+        return np.array([cf.cont_integral(t, self.beta, self.upper_cutoff, self.phi) for t in self.times])
 
-    def discrete_integral(self, t):
+    def discrete_integral(self, kernel = None):
         """
-        Computes the discrete approximation to the frequency integral at fixed time t.
-        Parameters:
-        - t (float/np.ndarray): Time point argument as single float or array.
+        Computes the discrete approximation to the frequency integral at the times defined on the time grid
+       
         Returns:
-        - np.complex_ (or np.ndarray): Discrete approximation result to frequency integral at fixed time t.
+        - np.ndarray: Discrete approximation result to frequency integral at times on time grid 
         """
-        # Create a KernelMatrix instance
-        kernel_matrix = KernelMatrix(m=self.m, n=self.n, beta=self.beta, times= t , h=self.h, phi=self.phi)
-
-        # Compute the kernel matrix
-        K = kernel_matrix.get_kernel()
-
+        kernel_eff = self.kernel if kernel is None else kernel
         # Sum over the frequency axis
-        right_segment = np.sum(K, axis=1)
+        right_segment = np.sum(kernel_eff, axis=1)
 
-        # Return the original shape (float or 1D array)
-        return right_segment[0] if np.isscalar(t) else right_segment
+        return right_segment
 
     def time_integrate(self, time_series):
         """
@@ -87,117 +79,66 @@ class DiscrError:
     def error_time_integrated(
         self,
         time_series_exact=None,
-        time_series_approx=None,
-        error_type="rel",
-        store_eps=False,
+        time_series_approx=None
     ):
         """
         Compute the time-integrated deviation between two time series, e.g. between a continous frequency integral and the discrete approximation. Time-integration is performed on discrete time grid "times"
         Parameters:
         - times_series_exact (np.array(float)) [optional]: array containing exact time series for all points on time grid. If not specified, compute continous-frequency integral below.
         - times_series_approx(np.array(float)) [optional]: array containing approximate time series for all points on time grid. If not specified, compute discrete-frequency integral below.
-        - error_type (string): Choose between 'rel' (default) and 'abs' for relative or absolute error, respectively.
-        - set_state_variable (bool): If True, the error between the two time series is stored as state variable.
         Returns:
         - float: time-integrated error between exact and approximate time series
         """
 
-        # if no values for discrete integral are specified, compute them here
-        if time_series_approx is None:
-            time_series_approx = self.discrete_integral(self.times)
+        # if no values for discrete integral are specified, take attribute variable for time_series_approx
+        time_series_approx = self.discrete_integral_init if time_series_approx is None else time_series_approx
+        # if no values for continuous integral are specified,take attribute variable for time_series_exact
+        time_series_exact = self.cont_integral_init if time_series_exact is None else time_series_exact
 
-        # if no values for continuous integral are specified, compute them here
-        if time_series_exact is None:
-            time_series_exact = np.array([self.cont_integral(t) for t in self.times])
 
-        error_time_integrated = self.time_integrate(
-            abs(time_series_exact - time_series_approx)
-        )  # absolute time-integrated error
+        abs_error_time_integrated = self.time_integrate(abs(time_series_exact - time_series_approx))  # absolute time-integrated error
 
-        if error_type == "rel":  # relative error defined such that it is always \leq 1
-            norm = self.time_integrate(abs(time_series_exact) + abs(time_series_approx))
-            error_time_integrated *= (
-                1.0 / norm
-            )  # turn into relative time-integrated error
+        norm = self.time_integrate(abs(time_series_exact) + abs(time_series_approx))
+        
+        rel_error_time_integrated  = abs_error_time_integrated / norm
 
-        if store_eps:  # set state variable
-            self.eps = error_time_integrated
+        return rel_error_time_integrated
 
-        return error_time_integrated
 
-    def optimize(self, time_series_exact=None):
+    def optimize(self):
         """
         Optimize the number of modes (m and n) to balance accuracy and computational cost.
-
-        Parameters:
-            time_series_exact (numpy.ndarray): Array containing the exact values of the continuous integral. If not provided, it will be computed below
-
-        Returns:
-            None
         """
-        # Compute continuous integral if not provided
-        cont_integral = (
-            time_series_exact
-            if time_series_exact is not None
-            else np.array([self.cont_integral(t) for t in self.times])
-        )
+        nbr_freqs = len(self.fine_grid)
+        m_count_final = self._optimize_mode_count(self.m, lambda mc: self.kernel[:, : nbr_freqs-mc])
+        n_count_final = self._optimize_mode_count(self.n, lambda nc: self.kernel[:, nc:])
 
-        discr_integral_init = self.discrete_integral(
-            self.times
-        )  # discrete frequency integral approximation in the limit of large m and n
-
-        err = self.error_time_integrated(
-            time_series_exact=cont_integral, time_series_approx=discr_integral_init
-        )  # compute error between discrete integral and continuous integral
-     
-        m_init, n_init = self.m, self.n
-        m_final, n_final = m_init, n_init
-
-        # Optimization for m while n is fixed to n_init
-        for _ in range(m_init):
-            self.m -= 1
-
-            # Check if the error to the discrete integral in the large m,n limit differs by more than epsilon
-            rel_val_diff = self.error_time_integrated(
-                time_series_exact=discr_integral_init,
-                time_series_approx=None,
-                error_type="rel",
-            )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n
-            if (
-                rel_val_diff > 0.1 * err
-            ):  # reduce m until the error from finite m becomes on the order of 10% of the discretization error due to finite h, and thus remains othe subdominant error
-                # If the value differs, halt iteration through m
-                m_final = self.m + 1
-                # for the optimization of n, temporarily reset self.m to m_init
-                self.m = m_init
-                break
-
-        # Optimization for n while m is fixed to m_init
-        for _ in range(n_init):
-            self.n -= 1
-
-            # Check if the error to the discrete integral in the large m,n limit differs by more than epsilon
-            rel_val_diff = self.error_time_integrated(
-                time_series_exact=discr_integral_init,
-                time_series_approx=None,
-                error_type="rel",
-            )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n
-            if (
-                rel_val_diff > 0.1 * err
-            ):  # reduce m until the error from finite m becomes on the order of 10% of the discretization error due to finite h, and thus remains othe subdominant error
-                # If the value differs, halt iteration through n
-                n_final = self.n + 1
-                break
-
-        # Update m and n with the optimized values
-        self.m, self.n = m_final, n_final
-
-        # compute the relative time integrated error w.r.t. continous integral
-        self.rel_error_to_cont = self.error_time_integrated(
-            time_series_exact=cont_integral,
-            time_series_approx=None,
-            error_type="rel",
-            store_eps=True,
-        )  # by setting time_series_approx to None, the discrete approximation is computed implicitly with self.m and self.n. Set state variable.
+        self.m -= m_count_final
+        self.n -= n_count_final
+        
+        self._update_kernel()
 
         return self
+
+    def _optimize_mode_count(self, max_count, kernel_slice_fn):
+        """
+        Helper method to optimize mode count (either m or n).
+        """
+        for count in range(1, max_count):
+            time_series_approx = self.discrete_integral(kernel_slice_fn(count))
+            rel_val_diff = self.error_time_integrated(time_series_exact=self.discrete_integral_init, time_series_approx=time_series_approx)
+
+            if rel_val_diff > 0.1 * self.eps:
+                return count - 1  # Found the optimal count
+        return max_count - 1  # In case no optimal count is found, return the last valid count
+        
+      
+    def _update_kernel(self):
+        """
+        Update the kernel and dependent attributes after changes to m or n.
+        """
+        super()._update_kernel()
+        #update discrete_integral_init
+        self.discrete_integral_init = self.discrete_integral()
+        #update error between continous and discrete integral
+        self.eps = self.error_time_integrated()

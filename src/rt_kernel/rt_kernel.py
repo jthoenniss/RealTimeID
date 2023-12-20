@@ -23,145 +23,96 @@ from src.rt_kernel.parameter_validator import ParameterValidator
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 
 
-class RtKernel:  # class that compute the ID and SVD for given parameters.
-    MAX_EPS = 1.0
-
-    # _________Initialize class_______
+class RtKernel(KernelMatrix): 
+    """
+    Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
+    on a kernel matrix, extending the functionalities of KernelMatrix.
+    """
     def __init__(
         self,
         m: int,
         n: int,
         beta: float,
-        times: np.ndarray,
+        N_max: int,
+        delta_t: float,
         eps: float,
         h: float,
         phi: float,
     ):
-        r"""
-        Initialize the RtKernel class with given parameters.
-
-        The kernel is calculated using the formula:
-
-        $$ K(t, \omega) = \exp(i \omega t) \frac{1}{1 + \exp(-\beta \omega)} $$
-
-        where:
-        - $\omega$ is the frequency,
-        - $t$ is the time,
-        - $\beta$ is the inverse temperature (1/T) [$k_B = 1$].
+        
+        """
+        Initialize the RtKernel with kernel matrix parameters and an error threshold for SVD and ID.
 
         Parameters:
-        - m (int): Number of discretization intervals for $\omega > 1$
-        - n (int): Number of discretization intervals for $\omega < 1$
-        - beta (float): Inverse temperature ($\beta$)
-        - times (numpy.ndarray): Array containing the points on the time grid
-        - eps (float): Error for interpolative decomposition (ID) and singular value decomposition (SVD)
-        - h (float): Discretization parameter
-        - phi (float): Rotation angle in the complex plane
+        - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
+        - eps (float): Error threshold for SVD and ID.
         """
-        # initialize all parameters (implicitly checked for validity in initialize_parameters)
-        self.initialize_parameters(m, n, beta, times, eps, h, phi)
+        super().__init__(m = m, n = n, beta = beta, N_max=N_max, delta_t=delta_t, h = h, phi = phi)
 
-        # Create a KernelMatrix instance
-        kernel_matrix = KernelMatrix(m=self.m, n=self.n, beta=self.beta, times=self.times, h=self.h, phi=self.phi)
-        #generate fine grid
-        self.fine_grid, _ = kernel_matrix.set_fine_grid()
-        # Compute the kernel matrix
-        self.K = kernel_matrix.get_kernel()
+        ParameterValidator.validate_eps(eps)
+        self.eps = eps
    
-
-        # Perform SVD on kernel K and count number of singular values above error threshold____________
-        (
-            self.num_singular_values_above_threshold,
-            self.singular_values,
-        ) = self.perform_svd()
+        # Perform SVD on kernel and count number of singular values above error threshold____________
+        self.nbr_sv_above_eps, self.singular_values = self.perform_svd()
 
         # Perform ID on kernel K
         self.ID_rank, self.idx, self.proj = self.perform_ID()
         # compute coarse ID grid
-        self.coarse_grid = self.compute_coarse_grid()
+        self.coarse_grid = self._compute_coarse_grid()
 
     # _______________End Initialization Routine___________________________
 
-    def initialize_parameters(
-        self,
-        m: int,
-        n: int,
-        beta: float,
-        times: np.ndarray,
-        eps: float,
-        h: float,
-        phi: float,
-    ):
-        """
-        Initializes class parameters after validation and stores them as attributes.
-        """
-        # check if all parameters are valid
-        ParameterValidator.validate_m_n(m, n)
-        ParameterValidator.validate_beta(beta)
-        ParameterValidator.validate_times(times)
-        ParameterValidator.validate_eps(eps)
-        ParameterValidator.validate_h(h)
-        ParameterValidator.validate_phi(phi)
-
-        # Store attributes
-        self.m, self.n = m, n
-        self.beta = beta
-        self.times = times
-        self.eps = eps
-        self.h = h
-        self.phi = phi
 
     def perform_svd(self, eps = None):
         """
-        Performs SVD on `self.K`, returning the count of singular values above `self.eps` and the values themselves.
+        Perform SVD on the kernel matrix and count the number of singular values above the error threshold.
 
         Returns:
-            Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
+        Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
         """
         _eps = self.eps if eps is None else eps
-        (
-            num_singular_values_above_threshold,
-            singular_values,
-        ) = cf.svd_check_singular_values(self.K, _eps)
-        return num_singular_values_above_threshold, singular_values
+        nbr_sv_above_eps, singular_values = cf.svd_check_singular_values(self.kernel, _eps)
+        return nbr_sv_above_eps, singular_values
 
     def perform_ID(self, eps = None):
         """
-        Performs interpolative decomposition (ID) on `self.K` using `self.eps` as the error threshold.
-        # Comment: The fast version of this algorithm from the scipy library uses random sampling and may not give completely identical results for every run. See documentation on "https://docs.scipy.org/doc/scipy/reference/linalg.interpolative.html". Important: the variable "eps" needs to be smaller than 1 to be interpreted as an error and not as a rank, see documentation (access: 6. Dec. 2023)
+        Perform interpolative decomposition (ID) on the kernel matrix using the error threshold.
 
         Returns:
-            Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
+        Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
         _eps = self.eps if eps is None else eps
-        ID_rank, idx, proj = sli.interp_decomp(self.K, _eps)
+        ID_rank, idx, proj = sli.interp_decomp(self.kernel, _eps)
         return ID_rank, idx, proj
 
-    def compute_coarse_grid(self):
+    def _compute_coarse_grid(self):
         """
-        Compute coarse grid which consists of the frequencies selected by the ID from the fine grid
+        Compute the coarse grid consisting of frequencies selected by ID from the fine grid.
+
+        Returns:
+        np.ndarray: Coarse grid array.
         """
-        coarse_grid = self.fine_grid[self.idx[: self.ID_rank]]
+        coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
 
         return coarse_grid
 
 
 class RtDlr(RtKernel):
-    # Define required parameters as a class variable
-    REQUIRED_PARAMS = ["m", "n", "beta", "times", "eps", "h", "phi"]
+    #Parameters required for the initialization of the class
+    REQUIRED_PARAMS = ["m", "n", "beta", "N_max", "delta_t", "eps", "h", "phi"]
 
     def __init__(self, *args, **kwargs):
         """
-        Parameters are passed as
-        a) dictionary: "dlr.RtDlr(dict)",
-        b) implicitly as attributes of an object, e.g. of type DiscrError: "dlr.RtDlr(discr_error)",
-        c) as as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
+        Parameters are passed 
+        -- implicitly as attributes of an object, e.g. of type DiscrError: "dlr.RtDlr(discr_error)", or
+        -- as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
 
         Necessary arguments are:
-        - m (int): number of discretization intervals for omega > 1
-        - n (int): number of discretization intervals for omega < 1
+        - m (int): number of discretization intervals for omega > 1/e
+        - n (int): number of discretization intervals for omega < 1/e
         - beta (float): inverse temperature
-        - times (numpy.ndarray): Array containing the points on the time grid
+        - N_max (int): number of points on time grid
+        - delta_t (float): time step
         - eps (float): error used for interpolative decomposition (ID) and singular value decomposition (SVD).
           When initialized through DiscrError object, this error is the rel. error between the discrete
           and continuous-frequency integral
@@ -175,19 +126,19 @@ class RtDlr(RtKernel):
         else:
             self._initialize_with_defaults()
 
+
+
     # Function definitions used in initilization:
     def _initialize_from_args(self, args):
         """
         Initializes the object from the first argument in 'args'.
 
-        The method supports initialization in three ways:
-        1. From a dictionary: Interprets the first argument as parameter key-value pairs.
-        2. From an object: Uses attributes of the first argument if it's not a dictionary.
-        3. With defaults: Initializes with default values if the first argument is None.
+        The method supports this type of initialization in two ways:
+        1. With defaults: Initializes with default values if the first argument is None.
+        2. From an object: Uses attributes of the first argument.
         """
-        if isinstance(args[0], dict):
-            self._validate_and_initialize(**args[0])
-        elif args[0] is None:
+        
+        if args[0] is None:
             self._initialize_with_defaults()
         else:
             self._initialize_from_object(args[0])
@@ -201,6 +152,7 @@ class RtDlr(RtKernel):
             for param in RtDlr.REQUIRED_PARAMS
             if hasattr(obj, param)
         }  # check for each required attribute in RtDlr.REQUIRED_PARAMS
+
         self._validate_and_initialize(
             init_params
         )  # check if all required attributes are there, if yes, initialize, otherwise error will be thrown
@@ -225,11 +177,12 @@ class RtDlr(RtKernel):
         integer_attributes = [
             "m",
             "n",
-            "num_singular_values_above_threshold",
+            "N_max",
+            "nbr_sv_above_eps",
             "ID_rank",
         ]
-        float_attributes = ["beta", "eps", "h", "phi", "singular_values"]
-        array_attributes = ["times", "fine_grid", "K", "idx", "proj", "coarse_grid"]
+        float_attributes = ["beta","delta_t", "eps", "h", "phi", "singular_values"]
+        array_attributes = ["times", "fine_grid", "kernel", "idx", "proj", "coarse_grid"]
 
         for member in integer_attributes:
             setattr(self, member, 0)
@@ -284,12 +237,12 @@ class RtDlr(RtKernel):
         2D matrix with np.complex_: ID reconstructed matrix
         """
 
-        # _____reconstruct interpolation matrix_________
-        B = sli.reconstruct_skel_matrix(self.K, self.ID_rank, self.idx)
-        # reconstructed interpolation matrix:
-        K_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
+        # __reconstruct kernel matrix__:
+        B = sli.reconstruct_skel_matrix(self.kernel, self.ID_rank, self.idx)
+        # reconstructed kernelmatrix:
+        kernel_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
 
-        return K_reconstr
+        return kernel_reconstr
 
     def reconstruct_propag(self, compute_error=False):
         """
@@ -304,17 +257,15 @@ class RtDlr(RtKernel):
         K_reconstr = self.reconstr_interp_matrix()  # ID-reconstructed kernel matrix
         Gamma = self.spec_dens_fine()  # spectral density evaluated on fine grid points
         
-        G_reconstr = (
-            K_reconstr @ Gamma
-        )  # this yields the propagators where the array elements correspond to the different time points
+        # yields the propagators where the array elements correspond to the different time points:
+        G_reconstr = K_reconstr @ Gamma
 
         yield G_reconstr  # return reconstructed Green's function
 
         if compute_error:  # evaluate error if flag is true
-            G_orig = self.K @ Gamma
+            G_orig = self.kernel @ Gamma
 
-            error_rel = np.sum(abs(G_orig - G_reconstr)) / np.sum(
-                abs(G_orig) + abs(G_reconstr)
-            )  # in the relative error, the time steps cancels out and is thus not needed here.
-
+            # in the relative error, the time steps cancels out and is thus not needed.
+            error_rel = np.sum(abs(G_orig - G_reconstr)) / np.sum(abs(G_orig) + abs(G_reconstr))
+            
             yield error_rel
