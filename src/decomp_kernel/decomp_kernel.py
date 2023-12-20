@@ -16,7 +16,8 @@ class DecompKernel(KernelMatrix):
     def __init__(
         self,
         *args,
-        **kwargs,
+        compute_SVD = False,
+        **kwargs
     ):
         """
         Initialize the RtKernel with kernel matrix parameters and an error threshold for SVD and ID.
@@ -30,18 +31,17 @@ class DecompKernel(KernelMatrix):
             if args[0] is None:
                 self._initialize_with_defaults()
             elif isinstance(args[0], DiscrError):
-                self._initialize_from_DiscrError(args[0])
+                self._initialize_from_DiscrError(args[0], compute_SVD)
             else:
                 raise ValueError(
-                    f"No known method to initialize DecompKernel from object of type {type(args[0].__name__)}."
+                    f"No known method to initialize DecompKernel from object of type {type(args[0]).__name__}."
                 )
 
         elif kwargs:
-            self._initialize_from_kwargs(kwargs)
+            self._initialize_from_kwargs(kwargs, compute_SVD)
         
         else:
             raise ValueError("Arguments required for initialization not provided.")
-
 
 
     # _______________End Initialization Routine___________________________
@@ -76,7 +76,7 @@ class DecompKernel(KernelMatrix):
             setattr(self, member, np.array([]))
 
 
-    def _initialize_from_DiscrError(self, D: DiscrError) -> None:
+    def _initialize_from_DiscrError(self, D: DiscrError, compute_SVD: bool) -> None:
         """
         Initializes DecompKernel from an instance of DiscrError.
         Takes over all attributes from the shared base class KernelMatrix,
@@ -93,10 +93,12 @@ class DecompKernel(KernelMatrix):
         for key, value in params_KernelMatrix.items():
             setattr(self, key, value)
 
-        # Perform SVD and ID and set coarse grid
-        self._perform_decompositions()
+        # Perform ID and set coarse grid
+        self._initialize_ID()
+        #if flag is True, initialize SVD
+        self._initialize_SVD(compute_SVD=compute_SVD)
 
-    def _initialize_from_kwargs(self,kwargs) -> None:
+    def _initialize_from_kwargs(self,kwargs, compute_SVD: bool) -> None:
         # Check that all required parameters (defined in RtDlr.REQUIRED_PARAMS) are present
         ParameterValidator.validate_required_params(
             kwargs, DecompKernel.REQUIRED_PARAMS
@@ -108,19 +110,30 @@ class DecompKernel(KernelMatrix):
         # initialize base class
         super().__init__(**kwargs)
         # Perform SVD and ID and set coarse grid
-        self._perform_decompositions()
+        self._initialize_ID()
+        #if flag is True, initialize SVD
+        self._initialize_SVD(compute_SVD=compute_SVD)
         
 
-    def _perform_decompositions(self):
+    def _initialize_ID(self):
         """
-        Performs SVD and ID on the kernel matrix.
+        Performs ID on the kernel matrix.
         """
-        self.nbr_sv_above_eps, self.singular_values = self.perform_svd()
         self.ID_rank, self.idx, self.proj = self.perform_ID()
         # compute coarse ID grid
         self.coarse_grid = self._compute_coarse_grid()
 
-    def perform_svd(self, eps=None):
+    def _initialize_SVD(self, compute_SVD: bool):
+        """
+        If flag 'compute_SVD' is true, initialize SVD
+        """
+        if compute_SVD:
+            self.nbr_sv_above_eps, self.singular_values = self.perform_SVD()
+        else:
+            self.nbr_sv_above_eps = 0
+            self.singular_values = np.array([])
+
+    def perform_SVD(self, eps=None):
         """
         Perform SVD on the kernel matrix and count the number of singular values above the error threshold.
 
@@ -128,7 +141,7 @@ class DecompKernel(KernelMatrix):
         Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
         """
         _eps = self.eps if eps is None else eps
-        nbr_sv_above_eps, singular_values = cf.svd_check_singular_values(
+        nbr_sv_above_eps, singular_values = cf.compute_singular_values(
             self.kernel, _eps
         )
         return nbr_sv_above_eps, singular_values

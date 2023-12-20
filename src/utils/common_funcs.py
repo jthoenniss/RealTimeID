@@ -72,8 +72,8 @@ def update_parameters(params, updates):
         params[name] = value
         if name == "h":
             # when h is varied, also update m and n
-            params["m"] = int(15.0 / value)
-            params["n"] = int(8.0 / value)
+            params["m"] = math.ceil(15.0 / value) # with this choice, the frequency grid reaches up to 1.e8 or higher.
+            params["n"] = math.ceil(3.6 / value) # with this choice, the frequency grid reaches down to 1.e-16 or lower.
 
     # If m and n are varied simultaneously, throw warning.
     updated_params = set(updates.keys())
@@ -129,7 +129,7 @@ def spec_dens_array(omega_array):
     return np.ones_like(omega_array)
 
 
-def svd_check_singular_values(matrix, relative_error):
+def compute_singular_values(matrix, relative_error):
     """
     Compute the Singular Value Decomposition (SVD) rank of a matrix.
 

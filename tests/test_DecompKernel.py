@@ -47,15 +47,15 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
         expected_shape = (len(self.K.times), self.K.m + self.K.n + 1)
         self.assertEqual(K.shape, expected_shape)
 
-    def test_perform_svd_maxrank(self):
+    def test_perform_SVD_maxrank(self):
         # Test SVD for corner case of error eps = 0.0 
-        num_sv, sv = self.K.perform_svd(eps = 0.0)
+        num_sv, sv = self.K.perform_SVD(eps = 0.0)
         expected_num_sv = min(self.K.kernel.shape[0], self.K.kernel.shape[1])
         self.assertEqual(num_sv, expected_num_sv)
 
-    def test_perform_svd_minrank(self):
+    def test_perform_SVD_minrank(self):
         # Test SVD for corner case of error eps = 1.0
-        num_sv, sv = self.K.perform_svd(eps = 1.0)
+        num_sv, sv = self.K.perform_SVD(eps = 1.0)
         expected_num_sv = 0
         self.assertEqual(num_sv, expected_num_sv)
         
