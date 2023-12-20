@@ -3,24 +3,19 @@ import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
 from src.dlr_kernel.parameter_validator import ParameterValidator
 from src.kernel_matrix.kernel_matrix import KernelMatrix
-
+from src.discr_error.discr_error import DiscrError
 
 class DecompKernel(KernelMatrix): 
+    REQUIRED_PARAMS = {"m","n","beta","N_max","delta_t","h","phi","eps"}
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
     on a kernel matrix, extending the functionalities of KernelMatrix.
     """
     def __init__(
         self,
-        m: int,
-        n: int,
-        beta: float,
-        N_max: int,
-        delta_t: float,
-        eps: float,
-        h: float,
-        phi: float,
-    ):
+        *args,
+        **kwargs,
+    ): 
         
         """
         Initialize the RtKernel with kernel matrix parameters and an error threshold for SVD and ID.
@@ -29,21 +24,57 @@ class DecompKernel(KernelMatrix):
         - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
         - eps (float): Error threshold for SVD and ID.
         """
-        super().__init__(m = m, n = n, beta = beta, N_max=N_max, delta_t=delta_t, h = h, phi = phi)
 
-        ParameterValidator.validate_eps(eps)
-        self.eps = eps
-   
-        # Perform SVD on kernel and count number of singular values above error threshold____________
-        self.nbr_sv_above_eps, self.singular_values = self.perform_svd()
+        if args:
+            if isinstance(args[0], DiscrError):
+                self._initialize_from_DiscrError(args[0])
+            else:
+                raise ValueError(f"No known method to initiliaze DecompKernel from object of type {type(args[0].__name__)}.")
+                        
+        elif kwargs:
+            #Check that all required parameters (defined in RtDlr.REQUIRED_PARAMS) are present
+            ParameterValidator.validate_required_params(kwargs, DecompKernel.REQUIRED_PARAMS)
+            #read error and initialize.
+            eps = kwargs.pop('eps', None)  # Extract 'eps' and remove it from kwargs
+            ParameterValidator.validate_eps(eps)
+            self.eps = eps
+            #initialize base class
+            super().__init__(**kwargs)
+        else:
+            raise ValueError("Arguments required for initialization not provided.")
 
-        # Perform ID on kernel K
-        self.ID_rank, self.idx, self.proj = self.perform_ID()
+
+        # Perform SVD and ID
+        self._perform_decompositions()
+
         # compute coarse ID grid
         self.coarse_grid = self._compute_coarse_grid()
 
     # _______________End Initialization Routine___________________________
 
+    def _initialize_from_DiscrError(self, D: DiscrError) -> None:
+        """
+        Initializes DecompKernel from an instance of DiscrError.
+        Takes over all attributes from the shared base class KernelMatrix,
+        as well as 'eps' held by the instance of DiscrError.
+        Initilization of base class 'super().__init__' is not called in this case.
+        """
+        #Extract eps, validate, and initialize
+        eps = D.eps
+        ParameterValidator.validate_eps(eps)
+        self.eps = eps
+
+        params_KernelMatrix = D.get_shared_attributes()
+        for key, value in params_KernelMatrix.items():
+            setattr(self,key, value)
+       
+    def _perform_decompositions(self):
+        """
+        Performs SVD and ID on the kernel matrix.
+        """
+        self.nbr_sv_above_eps, self.singular_values = self.perform_svd()
+        self.ID_rank, self.idx, self.proj = self.perform_ID()
+        
 
     def perform_svd(self, eps = None):
         """
@@ -125,26 +156,25 @@ class DlrKernel(DecompKernel):
         """
         Initialize the class from an object 'obj' (e.g. of type DiscrError) from which we extract the attributes.
         """
-        init_params = {
-            param: getattr(obj, param)
-            for param in DlrKernel.REQUIRED_PARAMS
-            if hasattr(obj, param)
-        }  # check for each required attribute in RtDlr.REQUIRED_PARAMS
+        if isinstance(obj, DiscrError):
+            super().__init__(obj)
+        
+        else:
+            init_params = {
+                param: getattr(obj, param)
+                for param in DlrKernel.REQUIRED_PARAMS
+                if hasattr(obj, param)
+            }  # check for each required attribute in RtDlr.REQUIRED_PARAMS
 
-        self._validate_and_initialize(
-            init_params
-        )  # check if all required attributes are there, if yes, initialize, otherwise error will be thrown
+            # check if all required attributes are there, if yes, initialize, otherwise error will be thrown
+            self._validate_and_initialize(init_params)  
 
     def _validate_and_initialize(self, params):
         """
         Validate parameters (i.e. check if all required arguments are present) and initialize the class.
-        """
-        ParameterValidator.validate_required_params(
-            params, DlrKernel.REQUIRED_PARAMS
-        )  # check if all required attributes are there,
-        super().__init__(
-            **params
-        )  # if the previous step didn't raise an exception, initialize
+        """ 
+        ParameterValidator.validate_required_params(params, DlrKernel.REQUIRED_PARAMS)  
+        super().__init__(**params)  
 
     def _initialize_with_defaults(self):
         """

@@ -11,7 +11,7 @@ class KernelMatrix:
         N_max: int,
         delta_t: float,
         h: float,
-        phi: float,
+        phi: float
     ):
         """
         Initialize parameters for creating a kernel matrix.
@@ -83,4 +83,16 @@ class KernelMatrix:
         self.fine_grid, self.k_values = self._initialize_fine_grid()
         #update matrix kernel
         self.kernel = self._initialize_kernel()
+
+    def get_shared_attributes(self):
+        """
+        Returns all attributes from the class.
+        This is useful when initializing one of the 
+        inherited classes with an instance of another inherited class.
+
+        Returns:
+        - dict: Dictionary containing all class attributes
+        """
+        return vars(self)
+
 
