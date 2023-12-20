@@ -47,7 +47,7 @@ def check_error_condition(eps_current, eps_previous):
     Returns:
     - bool: True if the condition is met, indicating the iteration should be stopped; otherwise, False.
     """
-    if eps_current > eps_previous or eps_current < 1.0e-15:
+    if eps_current > eps_previous or eps_current < 1.0e-14:
         print(
             f"Either the error does not shrink with decreasing h or the machine precision error was reached. "
             f"Error = {eps_current}. Stopping the iteration."
