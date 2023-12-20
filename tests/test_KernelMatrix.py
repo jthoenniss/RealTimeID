@@ -25,3 +25,6 @@ class TestKernelMatrix(unittest.TestCase):
 
         for key in KernelMatrix_keys_required:#check that all attributes exist.
             self.assertTrue(key in KernelMatrix_keys, f"Key {key} not found.")
+
+if __name__ == "__main__":
+    unittest.main()

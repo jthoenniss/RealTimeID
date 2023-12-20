@@ -5,7 +5,7 @@ from src.dlr_kernel.dlr_kernel import DlrKernel
 from src.discr_error.discr_error import DiscrError
 
 
-class TestRtDlr_with_kwargs(unittest.TestCase):
+class TestDlrKernel_with_kwargs(unittest.TestCase):
     def setUp(self):
         params_DlrKernel = {
             "m": 10,
@@ -33,7 +33,7 @@ class TestRtDlr_with_kwargs(unittest.TestCase):
         self.assertEqual(self.dlr.phi, np.pi / 4)
 
 
-class TestRtDlr_with_DiscError(unittest.TestCase):
+class TestDlrKernel_with_DiscError(unittest.TestCase):
     def setUp(self):
 
         params_DiscrError = {
@@ -69,10 +69,6 @@ class TestRtDlr_with_DiscError(unittest.TestCase):
         # check that initialization is equivalent to initialization with kwargs
         for key, val in vars(self.dlr).items():
             self.assertEqual(np.all(val), np.all(getattr(self.dlr_kwargs, key)), f"The following attributes differs: {key},{val}, {getattr(self.dlr_kwargs, key)}")
-
-if __name__ == "__main__":
-    unittest.main()
-
 
 if __name__ == "__main__":
     unittest.main()

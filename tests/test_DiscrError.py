@@ -44,3 +44,6 @@ class TestRtDlr_with_DiscError(unittest.TestCase):
 
     def test_eps(self):#check that relative error is leq 1.
         self.assertLessEqual(self.D.eps, 1.0)
+
+if __name__ == "__main__":
+    unittest.main()
