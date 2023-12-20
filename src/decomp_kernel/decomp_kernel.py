@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
-from src.dlr_kernel.parameter_validator import ParameterValidator
+from src.utils.parameter_validator import ParameterValidator
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.discr_error.discr_error import DiscrError
 

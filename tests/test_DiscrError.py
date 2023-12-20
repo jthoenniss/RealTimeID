@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 import src.utils.common_funcs as cf
-
+from src.decomp_kernel.decomp_kernel import DecompKernel
 
 
 class TestDecompKernel_from_kwargs(unittest.TestCase):
