@@ -84,15 +84,20 @@ class KernelMatrix:
         #update matrix kernel
         self.kernel = self._initialize_kernel()
 
+   
+
     def get_shared_attributes(self) -> dict:
         """
-        Returns all attributes from the class.
-        This is useful when initializing one of the 
-        inherited classes with an instance of another inherited class.
+        Returns all attributes from the KernelMatrix base class.
+        This is useful when initializing one of the inherited classes with
+        an instance of another inherited class.
 
         Returns:
-        - dict: Dictionary containing all class attributes
+            dict: Dictionary containing all class attributes of KernelMatrix.
         """
-        return vars(self)
-
-
+        base_class_attributes = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel"]
+        base_class_attrs = {}
+        for attr in base_class_attributes:
+            base_class_attrs[attr] = getattr(self, attr, None)
+        return base_class_attrs
+        

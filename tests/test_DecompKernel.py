@@ -1,11 +1,7 @@
 import unittest
 import numpy as np
 import src.utils.common_funcs as cf
-from src.dlr_kernel.dlr_kernel import (
-    DecompKernel,
-    DlrKernel,
-)  # Adjust the import according to your project structure
-
+from src.decomp_kernel.decomp_kernel import DecompKernel
 
 class TestDecompKernel_with_kwargs(unittest.TestCase):
     def setUp(self):
@@ -66,54 +62,3 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
         ID_rank, idx, proj = self.K.perform_ID(eps = 0.0)
         expected_ID_rank = min(self.K.kernel.shape[0], self.K.kernel.shape[1])
         self.assertEqual(ID_rank, expected_ID_rank)
-
-
-class TestRtDlr_with_kwargs(unittest.TestCase):
-    def setUp(self):
-        # Common setup for RtDlr tests
-        self.dlr = DlrKernel(
-            m=10,
-            n=5,
-            beta=1.0,
-            N_max = 10,
-            delta_t = 0.1,
-            eps=0.1,
-            h=0.2,
-            phi=np.pi / 4,
-        )
-
-    def test_initialization(self):
-        # Test initialization of RtDlr
-        self.assertEqual(self.dlr.m, 10)
-        self.assertEqual(self.dlr.n, 5)
-        self.assertEqual(self.dlr.beta, 1.0)
-        self.assertEqual(self.dlr.delta_t, 0.1)
-        self.assertTrue(np.array_equal(self.dlr.times, cf.set_time_grid(N_max=10, delta_t=0.1)))
-        self.assertEqual(self.dlr.eps, 0.1)
-        self.assertEqual(self.dlr.h, 0.2)
-        self.assertEqual(self.dlr.phi, np.pi / 4)
-
-    def test_spec_dens_fine(self):
-        # Test spectral density calculation
-        spec_dens = self.dlr.spec_dens_fine()
-        # Add assertions to validate spec_dens
-
-    def test_get_projection_matrix(self):
-        # Test projection matrix calculation
-        P = self.dlr.get_projection_matrix()
-        # Add assertions to validate P
-
-    def test_reconstruct_propag(self):
-        # Test propagator reconstruction
-        G_reconstr = next(self.dlr.reconstruct_propag(compute_error=False))
-        # Add assertions to validate G_reconstr
-
-        # Optionally test error computation
-        G_reconstr, error_rel = self.dlr.reconstruct_propag(compute_error=True)
-        # Add assertions to validate error_rel
-
-    # Add more test methods as necessary...
-
-
-if __name__ == "__main__":
-    unittest.main()

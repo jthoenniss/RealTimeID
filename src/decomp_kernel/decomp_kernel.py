@@ -89,6 +89,7 @@ class DecompKernel(KernelMatrix):
         self.eps = eps
 
         params_KernelMatrix = D.get_shared_attributes()
+
         for key, value in params_KernelMatrix.items():
             setattr(self, key, value)
 
