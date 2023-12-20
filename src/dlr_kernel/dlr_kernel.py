@@ -80,6 +80,9 @@ class DecompKernel(KernelMatrix):
 
 
 class DlrKernel(DecompKernel):
+    """
+    Class providing an interface to class DecompKernel, extending its functionalities and providing access to effective quantities.
+    """
     #Parameters required for the initialization of the class
     REQUIRED_PARAMS = ["m", "n", "beta", "N_max", "delta_t", "eps", "h", "phi"]
 
@@ -93,7 +96,7 @@ class DlrKernel(DecompKernel):
         - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
         - eps (float): Error threshold for SVD and ID (see DecompKernel).
         """
-        
+
         if args:
             self._initialize_from_args(args)
         elif kwargs:
