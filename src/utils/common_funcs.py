@@ -230,7 +230,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
             * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,
-        upper_cutoff,  # factor np.exp(1.j * phi) comes from integration measure
+        upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13
     )
 
     # compute imaginary part by using integration routine
@@ -241,7 +241,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
             * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
         ),
         0,
-        upper_cutoff,  # factor np.exp(1.j * self.phi) comes from integration measure
+        upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13
     )
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
