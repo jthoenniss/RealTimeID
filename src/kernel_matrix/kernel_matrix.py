@@ -84,7 +84,7 @@ class KernelMatrix:
         #update matrix kernel
         self.kernel = self._initialize_kernel()
 
-    def get_shared_attributes(self):
+    def get_shared_attributes(self) -> dict:
         """
         Returns all attributes from the class.
         This is useful when initializing one of the 
