@@ -77,6 +77,8 @@ class KernelMatrix:
         return K
     
     def _update_kernel(self):
+        #update time grid
+        self.times = cf.set_time_grid(N_max = self.N_max, delta_t= self.delta_t)
         #update frequency grid
         self.fine_grid, self.k_values = self._initialize_fine_grid()
         #update matrix kernel

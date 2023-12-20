@@ -95,11 +95,11 @@ class DiscrError(KernelMatrix):
         # if no values for continuous integral are specified,take attribute variable for time_series_exact
         time_series_exact = self.cont_integral_init if time_series_exact is None else time_series_exact
 
-
-        abs_error_time_integrated = self.time_integrate(abs(time_series_exact - time_series_approx))  # absolute time-integrated error
-
+        #compute absolute time integrated error
+        abs_error_time_integrated = self.time_integrate(abs(time_series_exact - time_series_approx))  
+        #compute norm
         norm = self.time_integrate(abs(time_series_exact) + abs(time_series_approx))
-        
+        #compute relative error by dividing by norm
         rel_error_time_integrated  = abs_error_time_integrated / norm
 
         return rel_error_time_integrated
@@ -110,12 +110,15 @@ class DiscrError(KernelMatrix):
         Optimize the number of modes (m and n) to balance accuracy and computational cost.
         """
         nbr_freqs = len(self.fine_grid)
+        #search for number of points one can spare in m and n without making an error that dominate the discretization error w.r.t. to continuous integration
         m_count_final = self._optimize_mode_count(self.m, lambda mc: self.kernel[:, : nbr_freqs-mc])
         n_count_final = self._optimize_mode_count(self.n, lambda nc: self.kernel[:, nc:])
 
+        #update attribute variables for number of discretization points
         self.m -= m_count_final
         self.n -= n_count_final
         
+        #update kernel
         self._update_kernel()
 
         return self
@@ -126,6 +129,7 @@ class DiscrError(KernelMatrix):
         """
         for count in range(1, max_count):
             time_series_approx = self.discrete_integral(kernel_slice_fn(count))
+            #compute relative error between large m/n discrete integral approximation and approximation with current m and n
             rel_val_diff = self.error_time_integrated(time_series_exact=self.discrete_integral_init, time_series_approx=time_series_approx)
 
             if rel_val_diff > 0.1 * self.eps:
