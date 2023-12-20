@@ -1,9 +1,9 @@
 import unittest
 import numpy as np
 import src.utils.common_funcs as cf
-from src.rt_kernel.rt_kernel import (
-    RtKernel,
-    RtDlr,
+from src.dlr_kernel.dlr_kernel import (
+    DecompKernel,
+    DlrKernel,
 )  # Adjust the import according to your project structure
 
 
@@ -11,7 +11,7 @@ class TestRtKernel(unittest.TestCase):
     def setUp(self):
         # Common setup that can be used across multiple tests
 
-        self.K = RtKernel(
+        self.K = DecompKernel(
             m=10,
             n=5,
             beta=1.0,
@@ -71,7 +71,7 @@ class TestRtKernel(unittest.TestCase):
 class TestRtDlr_with_kwargs(unittest.TestCase):
     def setUp(self):
         # Common setup for RtDlr tests
-        self.dlr = RtDlr(
+        self.dlr = DlrKernel(
             m=10,
             n=5,
             beta=1.0,

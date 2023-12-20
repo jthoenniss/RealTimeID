@@ -1,6 +1,6 @@
 import numpy as np
 from src.utils import common_funcs as cf
-from src.rt_kernel.parameter_validator import ParameterValidator
+from src.dlr_kernel.parameter_validator import ParameterValidator
 
 class KernelMatrix:
     def __init__(

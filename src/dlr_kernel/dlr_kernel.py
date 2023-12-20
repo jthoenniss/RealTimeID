@@ -1,29 +1,11 @@
-"""
-This module defines the `RtKernel` class and its inherited class `RtDlr`.
-
-### RtKernel:
-The `RtKernel` class is responsible for creating the Green's function kernel, 
-incorporating real-time arguments and fermionic statistics, including 
-temperature-dependent beta. Its primary function is to perform the Interpolative Decomposition (ID) 
-and Singular Value Decomposition (SVD), storing the relevant data.
-
-### RtDlr:
-The `RtDlr` class encompasses various initialization routines and functions 
-that compute quantities based on the ID decomposition. It facilitates the analysis of the effective, 
-ID-reconstructed kernel, Green's function, and more. This class serves as an extension of the `RtKernel` class, 
-inheriting its functionality.
-"""
-
-
 import numpy as np
-from src.discr_error import DiscrError as de
 import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
-from src.rt_kernel.parameter_validator import ParameterValidator
+from src.dlr_kernel.parameter_validator import ParameterValidator
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 
 
-class RtKernel(KernelMatrix): 
+class DecompKernel(KernelMatrix): 
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
     on a kernel matrix, extending the functionalities of KernelMatrix.
@@ -97,7 +79,7 @@ class RtKernel(KernelMatrix):
         return coarse_grid
 
 
-class RtDlr(RtKernel):
+class DlrKernel(DecompKernel):
     #Parameters required for the initialization of the class
     REQUIRED_PARAMS = ["m", "n", "beta", "N_max", "delta_t", "eps", "h", "phi"]
 
@@ -149,7 +131,7 @@ class RtDlr(RtKernel):
         """
         init_params = {
             param: getattr(obj, param)
-            for param in RtDlr.REQUIRED_PARAMS
+            for param in DlrKernel.REQUIRED_PARAMS
             if hasattr(obj, param)
         }  # check for each required attribute in RtDlr.REQUIRED_PARAMS
 
@@ -162,7 +144,7 @@ class RtDlr(RtKernel):
         Validate parameters (i.e. check if all required arguments are present) and initialize the class.
         """
         ParameterValidator.validate_required_params(
-            params, RtDlr.REQUIRED_PARAMS
+            params, DlrKernel.REQUIRED_PARAMS
         )  # check if all required attributes are there,
         super().__init__(
             **params

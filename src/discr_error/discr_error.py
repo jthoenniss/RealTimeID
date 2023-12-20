@@ -1,7 +1,7 @@
 import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_matrix.kernel_matrix import KernelMatrix
-from src.rt_kernel.parameter_validator import ParameterValidator
+from src.dlr_kernel.parameter_validator import ParameterValidator
 
 class DiscrError(KernelMatrix):
     def __init__(
