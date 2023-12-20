@@ -89,18 +89,11 @@ class DlrKernel(DecompKernel):
         -- implicitly as attributes of an object, e.g. of type DiscrError: "dlr.RtDlr(discr_error)", or
         -- as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
 
-        Necessary arguments are:
-        - m (int): number of discretization intervals for omega > 1/e
-        - n (int): number of discretization intervals for omega < 1/e
-        - beta (float): inverse temperature
-        - N_max (int): number of points on time grid
-        - delta_t (float): time step
-        - eps (float): error used for interpolative decomposition (ID) and singular value decomposition (SVD).
-          When initialized through DiscrError object, this error is the rel. error between the discrete
-          and continuous-frequency integral
-        - h (float): Discretization parameter
-        - phi (float): rotation angle in the complex plane
+        Parameters:
+        - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
+        - eps (float): Error threshold for SVD and ID (see DecompKernel).
         """
+        
         if args:
             self._initialize_from_args(args)
         elif kwargs:
