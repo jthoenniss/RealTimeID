@@ -72,8 +72,8 @@ def update_parameters(params, updates):
         params[name] = value
         if name == "h":
             # when h is varied, also update m and n
-            params["m"] = int(10.0 / value)
-            params["n"] = int(5.0 / value)
+            params["m"] = int(15.0 / value)
+            params["n"] = int(8.0 / value)
 
     # If m and n are varied simultaneously, throw warning.
     updated_params = set(updates.keys())
