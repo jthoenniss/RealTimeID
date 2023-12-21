@@ -25,6 +25,7 @@ class DecompKernel(KernelMatrix):
         Parameters:
         - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
         - eps (float): Error threshold for SVD and ID.
+        - compute_SVD (bool): Flag that determines whether the SVD or the kernel should be evaluated
         """
 
         if args:
