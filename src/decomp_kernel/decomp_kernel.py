@@ -168,4 +168,15 @@ class DecompKernel(KernelMatrix):
         coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
 
         return coarse_grid
+    
+    def get_params(self):
+        """
+        Returns a dict containing the parameters associated with an instance of the class and stored as attributes
+        """
+
+        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps"]
+
+        param_dict = {key: getattr(self, key) for key in param_keys}
+
+        return param_dict
 
