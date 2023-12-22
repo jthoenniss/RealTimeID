@@ -96,9 +96,9 @@ class KernelMatrix:
             dict: Dictionary containing all class attributes of KernelMatrix.
         """
         base_class_attributes = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel"]
-        base_class_attrs = {}
-        for attr in base_class_attributes:
-            base_class_attrs[attr] = getattr(self, attr, None)
+        
+        base_class_attrs = {key: getattr(self, key, None) for key in base_class_attributes}
+
         return base_class_attrs
     
     def get_params(self):
