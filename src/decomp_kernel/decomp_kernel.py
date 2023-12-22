@@ -174,9 +174,9 @@ class DecompKernel(KernelMatrix):
         Returns a dict containing the parameters associated with an instance of the class and stored as attributes
         """
 
-        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps"]
+        param_dict = super().get_params()
 
-        param_dict = {key: getattr(self, key) for key in param_keys}
+        param_dict["eps"] = getattr(self, "eps")#add parameters for eps which does not exist in base class KernelMatrix.
 
         return param_dict
 

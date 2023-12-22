@@ -146,3 +146,14 @@ class DiscrError(KernelMatrix):
         self.discrete_integral_init = self.discrete_integral()
         #update error between continous and discrete integral
         self.eps = self.error_time_integrated()
+
+    def get_params(self):
+        """
+        Returns a dict containing the parameters associated with an instance of the class and stored as attributes
+        """
+
+        param_dict = super().get_params()
+
+        param_dict["eps"] = getattr(self, "eps")#add parameters for eps which does not exist in base class KernelMatrix.
+
+        return param_dict
