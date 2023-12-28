@@ -3,7 +3,39 @@ import math  # for floor and ceiling
 from scipy import integrate
 
 
-def create_numpy_arrays(D):
+def create_numpy_arrays_from_kernel(D):
+    """
+    Create NumPy arrays from a list of objects.
+
+    Parameters:
+    -  D (np.ndarray): Structured array of objects with attributes eps, m, n, h, ID_rank.
+
+    Returns:
+    - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals, ID_ranks).
+    """
+    # Retain original shape of D
+    shape_orig = D.shape
+
+    # Flatten D for convenience
+    D = D.flatten()
+
+    data = [(d.eps, d.m, d.n, d.h, d.ID_rank) for d in D]
+    dtypes = [float, int, int, float, int]
+
+    errors, m_vals, n_vals, h_vals, ID_ranks = tuple(
+        np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes)
+    )
+
+    # reshape arrays to original shape when returning
+    return (
+        errors.reshape(shape_orig),
+        m_vals.reshape(shape_orig),
+        n_vals.reshape(shape_orig),
+        h_vals.reshape(shape_orig),
+        ID_ranks.reshape(shape_orig),
+    )
+
+def create_numpy_arrays_from_file(D):
     """
     Create NumPy arrays from a list of objects.
 
