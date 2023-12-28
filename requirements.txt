@@ -1,3 +1,6 @@
 numpy==1.24.3
 scipy==1.10.1
+#For plotting in the notebooks:
 matplotlib==3.3.4
+#For data storage
+h5py==3.10.0
