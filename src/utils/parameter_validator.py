@@ -17,7 +17,7 @@ class ParameterValidator:
 
     @staticmethod
     def validate_beta(beta: float):
-        if not isinstance(beta, (float, int)) or beta <= 0:
+        if not isinstance(beta, (float, int)) or beta < 0:
             raise ValueError(f"'beta' must be a positive number, got {beta}")
 
     @staticmethod
