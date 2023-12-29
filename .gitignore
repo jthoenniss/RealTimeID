@@ -163,7 +163,8 @@ cython_debug/
 #ignore also pdf and plot folder
 *.pdf
 plots/
-
+data/
+data_temp/
 #ignore also virtual environment
 channel_venv/
 

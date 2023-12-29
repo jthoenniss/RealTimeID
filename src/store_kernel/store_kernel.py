@@ -1,9 +1,6 @@
 import numpy as np
 import h5py
-from src.dlr_kernel.dlr_kernel import DlrKernel
 from typing import Tuple, Dict, Any  # for clear function signatures
-import pandas as pd
-
 
 class Hdf5Kernel:
     def __init__(self, filename: str):
@@ -42,10 +39,18 @@ class Hdf5Kernel:
             kernel_object: The kernel object to be stored. Expected to have a 'shape' attribute,
                         a 'flatten' method, and a 'get_params' method.
         """
+        
 
-        # store shape of kernel_object
+        # Check if the array is a scalar (zero-dimensional)
+        if np.asarray(kernel_object).ndim == 0:
+            # Reshape scalar to a 1 dimensional array
+            kernel_object = np.array([kernel_object])
+
+        else:
+            # Convert kernel_object to a NumPy array (no effect if it's already an array)
+            kernel_object = np.asarray(kernel_object)
+
         self._kernel_dims = np.array(kernel_object.shape)
-
         # flatten kernel object if it is not already 1D
         kernel_flat = kernel_object.ravel()
 
@@ -74,21 +79,21 @@ class Hdf5Kernel:
 
 
 
-    def read_kernel_element(self, idx: np.ndarray, isMultiDimArray = True) -> Tuple[np.ndarray, np.ndarray]:
+    def read_kernel_element(self, idx, isFlatIndex = False) -> Tuple[np.ndarray, np.ndarray]:
         """
         Reads kernel data from an HDF5 file and returns parameters and data for each element.
 
         Args:
-            idx: (np.ndarray): By default multidimensional index pointing to a specific point group. If isMultiDimArray = False = True, expected to be a flat index
-            isMultiDimArray (bool): Indicated whether the idx refers to multidimensional or flat array.
+            idx: (tuple or it): Index pointing to a specific point group. Tuple for multidimensional or int for flat arrays.
+            isFlatIndex (bool): Flat must be set to true if multidimensional array should be accessed by specifing flat index
         Returns:
             Tuple[np.ndarray, np.ndarray]: Two arrays containing dictionaries (for parameters) and DataFrames (for data correspnding to the parameters),
                 respectively. Each element corresponds to kernel data at a specific index.
         """
         
-        with h5py.File(self._filename, "r") as hdf:
+        with h5py.File(self._filename, "r") as hdf: 
           
-            idx_flat = self._validate_and_flatten_index(idx, isMultiDimArray)#convert to 1D index after validation
+            idx_flat = self._validate_and_flatten_index(idx, isFlatIndex=isFlatIndex)#convert to 1D index after validation
 
             group_name = f"grid_point.idx_{idx_flat}"
             grid_point_group = hdf[group_name]#access the group 
@@ -124,9 +129,8 @@ class Hdf5Kernel:
 
             for idx in range (kernel_dims_flat):
                 #read parameters and data from file
-                params, data = self.read_kernel_element(idx = idx, isMultiDimArray = False)
+                params, data = self.read_kernel_element(idx = idx, isFlatIndex = True)
 
-            
                 ID_ranks[idx] = data["ID_rank"] 
 
                 errors[idx] = params["eps"]     
@@ -144,38 +148,48 @@ class Hdf5Kernel:
             ID_ranks.reshape(self._kernel_dims),
         )
 
-    def _validate_and_flatten_index(self, idx, isMultiDimArray):
+    def _validate_and_flatten_index(self, idx, isFlatIndex: bool):
         """
         Validates an index against kernel dimensions and converts it to a flattened index.
 
         Parameters:
-        idx (tuple or int): Index to be validated, tuple for multidimensional or int for flat arrays.
-        isMultiDimArray (bool): True if the kernel is multidimensional, False if flat.
+        idx (tuple or int): Index to be validated, tuple for multidimensional arrays or int for flat arrays.
+        isFlatIndex (bool): Flat must be set to true if multidimensional array should be accessed by specifing flat index
 
         Returns:
         int: The flattened one-dimensional index.
 
         Raises:
-        IndexError: If 'idx' does not match 'kernel_dims' or is out of range.
+        IndexError: If 'idx' does not match the kernel's dimensions or is out of range.
         """
+        if isFlatIndex:
+            kernel_dims_flat = np.prod(self.kernel_dims)
 
-     
-        if isMultiDimArray:
-            idx_np = np.array(idx)
-            idx_flat = np.ravel_multi_index(idx_np, self._kernel_dims)
-
-        else:
-            kernel_dims_flat = np.prod(self._kernel_dims)  # Compute only if necessary
+            if not isinstance(idx, int):
+                raise IndexError (f"When isFlatindex = True, index must be an integer, got {idx}.")
             if not 0 <= idx < kernel_dims_flat:
-                raise IndexError(f"Flat index {idx} out of range. Range given by [0, {kernel_dims_flat}).")
+                raise IndexError(f"Flat index {idx} out of range. Valid range: [0, {kernel_dims_flat}).")
 
-            idx_flat = idx
+            return idx
+        
+        else:
+            if not isinstance(idx, tuple):
+                raise TypeError(f"When isFlatIndex = False, index must be an a tuple of integers. Got {idx}.")
+            
+            if len(idx) != len(self.kernel_dims):
+                raise IndexError(f"Index dimensions {len(idx)} do not match kernel dimensions {len(self.kernel_dims)}.")
 
-        return idx_flat
+            if any(dim < 0 or dim >= size for dim, size in zip(idx, self.kernel_dims)):
+                raise IndexError(f"Multi-dimensional index {idx} out of range for kernel dimensions {self.kernel_dims}.")
+
+            idx_flat = np.ravel_multi_index(idx, self.kernel_dims)
+            return idx_flat
+
+           
 
 
 
-    def _access_kernel_element(self, grid_point_group) -> Tuple[Dict[str, Any], pd.DataFrame]:
+    def _access_kernel_element(self, grid_point_group) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         """
         Reads a kernel object from the given HDF5 group.
 
@@ -183,9 +197,9 @@ class Hdf5Kernel:
             grid_point_group: HDF5 group object corresponding to a specific kernel data.
 
         Returns:
-            Tuple[Dict[str, Any], pd.DataFrame]: A tuple containing a dictionary and a DataFrame.
-                The dictionary contains all parameters associated with the kernel.
-                The DataFrame contains the data for that kernel.
+            Tuple[Dict[str, Any], Dict[str, Any]]: A tuple containing two dictionaries.
+                The first dictionary contains all parameters associated with the kernel.
+                The second one contains the data for that kernel.
         """
         params = {attr: grid_point_group.attrs[attr] for attr in grid_point_group.attrs}
         data = {
@@ -193,6 +207,5 @@ class Hdf5Kernel:
             for key in grid_point_group.keys()
             if key not in params
         }
-        data_df = pd.DataFrame({key: [value] for key, value in data.items()})
 
-        return params, data_df
+        return params, data
