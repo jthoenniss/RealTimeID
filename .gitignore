@@ -164,9 +164,7 @@ cython_debug/
 *.pdd
 plots/
 
-#ignore all data
-data/
-data_temp/
+#ignore hdf5 files
 *.h5
 #ignore also virtual environment
 channel_venv/
