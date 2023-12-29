@@ -45,8 +45,8 @@ class Test_store_kernel(unittest.TestCase):
     def test_store_single_element(self):
 
         #store a single kernel object
-        hdf_kernel = Hdf5Kernel(filename=self._filename)
-        hdf_kernel.store_kernel_data(self.kernel)
+        hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=(1,))
+        hdf_kernel.store_kernel_array(np.array([self.kernel]))
     
         #read it back out and see if correct values are obtained
         params, data  = hdf_kernel.read_kernel_element(0, isFlatIndex=True)
@@ -57,10 +57,41 @@ class Test_store_kernel(unittest.TestCase):
     
     def test_store_array(self):
 
-        #store an array of kernel objects
-        hdf_kernel = Hdf5Kernel(filename=self._filename)
-        array = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
-        hdf_kernel.store_kernel_data(array)
+        #store an array of kernel objects directly by feeding array
+        arr = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
+        
+        #create file
+        hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=arr.shape)
+        #store data
+        hdf_kernel.store_kernel_array(arr)
+    
+        #read out a single element and see if correct values are obtained
+        params, data  = hdf_kernel.read_kernel_element((0,0))
+        self.assertTrue(params, self.params_DecompKernel)
+        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+        params, data  = hdf_kernel.read_kernel_element((0,1))
+        self.assertTrue(params, self.params_DecompKernel)
+        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+        params, data  = hdf_kernel.read_kernel_element((1,0))
+        self.assertTrue(params, self.params_DecompKernel)
+        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+        params, data  = hdf_kernel.read_kernel_element((1,1))
+        self.assertTrue(params, self.params_DecompKernel)
+        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+
+
+    def test_append_element(self):
+
+        #store an array of kernel objects directly by feeding array
+        arr = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
+        
+        #create file
+        hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=arr.shape)
+
+        for i in range (2):
+            for j in range (2):
+                #append data
+                hdf_kernel.append_kernel_element(kernel_object=arr[i,j], idx = (i,j))
     
         #read out a single element and see if correct values are obtained
         params, data  = hdf_kernel.read_kernel_element((0,0))
@@ -81,9 +112,9 @@ class Test_store_kernel(unittest.TestCase):
     def test_read_to_array(self):
 
         #store an array of kernel objects
-        hdf_kernel = Hdf5Kernel(filename=self._filename)
+        hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=(2,2))
         array = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
-        hdf_kernel.store_kernel_data(array)
+        hdf_kernel.store_kernel_array(array)
     
         #read out a single element and see if correct values are obtained
         
@@ -104,6 +135,9 @@ class Test_store_kernel(unittest.TestCase):
         self.assertTrue(np.all([val == self.kernel.n for val in n_vals]))
         self.assertTrue(np.all([val == self.kernel.h for val in h_vals]))
         self.assertTrue(np.all([val == self.kernel.ID_rank for val in ID_ranks]))
+
+
+    
 
     def tearDown(self):
         # This method runs after each test and cleans up temporarily created hdf5 files that are no longer needed
