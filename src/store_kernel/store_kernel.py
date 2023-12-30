@@ -171,7 +171,7 @@ class Hdf5Kernel:
 
             group_name = f"grid_point.idx_{idx_flat}"
 
-            try:
+            if group_name in hdf:
                 # Attempt to access the group directly
                 grid_point_group = hdf[group_name]
 
@@ -179,12 +179,12 @@ class Hdf5Kernel:
                 params, data = self._access_kernel_element(grid_point_group)
                 return params, data
 
-            except KeyError:
-                # Raise an error if the group does not exist in the file
-                raise RuntimeError(
-                    f"Group '{group_name}' not found in the HDF5 file '{self._filename}'."
-                )
-
+            else:
+                #If the group does not exist in the file, return default values.
+                params = {'N_max': 0, 'beta': 0.0, 'delta_t': 0.0, 'eps': 0.0, 'h': 0.0, 'm': 0, 'n': 0, 'phi': 0.0}
+                data = {'ID_rank': 0, 'coarse_grid': np.array([]), 'fine_grid': np.array([]), 'idx': np.array([]), 'k_values': np.array([]), 'nbr_sv_above_eps': 0, 'proj': np.array([]), 'singular_values': np.array([]), 'times': np.array([])}
+                return params, data
+        
     def read_to_array(self):
         """
         Reads data from a given file and returns array for different quantities.
@@ -296,5 +296,4 @@ class Hdf5Kernel:
             for key in grid_point_group.keys()
             if key not in params
         }
-
         return params, data
