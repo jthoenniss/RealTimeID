@@ -4,6 +4,28 @@ from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.utils.parameter_validator import ParameterValidator
 
 class DiscrError(KernelMatrix):
+
+    """
+    Represents a class designed to evaluate and quantify the discretization error encountered when approximating a continuous frequency integral. This error is assessed by comparing two methodologies: 
+    (i) an approximation using a discretized path in the complex plane, and 
+    (ii) a computation using a continuous integration routine along the same path. 
+    The class provides functionality to calculate both the discrete and continuous integrals, compute their deviation, and optimize the discretization parameters for balanced accuracy and computational efficiency.
+
+    Attributes:
+        discrete_integral_init (np.ndarray): Initial discrete integral approximation.
+        cont_integral_init (np.ndarray): Initial continuous integral, set upon class instantiation if provided.
+        eps (float): The time-integrated error relative to the continuous integral result.
+        upper_cutoff (float): Upper frequency cutoff for continuous integration.
+        times (np.ndarray): Array of time points used in the integrals.
+
+    Methods:
+        cont_integral(): Computes the continuous frequency integral in the interval [0, upper_cutoff].
+        discrete_integral(): Calculates the discrete approximation of the frequency integral at predefined time points.
+        time_integrate(time_series): Integrates a given time series over the time grid.
+        error_time_integrated(time_series_exact, time_series_approx): Computes the time-integrated deviation between two time series.
+        optimize(): Optimizes the number of modes (m and n) for a balance between accuracy and computational cost.
+        get_params(): Returns a dictionary of parameters associated with the class instance.
+    """
     def __init__(
         self,
         m: int,
