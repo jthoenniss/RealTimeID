@@ -85,7 +85,7 @@ class Hdf5Kernel:
 
         Args:
         - kernel_object: The kernel object to be appended. Must have a 'get_params' method.
-        - idx (int): Index indicating the group index.
+        - idx (tuple or int): Index pointing to a specific point group. Tuple for multidimensional or int for flat arrays.
         - isFlatIndex (bool): Specifies whether index refers to flattened or multidimensional array.
 
         Raises:
@@ -157,7 +157,7 @@ class Hdf5Kernel:
         Reads kernel data from an HDF5 file and returns parameters and data for each element.
 
         Args:
-            idx: (tuple or it): Index pointing to a specific point group. Tuple for multidimensional or int for flat arrays.
+            idx: (tuple or int): Index pointing to a specific point group. Tuple for multidimensional or int for flat arrays.
             isFlatIndex (bool): Flat must be set to true if multidimensional array should be accessed by specifing flat index
         Returns:
             Tuple[np.ndarray, np.ndarray]: Two arrays containing dictionaries (for parameters) and DataFrames (for data correspnding to the parameters),
