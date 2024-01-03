@@ -19,10 +19,10 @@ def create_numpy_arrays_from_kernel(D):
     # Flatten D for convenience
     D = D.flatten()
 
-    data = [(d.eps, d.m, d.n, d.h, d.ID_rank) for d in D]
-    dtypes = [float, int, int, float, int]
+    data = [(d.eps, d.m, d.n, d.h, d.ID_rank, d.N_max, d.beta, d.delta_t) for d in D]
+    dtypes = [float, int, int, float, int, int, float, float]
 
-    errors, m_vals, n_vals, h_vals, ID_ranks = tuple(
+    errors, m_vals, n_vals, h_vals, ID_ranks, N_maxs, betas, delta_t_vals = tuple(
         np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes)
     )
 
@@ -33,6 +33,9 @@ def create_numpy_arrays_from_kernel(D):
         n_vals.reshape(shape_orig),
         h_vals.reshape(shape_orig),
         ID_ranks.reshape(shape_orig),
+        N_maxs.reshape(shape_orig),
+        betas.reshape(shape_orig),
+        delta_t_vals.reshape(shape_orig)
     )
 
 

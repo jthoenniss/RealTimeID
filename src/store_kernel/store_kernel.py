@@ -229,6 +229,7 @@ class Hdf5Kernel:
             N_maxs = np.empty((kernel_dims_flat,))
             betas = np.empty((kernel_dims_flat,))
             ID_ranks = np.empty((kernel_dims_flat,))
+            delta_t_vals = np.empty((kernel_dims_flat,))
 
             for idx in range(kernel_dims_flat):
                 # read parameters and data from file
@@ -242,6 +243,7 @@ class Hdf5Kernel:
                 h_vals[idx] = params["h"]
                 betas[idx] = params["beta"]
                 N_maxs[idx] = params["N_max"]
+                delta_t_vals[idx] = params["delta_t"]
 
         # reshape arrays to original shape when returning
         return {
@@ -252,6 +254,7 @@ class Hdf5Kernel:
             "betas": betas.reshape(self._kernel_dims),
             "N_maxs": N_maxs.reshape(self._kernel_dims),
             "ID_ranks": ID_ranks.reshape(self._kernel_dims),
+            "delta_t_vals": delta_t_vals.reshape(self._kernel_dims)
         }
 
     def _validate_and_flatten_index(self, idx, isFlatIndex: bool):

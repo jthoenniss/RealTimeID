@@ -127,14 +127,20 @@ class Test_store_kernel(unittest.TestCase):
         n_vals = data["n_vals"]
         h_vals = data["h_vals"]
         ID_ranks = data["ID_ranks"]
-        
+        N_maxs = data["N_maxs"]
+        betas = data["betas"]
+        delta_t_vals = data["delta_t_vals"]
+
         #check that data is equal to data directly extracted from kernel objects
-        errors_comp, m_vals_comp, n_vals_comp, h_vals_comp, ID_ranks_comp = cf.create_numpy_arrays_from_kernel(array)
+        errors_comp, m_vals_comp, n_vals_comp, h_vals_comp, ID_ranks_comp, N_maxs_comp, betas_comp, delta_t_vals_comp = cf.create_numpy_arrays_from_kernel(array)
         self.assertTrue(np.allclose(errors, errors_comp))
         self.assertTrue(np.allclose(m_vals, m_vals_comp))
         self.assertTrue(np.allclose(n_vals, n_vals_comp))
         self.assertTrue(np.allclose(h_vals, h_vals_comp))
         self.assertTrue(np.allclose(ID_ranks, ID_ranks_comp))
+        self.assertTrue(np.allclose(N_maxs, N_maxs_comp))
+        self.assertTrue(np.allclose(betas, betas_comp))
+        self.assertTrue(np.allclose(delta_t_vals, delta_t_vals_comp))
 
 
         #check that data is equal to data taken from a single kernel (all kernels in the array are equivalent here)
