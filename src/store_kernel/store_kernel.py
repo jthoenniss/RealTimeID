@@ -212,15 +212,11 @@ class Hdf5Kernel:
         - None
 
         Returns:
-        - errors (np.ndarray): Array with same dimensionality as original point grid holding all values for eps
-        - m_vals (np.ndarray): Array with same dimensionality as original point grid holding all values for m
-        - n_vals (np.ndarray): Array with same dimensionality as original point grid holding all values for n
-        - h_vals (np.ndarray): Array with same dimensionality as original point grid holding all values for h
-        - ID_ranks (np.ndarray): Array with same dimensionality as original point grid holding all values for the ID rank
+        - Tuple[dict, np.ndarray]: Tuple containing a dictionary with data arrays, corresponding to different quantities at all parameter combinations, and np.ndarray which holds the kernel dimensions.
         """
 
         with h5py.File(self._filename, "r") as hdf:
-            kernel_dims_flat = np.prod(self._kernel_dims)
+            kernel_dims_flat = np.prod(self.kernel_dims)
 
             errors = np.empty((kernel_dims_flat,))
             m_vals = np.empty((kernel_dims_flat,))
@@ -246,16 +242,19 @@ class Hdf5Kernel:
                 delta_t_vals[idx] = params["delta_t"]
 
         # reshape arrays to original shape when returning
-        return {
-            "errors": errors.reshape(self._kernel_dims),
-            "m_vals": m_vals.reshape(self._kernel_dims),
-            "n_vals": n_vals.reshape(self._kernel_dims),
-            "h_vals": h_vals.reshape(self._kernel_dims),
-            "betas": betas.reshape(self._kernel_dims),
-            "N_maxs": N_maxs.reshape(self._kernel_dims),
-            "ID_ranks": ID_ranks.reshape(self._kernel_dims),
-            "delta_t_vals": delta_t_vals.reshape(self._kernel_dims)
-        }
+        return (
+            {
+                "errors": errors.reshape(self._kernel_dims),
+                "m_vals": m_vals.reshape(self._kernel_dims),
+                "n_vals": n_vals.reshape(self._kernel_dims),
+                "h_vals": h_vals.reshape(self._kernel_dims),
+                "betas": betas.reshape(self._kernel_dims),
+                "N_maxs": N_maxs.reshape(self._kernel_dims),
+                "ID_ranks": ID_ranks.reshape(self._kernel_dims),
+                "delta_t_vals": delta_t_vals.reshape(self._kernel_dims),
+            },
+            self.kernel_dims,
+        )
 
     def _validate_and_flatten_index(self, idx, isFlatIndex: bool):
         """

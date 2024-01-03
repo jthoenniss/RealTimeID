@@ -11,10 +11,10 @@ def create_numpy_arrays_from_kernel(D):
     -  D (np.ndarray): Structured array of objects with attributes eps, m, n, h, ID_rank.
 
     Returns:
-    - Tuple of NumPy arrays (errors, m_vals, n_vals, h_vals, ID_ranks).
+    - Tuple[dict, np.ndarray]: Tuple containing a dictionary with data arrays, corresponding to different quantities at all parameter combinations, and np.ndarray which holds the kernel dimensions.
     """
     # Retain original shape of D
-    shape_orig = D.shape
+    kernel_dims = np.array(D.shape)
 
     # Flatten D for convenience
     D = D.flatten()
@@ -26,17 +26,21 @@ def create_numpy_arrays_from_kernel(D):
         np.array(arr, dtype=dtype) for arr, dtype in zip(zip(*data), dtypes)
     )
 
-    # reshape arrays to original shape when returning
+    
+
     return (
-        errors.reshape(shape_orig),
-        m_vals.reshape(shape_orig),
-        n_vals.reshape(shape_orig),
-        h_vals.reshape(shape_orig),
-        ID_ranks.reshape(shape_orig),
-        N_maxs.reshape(shape_orig),
-        betas.reshape(shape_orig),
-        delta_t_vals.reshape(shape_orig)
-    )
+            {
+                "errors": errors.reshape(kernel_dims),
+                "m_vals": m_vals.reshape(kernel_dims),
+                "n_vals": n_vals.reshape(kernel_dims),
+                "h_vals": h_vals.reshape(kernel_dims),
+                "betas": betas.reshape(kernel_dims),
+                "N_maxs": N_maxs.reshape(kernel_dims),
+                "ID_ranks": ID_ranks.reshape(kernel_dims),
+                "delta_t_vals": delta_t_vals.reshape(kernel_dims),
+            },
+            kernel_dims,
+        )
 
 
 

@@ -120,7 +120,7 @@ class Test_store_kernel(unittest.TestCase):
     
         #read out a single element and see if correct values are obtained
         
-        data  = hdf_kernel.read_to_array()
+        data, kernel_dims  = hdf_kernel.read_to_array()
 
         errors = data["errors"]
         m_vals = data["m_vals"]
@@ -132,7 +132,17 @@ class Test_store_kernel(unittest.TestCase):
         delta_t_vals = data["delta_t_vals"]
 
         #check that data is equal to data directly extracted from kernel objects
-        errors_comp, m_vals_comp, n_vals_comp, h_vals_comp, ID_ranks_comp, N_maxs_comp, betas_comp, delta_t_vals_comp = cf.create_numpy_arrays_from_kernel(array)
+        data_comp, kernel_dims_comp = cf.create_numpy_arrays_from_kernel(array)
+
+        errors_comp = data_comp["errors"]
+        m_vals_comp = data_comp["m_vals"]
+        n_vals_comp = data_comp["n_vals"]
+        h_vals_comp = data_comp["h_vals"]
+        ID_ranks_comp = data_comp["ID_ranks"]
+        N_maxs_comp = data_comp["N_maxs"]
+        betas_comp = data_comp["betas"]
+        delta_t_vals_comp = data_comp["delta_t_vals"]
+
         self.assertTrue(np.allclose(errors, errors_comp))
         self.assertTrue(np.allclose(m_vals, m_vals_comp))
         self.assertTrue(np.allclose(n_vals, n_vals_comp))
@@ -142,6 +152,7 @@ class Test_store_kernel(unittest.TestCase):
         self.assertTrue(np.allclose(betas, betas_comp))
         self.assertTrue(np.allclose(delta_t_vals, delta_t_vals_comp))
 
+        self.assertTrue(np.allclose(kernel_dims, kernel_dims_comp))
 
         #check that data is equal to data taken from a single kernel (all kernels in the array are equivalent here)
         self.assertTrue(np.all([val == self.kernel.eps for val in errors]))
@@ -149,7 +160,10 @@ class Test_store_kernel(unittest.TestCase):
         self.assertTrue(np.all([val == self.kernel.n for val in n_vals]))
         self.assertTrue(np.all([val == self.kernel.h for val in h_vals]))
         self.assertTrue(np.all([val == self.kernel.ID_rank for val in ID_ranks]))
-
+        self.assertTrue(np.all([val == self.kernel.beta for val in betas]))
+        self.assertTrue(np.all([val == self.kernel.delta_t for val in delta_t_vals]))
+        self.assertTrue(np.all([val == self.kernel.N_max for val in N_maxs]))
+        self.assertTrue(np.allclose(kernel_dims, np.array([2,2])))
 
     
 
