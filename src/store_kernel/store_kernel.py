@@ -49,7 +49,7 @@ class Hdf5Kernel:
 
         try:
             with h5py.File(self._filename, "w") as hdf:
-                hdf.create_dataset("kernel_dims", data=self._kernel_dims)
+                hdf.create_dataset("kernel_dims", data=self.kernel_dims)
         except Exception as e:
             raise RuntimeError(f"An error occurred while creating the file: {e}")
 
@@ -180,11 +180,30 @@ class Hdf5Kernel:
                 return params, data
 
             else:
-                #If the group does not exist in the file, return default values.
-                params = {'N_max': 0, 'beta': 0.0, 'delta_t': 0.0, 'eps': 0.0, 'h': 0.0, 'm': 0, 'n': 0, 'phi': 0.0}
-                data = {'ID_rank': 0, 'coarse_grid': np.array([]), 'fine_grid': np.array([]), 'idx': np.array([]), 'k_values': np.array([]), 'nbr_sv_above_eps': 0, 'proj': np.array([]), 'singular_values': np.array([]), 'times': np.array([])}
+                # If the group does not exist in the file, return default values.
+                params = {
+                    "N_max": 0,
+                    "beta": 0.0,
+                    "delta_t": 0.0,
+                    "eps": 0.0,
+                    "h": 0.0,
+                    "m": 0,
+                    "n": 0,
+                    "phi": 0.0,
+                }
+                data = {
+                    "ID_rank": 0,
+                    "coarse_grid": np.array([]),
+                    "fine_grid": np.array([]),
+                    "idx": np.array([]),
+                    "k_values": np.array([]),
+                    "nbr_sv_above_eps": 0,
+                    "proj": np.array([]),
+                    "singular_values": np.array([]),
+                    "times": np.array([]),
+                }
                 return params, data
-        
+
     def read_to_array(self):
         """
         Reads data from a given file and returns array for different quantities.
@@ -207,6 +226,8 @@ class Hdf5Kernel:
             m_vals = np.empty((kernel_dims_flat,))
             n_vals = np.empty((kernel_dims_flat,))
             h_vals = np.empty((kernel_dims_flat,))
+            N_maxs = np.empty((kernel_dims_flat,))
+            betas = np.empty((kernel_dims_flat,))
             ID_ranks = np.empty((kernel_dims_flat,))
 
             for idx in range(kernel_dims_flat):
@@ -219,15 +240,19 @@ class Hdf5Kernel:
                 m_vals[idx] = params["m"]
                 n_vals[idx] = params["n"]
                 h_vals[idx] = params["h"]
+                betas[idx] = params["beta"]
+                N_maxs[idx] = params["N_max"]
 
         # reshape arrays to original shape when returning
-        return (
-            errors.reshape(self._kernel_dims),
-            m_vals.reshape(self._kernel_dims),
-            n_vals.reshape(self._kernel_dims),
-            h_vals.reshape(self._kernel_dims),
-            ID_ranks.reshape(self._kernel_dims),
-        )
+        return {
+            "errors": errors.reshape(self._kernel_dims),
+            "m_vals": m_vals.reshape(self._kernel_dims),
+            "n_vals": n_vals.reshape(self._kernel_dims),
+            "h_vals": h_vals.reshape(self._kernel_dims),
+            "betas": betas.reshape(self._kernel_dims),
+            "N_maxs": N_maxs.reshape(self._kernel_dims),
+            "ID_ranks": ID_ranks.reshape(self._kernel_dims),
+        }
 
     def _validate_and_flatten_index(self, idx, isFlatIndex: bool):
         """
