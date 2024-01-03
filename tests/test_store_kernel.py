@@ -46,6 +46,8 @@ class Test_store_kernel(unittest.TestCase):
 
         #store a single kernel object
         hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=(1,))
+
+
         hdf_kernel.store_kernel_array(np.array([self.kernel]))
     
         #read it back out and see if correct values are obtained
@@ -118,8 +120,14 @@ class Test_store_kernel(unittest.TestCase):
     
         #read out a single element and see if correct values are obtained
         
-        errors, m_vals, n_vals, h_vals, ID_ranks  = hdf_kernel.read_to_array()
+        data  = hdf_kernel.read_to_array()
 
+        errors = data["errors"]
+        m_vals = data["m_vals"]
+        n_vals = data["n_vals"]
+        h_vals = data["h_vals"]
+        ID_ranks = data["ID_ranks"]
+        
         #check that data is equal to data directly extracted from kernel objects
         errors_comp, m_vals_comp, n_vals_comp, h_vals_comp, ID_ranks_comp = cf.create_numpy_arrays_from_kernel(array)
         self.assertTrue(np.allclose(errors, errors_comp))
