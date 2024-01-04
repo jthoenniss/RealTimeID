@@ -70,8 +70,8 @@ class KernelMatrix:
         times_arr = self.times[:, np.newaxis] # enable broadcasting
         fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
 
-        # Kernel defined by Fermi distribution, multiplied by spectral density
-        K = cf.distr(times_arr, fine_grid_complex, self.beta) * cf.spec_dens_array(fine_grid_complex)
+        # Kernel defined by Fermi distribution
+        K = cf.distr(times_arr, fine_grid_complex, self.beta)
         K *= self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex #factors from measure
 
         return K
