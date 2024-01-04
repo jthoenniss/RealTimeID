@@ -43,9 +43,9 @@ class Hdf5Kernel:
 
         self._set_kernel_dims(kernel_dims=kernel_dims)
 
-        # Uncomment the following if this function should not overwrite exisiting files
-        # if os.path.exists(self._filename):
-        #    raise FileExistsError(f"File '{self._filename}' already exists. Cannot create a new file.")
+         #Comment the following if this function should overwrite exisiting files
+        if os.path.exists(self._filename):
+            raise FileExistsError(f"File '{self._filename}' already exists. Cannot create a new file.")
 
         try:
             with h5py.File(self._filename, "w") as hdf:
