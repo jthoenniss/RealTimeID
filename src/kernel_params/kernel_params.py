@@ -2,6 +2,34 @@ import numpy as np
 import math  # for floor and ceiling
 
 class KernelParams:
+
+    """
+    A class designed to encapsulate and manage parameters essential for specifying a kernel matrix
+    and its associated continuous integration results.
+
+    This class serves as a container for key parameters used in kernel matrix calculations, such as
+    discretization intervals, inverse temperature, time grid settings, discretization parameter, and
+    rotation angle in the complex plane.
+
+    Parameters:
+        - m (int): Number of discretization intervals for frequencies greater than 1/e.
+        - n (int): Number of discretization intervals for frequencies less than 1/e.
+        - N_max (int): Maximum number of points on the time grid.
+        - delta_t (float): Time step for the time grid.
+        - beta (float): Inverse temperature, a crucial thermodynamic parameter.
+        - upper_cutoff (float): Frequency cutoff for continuous integrations.
+        - h (float): Discretization parameter, influencing frequency grid resolution.
+        - phi (float): Rotation angle in the complex frequency plane.
+
+    Attributes:
+        _params (dict): A dictionary that holds the parameter values.
+
+    Methods:
+        params() -> dict: Returns the dictionary of stored parameters.
+        get(key: str) -> Any: Retrieves the value of a specific parameter using its key.
+        update_parameters(updates: dict) -> None: Updates multiple parameters simultaneously based on a dictionary of updates.
+    """
+    
     def __init__(self):
         self._params = {
             "m": None,
