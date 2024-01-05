@@ -3,6 +3,23 @@ from src.utils import common_funcs as cf
 from src.kernel_params.parameter_validator import ParameterValidator
 
 class KernelMatrix:
+
+    """
+    A class that generates the kernel matrix associated with a Green's function.
+
+    This class contains functions to compute a fine frequency grid, initialize the kernel matrix,
+    and update the kernel matrix based on parameter changes.
+
+    Parameters:
+        - m (int): Number of discretization intervals for omega > 1/e.
+        - n (int): Number of discretization intervals for omega < 1/e.
+        - beta (float): Inverse temperature.
+        - N_max (int): Number of points on the time grid.
+        - delta_t (float): Time step.
+        - h (float): Discretization parameter.
+        - phi (float): Rotation angle in the complex plane.
+    """
+    
     def __init__(
         self,
         m: int,
@@ -13,19 +30,7 @@ class KernelMatrix:
         h: float,
         phi: float
     ):
-        """
-        Initialize parameters for creating a kernel matrix.
-
-        Parameters:
-        - m (int): Number of discretization intervals for omega > 1/e.
-        - n (int): Number of discretization intervals for omega < 1/e.
-        - beta (float): Inverse temperature.
-        - N_max (int): number of points on time grid
-        - delta_t (float): time step
-        - h (float): Discretization parameter.
-        - phi (float): Rotation angle in the complex plane.
-        """
-
+       
         # check if all parameters are valid
         ParameterValidator.validate_m_n(m, n)
         ParameterValidator.validate_beta(beta)
