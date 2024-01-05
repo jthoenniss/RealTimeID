@@ -65,16 +65,16 @@ def check_error_condition(eps_current, eps_previous):
 
 
 def update_parameters(params, updates):
-    """
-    Update grid parameters with new values.
+    
+    #Update grid parameters with new values.
 
-    Parameters:
-    - params (dict): Dictionary containing grid parameters.
-    - updates (dict): Dictionary containing parameter names and their new values.
+    #Parameters:
+    #- params (dict): Dictionary containing grid parameters.
+    #- updates (dict): Dictionary containing parameter names and their new values.
 
-    Returns:
-    - None
-    """
+    #Returns:
+    #- None
+    
 
     for name, value in updates.items():
         params[name] = value
