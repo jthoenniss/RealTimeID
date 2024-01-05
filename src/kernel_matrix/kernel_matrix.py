@@ -19,7 +19,7 @@ class KernelMatrix:
         - h (float): Discretization parameter.
         - phi (float): Rotation angle in the complex plane.
     """
-    
+
     def __init__(
         self,
         m: int,
@@ -82,6 +82,9 @@ class KernelMatrix:
         return K
     
     def _update_kernel(self):
+        """
+        Recompute the time grid, fine frequency grid and kernel matrix. Needed after change of parameters.
+        """
         #update time grid
         self.times = cf.set_time_grid(N_max = self.N_max, delta_t= self.delta_t)
         #update frequency grid
