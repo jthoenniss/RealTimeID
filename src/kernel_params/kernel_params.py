@@ -31,7 +31,7 @@ class KernelParams:
         update_parameters(updates: dict) -> None: Updates multiple parameters simultaneously based on a dictionary of updates.
     """
     
-    def __init__(self):
+    def __init__(self, **kwargs):
         self._params = {
             "m": None,
             "n": None,
@@ -43,6 +43,12 @@ class KernelParams:
             "phi": np.pi / 4,
             "spec_dens": lambda x: 1.
         }    
+
+        for key, value in kwargs.items():
+            if key in self._params.keys():
+                self._params[key] = value
+            else:
+                raise KeyError(f"Key {key} not in parameter list.")
 
     @property
     def params(self) -> dict:
