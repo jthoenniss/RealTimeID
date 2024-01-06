@@ -20,6 +20,7 @@ class KernelParams:
         - upper_cutoff (float): Frequency cutoff for continuous integrations.
         - h (float): Discretization parameter, influencing frequency grid resolution.
         - phi (float): Rotation angle in the complex frequency plane.
+        - spec_dens (callable): Single-parameter function returning the spectral density.
 
     Attributes:
         _params (dict): A dictionary that holds the parameter values.
@@ -40,6 +41,7 @@ class KernelParams:
             "upper_cutoff": np.inf,
             "h": None,
             "phi": np.pi / 4,
+            "spec_dens": lambda x: 1.
         }    
 
     @property
