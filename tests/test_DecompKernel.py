@@ -146,9 +146,9 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
     def test_initialization(self):
         # check that initialization is equivalent to initialization with kwargs
         for key, val in vars(self.dck).items():
-            self.assertEqual(
-                np.all(val),
-                np.all(getattr(self.dck_kwargs, key)),
+            self.assertTrue(
+                np.allclose(val,
+                getattr(self.dck_kwargs, key)),
                 f"The following attributes differs: {key},{val}, {getattr(self.dck_kwargs, key)}",
             )
 
