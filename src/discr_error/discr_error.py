@@ -39,7 +39,7 @@ class DiscrError(KernelMatrix):
         h: float,
         phi: float,
         spec_dens: callable,
-        cont_integral_init: np.ndarray = None
+        cont_integral_init: np.ndarray = None,
     ):
         """
         Parameters:
@@ -54,7 +54,7 @@ class DiscrError(KernelMatrix):
         - spec_dens (callable): Single-parameter function for the spectral density
         - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid.
         """
-       
+
         super().__init__(
             m=m,
             n=n,
@@ -65,7 +65,7 @@ class DiscrError(KernelMatrix):
             phi=phi,
             spec_dens=spec_dens,
         )
-     
+
         # compute discrete integral approximation
         self.discrete_integral_init = self.discrete_integral()
 
@@ -78,7 +78,7 @@ class DiscrError(KernelMatrix):
         self.cont_integral_init = (
             self.cont_integral() if cont_integral_init is None else cont_integral_init
         )
-        
+
         # compute error between discrete and continuous integral
         self.eps = (
             self.error_time_integrated()
@@ -91,10 +91,16 @@ class DiscrError(KernelMatrix):
         Returns:
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
-     
+
         return np.array(
             [
-                cf.cont_integral(t = t, beta = self.beta, upper_cutoff= self.upper_cutoff, spec_dens = self.spec_dens, phi = self.phi)
+                cf.cont_integral(
+                    t=t,
+                    beta=self.beta,
+                    upper_cutoff=self.upper_cutoff,
+                    spec_dens=self.spec_dens,
+                    phi=self.phi,
+                )
                 for t in self.times
             ]
         )
@@ -116,14 +122,16 @@ class DiscrError(KernelMatrix):
         # Use provided or default kernel and spec_dens_array
         kernel_eff = self.kernel if kernel is None else kernel
         spec_dens_array_eff_cmplx = (
-            self.spec_dens_array_cmplx if spec_dens_array_cmplx is None else spec_dens_array_cmplx
+            self.spec_dens_array_cmplx
+            if spec_dens_array_cmplx is None
+            else spec_dens_array_cmplx
         )
 
         if not isinstance(kernel_eff, np.ndarray):
             raise TypeError(
                 f"'kernel' must be of type np.ndarray. Found {type(kernel_eff).__name__}"
             )
-        
+
         if not isinstance(spec_dens_array_eff_cmplx, np.ndarray):
             raise TypeError(
                 f"'spec_dens_array' must be of type np.ndarray. Found {type(spec_dens_array_eff_cmplx).__name__}"
@@ -214,14 +222,18 @@ class DiscrError(KernelMatrix):
         - int: number of frequency points dropped without making a error larger than 10% of the discretization error
         """
         for count in range(1, max_count):
+            
             # Compute kernel and spec_dens_array on reduced frequency grid
-            kernel_reduced = self.kernel[:, interval_idcs[0] : interval_idcs[1]]
+            lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
+
+            kernel_reduced = self.kernel[:, lower_idx:upper_idx]
             spec_dens_array_cmplx_reduced = self.spec_dens_array_cmplx[
-                interval_idcs[0] : interval_idcs[1]
+                lower_idx:upper_idx
             ]
             # compute the corresponding discrete-frequency approximation
             time_series_approx = self.discrete_integral(
-                kernel=kernel_reduced, spec_dens_array_cmplx=spec_dens_array_cmplx_reduced
+                kernel=kernel_reduced,
+                spec_dens_array_cmplx=spec_dens_array_cmplx_reduced,
             )
             # compute relative error between large m/n discrete integral approximation and approximation with current m and n
             rel_val_diff = self.error_time_integrated(
@@ -240,7 +252,7 @@ class DiscrError(KernelMatrix):
         Update the kernel and dependent attributes after changes to m or n.
         For this, run _update_kernel from base class and additionally recompute the discrete integral, as well as the error 'eps'.
         """
-        #update kernel and grids
+        # update kernel and grids
         super()._initialize_kernel_and_grids()
         # update discrete_integral_init
         self.discrete_integral_init = self.discrete_integral()
