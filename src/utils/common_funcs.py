@@ -207,35 +207,48 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     """
     Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
     Parameters:
-    - t (float): time argument
-    - beta (float): inverse temperature
-    - upper_cutoff (float): energy upper_cutoff up to which kernel is integrated
-    - spec_dens (callable): one-parameter function that returns the spectral density.
-    - phi (float): rotations angle in complex plane
+    - t (float or array-like): Time argument(s)
+    - beta (float): Inverse temperature
+    - upper_cutoff (float): Energy upper_cutoff up to which kernel is integrated
+    - spec_dens (callable): One-parameter function that returns the spectral density.
+    - phi (float): Rotation angle in the complex plane
 
     Returns:
-    - (np.complex_): Result of integration in interval [0,upper_cutoff]
+    - (np.complex_ or np.ndarray): Result(s) of integration in interval [0, upper_cutoff]
     """
-    # compute real part by using integration routine
-    right_segment_cont_real, _ = integrate.quad(
-        lambda x: np.real(
+    # Ensure t is an array
+    t = np.atleast_1d(t)
+
+    # Function to integrate for real and imaginary parts
+    def integrand_real(x):
+        return np.real(
             np.exp(1.0j * phi)
             * distr(t, x * np.exp(1.j * phi), beta)
             * spec_dens(x * np.exp(1.0j * phi))
-        ),
+        )
+
+    def integrand_imag(x):
+        return np.imag(
+            np.exp(1.0j * phi)
+            * distr(t, x * np.exp(1.j * phi), beta)
+            * spec_dens(x * np.exp(1.0j * phi))
+        )
+
+    # Vectorized integration for real and imaginary parts
+    right_segment_cont_real, _ = integrate.quad_vec(
+        integrand_real,
         0,
-        upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13
+        upper_cutoff,
+        epsabs=1.49e-15,
+        epsrel=1.49e-13
     )
 
-    # compute imaginary part by using integration routine
-    right_segment_cont_imag, _ = integrate.quad(
-        lambda x: np.imag(
-            np.exp(1.0j * phi)
-            * distr(t, x * np.exp(1.j * phi), beta)
-            * spec_dens(x * np.exp(1.0j * phi))
-        ),
+    right_segment_cont_imag, _ = integrate.quad_vec(
+        integrand_imag,
         0,
-        upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13
+        upper_cutoff,
+        epsabs=1.49e-15,
+        epsrel=1.49e-13
     )
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag

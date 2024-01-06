@@ -92,17 +92,12 @@ class DiscrError(KernelMatrix):
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
 
-        return np.array(
-            [
-                cf.cont_integral(
-                    t=t,
-                    beta=self.beta,
-                    upper_cutoff=self.upper_cutoff,
-                    spec_dens=self.spec_dens,
-                    phi=self.phi,
-                )
-                for t in self.times
-            ]
+        return cf.cont_integral(
+            t=self.times,
+            beta=self.beta,
+            upper_cutoff=self.upper_cutoff,
+            spec_dens=self.spec_dens,
+            phi=self.phi,
         )
 
     def discrete_integral(
@@ -222,7 +217,6 @@ class DiscrError(KernelMatrix):
         - int: number of frequency points dropped without making a error larger than 10% of the discretization error
         """
         for count in range(1, max_count):
-            
             # Compute kernel and spec_dens_array on reduced frequency grid
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
 

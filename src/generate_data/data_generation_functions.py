@@ -1,11 +1,12 @@
 # Standard libraries
 import numpy as np
+
 # Import Custom Modules
 from src.utils.module_utils.all_custom_modules import (
     DiscrError,
     DlrKernel,
     cf,
-    Hdf5Kernel
+    Hdf5Kernel,
 )  # Consolidated custom modules import
 from src.kernel_params.kernel_params import KernelParams
 
@@ -28,7 +29,7 @@ def compute_grid_and_store(
 
     Returns:
         None
-    
+
     """
     for b, beta in enumerate(betas):
         for tau, N_max in enumerate(N_maxs):
@@ -41,20 +42,17 @@ def compute_grid_and_store(
                 N_max=params.get("N_max"), delta_t=params.get("delta_t")
             )
             # compute continous-frequency integral
-            cont_integral = np.array(
-                [
-                    cf.cont_integral(
-                        t = t,
-                        beta=params.get("beta"),
-                        upper_cutoff=params.get("upper_cutoff"),
-                        spec_dens=params.get("spec_dens")
-                    )
-                    for t in times
-                ]
+            cont_integral = cf.cont_integral(
+                t=times,
+                beta=params.get("beta"),
+                upper_cutoff=params.get("upper_cutoff"),
+                spec_dens=params.get("spec_dens"),
             )
 
             for h, h_val in enumerate(h_vals):
-                params.update_parameters({"h": h_val})#this automatically updates "m" and "n".
+                params.update_parameters(
+                    {"h": h_val}
+                )  # this automatically updates "m" and "n".
 
                 # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
                 discr_error = DiscrError(
