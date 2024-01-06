@@ -15,14 +15,15 @@ class TestDiscError(unittest.TestCase):
             "delta_t": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
-            "upper_cutoff" : 600
+            "upper_cutoff" : 600,
+            "spec_dens": lambda x: 1.,
         }
         self.D = DiscrError(**params_DiscrError)
 
 
 
     def test_base_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
 
         KernelMatrix_keys = vars(self.D).keys()
 

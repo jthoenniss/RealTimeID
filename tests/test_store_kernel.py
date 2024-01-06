@@ -7,6 +7,9 @@ import os
 
 class Test_store_kernel(unittest.TestCase):
     def setUp(self):
+
+ 
+
         REQUIRED_KEYS = {
             "m",
             "n",
@@ -22,6 +25,7 @@ class Test_store_kernel(unittest.TestCase):
             "coarse_grid",
             "singular_values",
             "nbr_sv_above_eps",
+            "spec_dens_array_cmplx"
         }
 
         self.params_DecompKernel = {
@@ -33,6 +37,7 @@ class Test_store_kernel(unittest.TestCase):
             "eps": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
+            "spec_dens": lambda x: 1.
         }
 
         self.kernel = DecompKernel(**self.params_DecompKernel)
@@ -51,13 +56,14 @@ class Test_store_kernel(unittest.TestCase):
         hdf_kernel.store_kernel_array(np.array([self.kernel]))
     
         #read it back out and see if correct values are obtained
-        params, data  = hdf_kernel.read_kernel_element(0, isFlatIndex=True)
+        params, data  = hdf_kernel.read_kernel_element(0, isFlatIndex=True)#0 is the flat index in the parameter point array.
         
         self.assertTrue(params, self.params_DecompKernel)
 
 
     
     def test_store_array(self):
+        #ToDo: Extend to test all other attributes
 
         #store an array of kernel objects directly by feeding array
         arr = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
@@ -67,22 +73,25 @@ class Test_store_kernel(unittest.TestCase):
         #store data
         hdf_kernel.store_kernel_array(arr)
     
-        #read out a single element and see if correct values are obtained
-        params, data  = hdf_kernel.read_kernel_element((0,0))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((0,1))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((1,0))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((1,1))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+        #read out single elements and see if correct values are obtained
+        for i in range (2):
+            for j in range (2):
+                params, data  = hdf_kernel.read_kernel_element((i,j))
+                
+                for key, val in params.items():
+                    if key != "spec_dens_array_cmplx":
+                        self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
+
+                    else:
+                        self.assertEqual(val, getattr(self.params_DecompKernel, key), f"parameters differ for key {key}")
+                        self.assertEqual(val(0), 1.)
+                        
+                self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
+                self.assertTrue(np.allclose(data["spec_dens_array_cmplx"], self.kernel.spec_dens_array_cmplx))
 
 
     def test_append_element(self):
+        #ToDo: Extend to test all other attributes
 
         #store an array of kernel objects directly by feeding array
         arr = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
@@ -95,23 +104,28 @@ class Test_store_kernel(unittest.TestCase):
                 #append data
                 hdf_kernel.append_kernel_element(kernel_object=arr[i,j], idx = (i,j))
     
-        #read out a single element and see if correct values are obtained
-        params, data  = hdf_kernel.read_kernel_element((0,0))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((0,1))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((1,0))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
-        params, data  = hdf_kernel.read_kernel_element((1,1))
-        self.assertTrue(params, self.params_DecompKernel)
-        self.assertTrue(data["ID_rank"], self.kernel.ID_rank)
+    
+        #read out single elements and see if correct values are obtained
+        for i in range (2):
+            for j in range (2):
+                params, data  = hdf_kernel.read_kernel_element((i,j))
+     
+                for key, val in params.items():
+                    if key != "spec_dens_array_cmplx":
+                        self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
+
+                    else:
+                        self.assertEqual(val, self.params_DecompKernel[key], f"parameters differ for key {key}")
+                        self.assertEqual(val(0), 1.)
+                        
+
+                self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
+                self.assertTrue(np.allclose(data["spec_dens_array_cmplx"], self.kernel.spec_dens_array_cmplx))
 
 
 
     def test_read_to_array(self):
+        #ToDo: Extend to test all other attributes
 
         #store an array of kernel objects
         hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=(2,2))
@@ -171,3 +185,7 @@ class Test_store_kernel(unittest.TestCase):
         # This method runs after each test and cleans up temporarily created hdf5 files that are no longer needed
         if os.path.exists(self._filename):
             os.remove(self._filename)
+
+    
+    if __name__ == "__main__":
+        unittest.main()

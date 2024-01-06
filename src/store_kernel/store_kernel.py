@@ -117,7 +117,7 @@ class Hdf5Kernel:
 
             # Store all kernel-related quantities except for those already stored as attributes
             for key, value in vars(kernel_object).items():
-                if key != "kernel" and key not in param_keys:
+                if key not in ("kernel", "spec_dens") and key not in param_keys:
                     grid_point_group.create_dataset(key, data=value)
 
     def store_kernel_array(self, kernel_object: np.ndarray) -> None:
@@ -201,6 +201,7 @@ class Hdf5Kernel:
                     "proj": np.array([]),
                     "singular_values": np.array([]),
                     "times": np.array([]),
+                    "spec_dens_array_cmplx": np.array([])
                 }
                 return params, data
 

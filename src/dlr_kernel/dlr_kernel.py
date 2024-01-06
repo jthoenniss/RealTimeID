@@ -11,33 +11,16 @@ class DlrKernel(DecompKernel):
         """
         Parameters are passed
         -- implicitly as attributes of an object, e.g. of type DiscrError: "dlr.RtDlr(discr_error)", or
-        -- as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2)".
+        -- as keyword arguments: "dlr.RtDlr(m=10, n=20, beta=10., times=[1, 2], eps=0.3, h=0.2, spec_dens= lambda x : np.ones_like(np.atleast_1d(x)))".
 
         Parameters:
         - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
         - eps (float): Error threshold for SVD and ID (see DecompKernel).
+        - spec_dens (callable): Single-parameter function that ouputs the spectral density.
         """
 
         super().__init__(*args,**kwargs)
 
-
-    def get_coarse_grid(self):
-        """
-        Return coarse frequency grid containing the frequencies chosen by the interpolative decomposition
-        """
-        return self.coarse_grid
-
-    def spec_dens_fine(self):
-        """
-        Evaluate the spectral density at the frequency points of the fine grid
-
-        Returns:
-        - numpy.ndarray: Spectral density evaluated at complex frequencies of the fine grid (rotated into the complex plane).
-        """
-        rotated_frequencies = self.fine_grid * np.exp(1.0j * self.phi)
-        spec_dens_at_fine_grid = cf.spec_dens_array(rotated_frequencies)
-
-        return spec_dens_at_fine_grid
 
     def get_projection_matrix(self):
         """
@@ -54,7 +37,7 @@ class DlrKernel(DecompKernel):
         Compute effective couplings: multiply vector of spectral density at fine grid points with projection matrix P.
         """
         P = self.get_projection_matrix()
-        coupl_eff = P @ self.spec_dens_fine()
+        coupl_eff = P @ self.spec_dens_array_cmplx
         return coupl_eff
 
     def reconstr_interp_matrix(self):
@@ -83,7 +66,7 @@ class DlrKernel(DecompKernel):
         - float: relative error between original and reconstructed Green's function [only if compute_error flag is set to 'True']
         """
         K_reconstr = self.reconstr_interp_matrix()  # ID-reconstructed kernel matrix
-        Gamma = self.spec_dens_fine()  # spectral density evaluated on fine grid points
+        Gamma = self.spec_dens_array_cmplx  # spectral density evaluated on fine grid points
 
         # yields the propagators where the array elements correspond to the different time points:
         G_reconstr = K_reconstr @ Gamma

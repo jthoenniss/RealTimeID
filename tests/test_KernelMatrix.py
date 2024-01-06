@@ -13,13 +13,14 @@ class TestKernelMatrix(unittest.TestCase):
             "N_max": 10,
             "delta_t": 0.1,
             "h": 0.2,
-            "phi": np.pi / 4
+            "phi": np.pi / 4,
+            "spec_dens": lambda x: 1.
         }
         self.K = KernelMatrix(**params_KernelMatrix)
 
 
     def test_all_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
 
         KernelMatrix_keys = vars(self.K).keys()
 
@@ -36,6 +37,7 @@ class TestKernelMatrix(unittest.TestCase):
         self.assertTrue(np.array_equal(self.K.times, cf.set_time_grid(N_max=10, delta_t=0.1)))
         self.assertEqual(self.K.h, 0.2)
         self.assertEqual(self.K.phi, np.pi / 4)
+        self.assertEqual(self.K.spec_dens(0), 1.)
 
     def test_create_kernel(self):
         # Test the kernel creation method

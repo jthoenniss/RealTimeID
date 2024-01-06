@@ -18,7 +18,7 @@ if __name__ == "__main__":
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
     h_vals = np.logspace(-0.2, -2, 15)
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 5, 10)))
+    N_maxs = list(map(int, np.logspace(1, 2, 10)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
     betas = [0, 20, 100, 10000]
 

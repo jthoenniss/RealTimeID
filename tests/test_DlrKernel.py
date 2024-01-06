@@ -16,6 +16,7 @@ class TestDlrKernel_with_kwargs(unittest.TestCase):
             "eps": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
+            "spec_dens": lambda x: 1.
         }
         self.dlr = DlrKernel(**params_DlrKernel)
 
@@ -31,6 +32,7 @@ class TestDlrKernel_with_kwargs(unittest.TestCase):
         self.assertEqual(self.dlr.eps, 0.1)
         self.assertEqual(self.dlr.h, 0.2)
         self.assertEqual(self.dlr.phi, np.pi / 4)
+        self.assertEqual(self.dlr.spec_dens(0), 1.)
 
 
 class TestDlrKernel_with_DiscError(unittest.TestCase):
@@ -47,7 +49,8 @@ class TestDlrKernel_with_DiscError(unittest.TestCase):
             "delta_t": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
-            "upper_cutoff" : 600
+            "upper_cutoff" : 600,
+            "spec_dens": lambda x: np.ones_like(np.atleast_1d(x))
         }
         D = DiscrError(**params_DiscrError)
 
@@ -61,7 +64,7 @@ class TestDlrKernel_with_DiscError(unittest.TestCase):
         self.dlr_kwargs = DlrKernel(**params_DiscrError)
 
     def test_base_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
 
         present_keys = vars(self.dlr).keys()
         for key in KernelMatrix_keys_required:#check that all attributes exist.
@@ -71,7 +74,16 @@ class TestDlrKernel_with_DiscError(unittest.TestCase):
     def test_initialization(self):
         # check that initialization is equivalent to initialization with kwargs
         for key, val in vars(self.dlr).items():
-            self.assertEqual(np.all(val), np.all(getattr(self.dlr_kwargs, key)), f"The following attributes differs: {key},{val}, {getattr(self.dlr_kwargs, key)}")
+        
+            if key != "spec_dens":
+                        self.assertTrue(
+                            np.allclose(val,
+                            getattr(self.dlr_kwargs, key)),
+                            f"The following attributes differs: {key},{val}, {getattr(self.dlr_kwargs, key)}",
+                        )
+            else:
+                self.assertEqual(val, getattr(self.dlr_kwargs, key))
+                self.assertEqual(val(0), 1.)
 
 if __name__ == "__main__":
     unittest.main()

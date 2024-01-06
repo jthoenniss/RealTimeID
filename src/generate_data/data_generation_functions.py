@@ -44,9 +44,10 @@ def compute_grid_and_store(
             cont_integral = np.array(
                 [
                     cf.cont_integral(
-                        t,
+                        t = t,
                         beta=params.get("beta"),
                         upper_cutoff=params.get("upper_cutoff"),
+                        spec_dens=params.get("spec_dens")
                     )
                     for t in times
                 ]
@@ -59,7 +60,7 @@ def compute_grid_and_store(
                 discr_error = DiscrError(
                     **params.params, cont_integral_init=cont_integral
                 )
-                # discr_error.optimize()  # optimize values for m and n
+                discr_error.optimize()  # optimize values for m and n
 
                 # Exit the loop it error is below machine precision, otherwise, append to hdf5 file
                 if discr_error.eps < 1.0e-14:

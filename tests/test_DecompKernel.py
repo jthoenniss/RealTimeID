@@ -19,6 +19,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             eps=0.1,
             h=0.2,
             phi=np.pi / 4,
+            spec_dens = lambda x: 1.
         )
 
     def test_initialization(self):
@@ -34,6 +35,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
         self.assertEqual(self.K.eps, 0.1)
         self.assertEqual(self.K.h, 0.2)
         self.assertEqual(self.K.phi, np.pi / 4)
+        self.assertEqual(self.K.spec_dens(0), 1.)
 
     def test_create_kernel(self):
         # Test the kernel creation method
@@ -69,7 +71,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
         self.assertEqual(ID_rank, expected_ID_rank)
 
     def test_get_vars(self):
-        #set of all keys required to be present in DecompKernel object
+        #set if all required keys are present in DecompKernel object
         REQUIRED_KEYS = {
             "m",
             "n",
@@ -85,6 +87,8 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             "coarse_grid",
             "singular_values",
             "nbr_sv_above_eps",
+            "spec_dens",
+            "spec_dens_array_cmplx"
         }
 
         # dictionary of all class attributes
@@ -112,6 +116,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "h": 0.2,
             "phi": np.pi / 4,
             "upper_cutoff": 600,
+            "spec_dens": lambda x: 1.
         }
         D = DiscrError(**params_DiscrError)
 
@@ -137,6 +142,8 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "fine_grid",
             "k_values",
             "kernel",
+            "spec_dens",
+            "spec_dens_array_cmplx"
         ]
 
         present_keys = vars(self.dck).keys()
@@ -146,11 +153,16 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
     def test_initialization(self):
         # check that initialization is equivalent to initialization with kwargs
         for key, val in vars(self.dck).items():
-            self.assertTrue(
-                np.allclose(val,
-                getattr(self.dck_kwargs, key)),
-                f"The following attributes differs: {key},{val}, {getattr(self.dck_kwargs, key)}",
-            )
+      
+            if key != "spec_dens":
+                self.assertTrue(
+                    np.allclose(val,
+                    getattr(self.dck_kwargs, key)),
+                    f"The following attributes differs: {key},{val}, {getattr(self.dck_kwargs, key)}",
+                )
+            else:
+                self.assertEqual(val, getattr(self.dck_kwargs, key))
+                self.assertEqual(val(0), 1.)
 
 
 if __name__ == "__main__":

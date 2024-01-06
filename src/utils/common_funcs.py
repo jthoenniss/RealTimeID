@@ -80,7 +80,7 @@ def update_parameters(params, updates):
         params[name] = value
         if name == "h":
             # when h is varied, also update m and n
-            params["m"] = math.ceil(15.0 / value) # with this choice, the frequency grid reaches up to 1.e8 or higher.
+            params["m"] = math.ceil(15.0 / value) # with this choice, the frequency grid reaches up to 1.e6 or higher.
             params["n"] = math.ceil(3.6 / value) # with this choice, the frequency grid reaches down to 1.e-16 or lower.
 
     # If m and n are varied simultaneously, throw warning.
@@ -108,33 +108,18 @@ def distr(t, x, beta: float):
     return np.exp(1.0j * x * t) / (1 + np.exp(-beta * x))
 
 
-def spec_dens_scalar(omega_scalar):
-    """
-    Compute spectral density for a single frequency point (float or complex).
+#def spec_dens_scalar(omega_scalar):
+#    """
+#    Compute spectral density for a single frequency point (float or complex).
 
-    Parameters:
-    - omega_float (float or complex): Single frequency point
+#    Parameters:
+#    - omega_float (float or complex): Single frequency point
 
-    Returns:
-    - float : Spectral density evaluated at this frequency point
-    """
-    return 1.0
+#    Returns:
+#    - float : Spectral density evaluated at this frequency point
+#    """
+#    return 1.0
 
-
-def spec_dens_array(omega_array):
-    """
-    Compute spectral density for an array of frequency points.
-
-    Parameters:
-    - omega_array (numpy.ndarray): Array of frequency points
-
-    Returns:
-    - numpy.ndarray: Array of spectral densities evaluated at these frequency points
-    """
-    if not isinstance(omega_array, np.ndarray):
-        raise ValueError(f"Expected np.ndarray are input, got {type(omega_array)}.")
-
-    return np.ones_like(omega_array)
 
 
 def compute_singular_values(matrix, relative_error):
@@ -218,13 +203,14 @@ def set_time_grid(N_max, delta_t):
     return np.arange(1, N_max + 1) * delta_t
 
 
-def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
+def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     """
     Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
     Parameters:
     - t (float): time argument
     - beta (float): inverse temperature
     - upper_cutoff (float): energy upper_cutoff up to which kernel is integrated
+    - spec_dens (callable): one-parameter function that returns the spectral density.
     - phi (float): rotations angle in complex plane
 
     Returns:
@@ -235,7 +221,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
         lambda x: np.real(
             np.exp(1.0j * phi)
             * distr(t, x * np.exp(1.j * phi), beta)
-            * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
+            * spec_dens(x * np.exp(1.0j * phi))
         ),
         0,
         upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13
@@ -246,7 +232,7 @@ def cont_integral(t, beta, upper_cutoff, phi=np.pi / 4):
         lambda x: np.imag(
             np.exp(1.0j * phi)
             * distr(t, x * np.exp(1.j * phi), beta)
-            * spec_dens_scalar(omega_scalar=x * np.exp(1.0j * phi))
+            * spec_dens(x * np.exp(1.0j * phi))
         ),
         0,
         upper_cutoff,  epsabs=1.49e-15, epsrel=1.49e-13

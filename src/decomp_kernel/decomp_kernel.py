@@ -7,7 +7,7 @@ from src.discr_error.discr_error import DiscrError
 
 
 class DecompKernel(KernelMatrix):
-    REQUIRED_PARAMS = {"m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps"}
+    REQUIRED_PARAMS = {"m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps", "spec_dens"}
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
     on a kernel matrix, extending the functionalities of KernelMatrix.
@@ -25,6 +25,7 @@ class DecompKernel(KernelMatrix):
         Parameters:
         - m, n, beta, N_max, delta_t, h, phi: Parameters for kernel matrix (see KernelMatrix).
         - eps (float): Error threshold for SVD and ID.
+        - spec_dens (callable): Single-parameter function that ouputs the spectral density.
         - compute_SVD (bool): Flag that determines whether the SVD or the kernel should be evaluated
         """
 
@@ -67,6 +68,7 @@ class DecompKernel(KernelMatrix):
             "idx",
             "proj",
             "coarse_grid",
+            "spec_dens_array_cmplx"
         ]
 
         for member in integer_attributes:
@@ -75,6 +77,8 @@ class DecompKernel(KernelMatrix):
             setattr(self, member, 0.0)
         for member in array_attributes:
             setattr(self, member, np.array([]))
+        
+        self.spec_dens = None #this attribute is either None or a callable function that outputs the spectral density
 
 
     def _initialize_from_DiscrError(self, D: DiscrError, compute_SVD: bool) -> None:
