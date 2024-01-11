@@ -49,7 +49,15 @@ class KernelMatrix:
         self.phi = phi
         self.spec_dens = spec_dens
 
-        #compute the kernel and time/frequency/spec_dens grids
+
+        # Initialize array attributes, will be filled in _compute_kernel_and_grids()
+        self.times = None
+        self.fine_grid = None
+        self.k_values = None
+        self.kernel = None
+        self.spec_dens_array_cmplx = None
+
+        # Initialize kernel matrix and grids declared above
         self._initialize_kernel_and_grids()
     
     
