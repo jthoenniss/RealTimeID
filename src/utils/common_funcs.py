@@ -108,19 +108,6 @@ def distr(t, x, beta: float):
     return np.exp(1.0j * x * t) / (1 + np.exp(-beta * x))
 
 
-#def spec_dens_scalar(omega_scalar):
-#    """
-#    Compute spectral density for a single frequency point (float or complex).
-
-#    Parameters:
-#    - omega_float (float or complex): Single frequency point
-
-#    Returns:
-#    - float : Spectral density evaluated at this frequency point
-#    """
-#    return 1.0
-
-
 
 def compute_singular_values(matrix, relative_error):
     """
