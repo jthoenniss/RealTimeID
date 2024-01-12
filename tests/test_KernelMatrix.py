@@ -6,7 +6,7 @@ from src.utils import common_funcs as cf
 class TestKernelMatrix(unittest.TestCase):
     def setUp(self):
 
-        params_KernelMatrix = {
+        self.params_KernelMatrix = {
             "m": 10,
             "n": 5,
             "beta": 1.0,
@@ -16,7 +16,7 @@ class TestKernelMatrix(unittest.TestCase):
             "phi": np.pi / 4,
             "spec_dens": lambda x: 1.
         }
-        self.K = KernelMatrix(**params_KernelMatrix)
+        self.K = KernelMatrix(**self.params_KernelMatrix)
 
 
     def test_all_attrs_present(self):
@@ -53,6 +53,18 @@ class TestKernelMatrix(unittest.TestCase):
         K = self.K.kernel
         expected_shape = (len(self.K.times), self.K.m + self.K.n + 1)
         self.assertEqual(K.shape, expected_shape)
+
+    def test_spec_dens_array(self):
+        # Check for a nontrival function that spectral density (e.g. x**2) is correctly computed
+        params_comp = self.params_KernelMatrix.copy()
+        params_comp["spec_dens"] = lambda x: x**2
+
+        K_comp = KernelMatrix(**params_comp)
+        spec_dens_array = K_comp.spec_dens_array_cmplx
+        fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)
+        spec_dens_array_check = np.array([x**2 for x in fine_grid_complex])
+        self.assertTrue(np.array_equal(spec_dens_array, spec_dens_array_check))
+
 
 if __name__ == "__main__":
     unittest.main()
