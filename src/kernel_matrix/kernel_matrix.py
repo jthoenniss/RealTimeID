@@ -50,7 +50,7 @@ class KernelMatrix:
         self.spec_dens = spec_dens
 
 
-        # Initialize array attributes, will be filled in _compute_kernel_and_grids()
+        # Initialize array attributes, will be filled in _initialize_kernel_and_grids()
         self.times = None
         self.fine_grid = None
         self.k_values = None
