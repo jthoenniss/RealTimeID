@@ -53,7 +53,8 @@ class KernelParams:
         }    
 
         # For those parameters that are specified as keyword arguments, update the values
-        self._params.update((k, v) for k, v in kwargs.items() if k in self._params)
+        for key, value in kwargs.items():
+            self._set(key, value)
 
     @property
     def params(self) -> dict:
@@ -71,6 +72,23 @@ class KernelParams:
             raise KeyError(f"Key {key} not in parameter list.")
 
         return self._params.get(key)
+    
+    def _set(self, key: str, value: Any) -> None:
+        """
+        Set the value of a parameter by providing its key and value
+        - key (str): The key of the parameter to be set
+        - value (Any): The value to which the parameter should be set
+        
+        Returns:
+        - None
+
+        Raises: 
+        - KeyError: If the key is not in the parameter list
+        """
+        if key in self._params:
+                self._params[key] = value #set parameter value
+        else:
+            raise KeyError(f"Key {key} not in parameter list. Valid parameter keys are: {self._params.keys()}.")
 
     def update_parameters(self, updates: dict) -> None:
         """
@@ -85,6 +103,9 @@ class KernelParams:
         Note:
         - A warning is issued if 'h', 'm', and 'n' parameters are attempted to be updated simultaneously, 
           as this may lead to unintended consequences in the grid configuration.
+
+        Raises:
+        - TypeError: If the input is not a dictionary.
         """
 
         if not isinstance(updates, dict):
@@ -92,10 +113,7 @@ class KernelParams:
         
         for key, value in updates.items():
             
-            if key not in self._params.keys():
-                raise KeyError(f"Key {key} not in parameter list.")
-            
-            self._params[key] = value #update parameter value
+            self._set(key, value)#set parameter value
 
             if key == "h":  # Special handling when 'h' is updated
                 # Check for simultaneous updates to 'm' and 'n'
@@ -104,6 +122,6 @@ class KernelParams:
                     print(f"Warning: Simultaneous updates to parameters {intersection} detected. Please double-check for consistency.")
 
                 # Update 'm' and 'n' based on the new value of 'h'
-                self._params["m"] = math.ceil(self.get("upper_cutoff_discrete") / value) 
-                self._params["n"] = math.ceil(self.get("lower_cutoff_discrete") / value) 
+                self._params["m"] = math.ceil(self.get("upper_cutoff_discrete") / value) #set value of m such that is reaches up to upper_cutoff_discrete for given h
+                self._params["n"] = math.ceil(self.get("lower_cutoff_discrete") / value) #set value of n such that is reaches down to lower_cutoff_discrete for given h
 
