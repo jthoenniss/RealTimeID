@@ -9,8 +9,11 @@ from src.generate_data.data_generation_functions import compute_grid_and_store
 A script to compute the interpolative decomposition with all corresponding quantities on a parameter grid
 and store the data in a hdf5 file.
 
+Execute from the terminal with the command "python3 -m src.generate_data.main".
+
 To evaluate the hdf5 file, see jupyter notebook "/notebooks/analyze_ID_kernel.ipynb".
 """
+
 
 if __name__ == "__main__":
 
@@ -32,9 +35,10 @@ if __name__ == "__main__":
     param_grid_dims = (len(h_vals), len(N_maxs), len(betas))
     h5_kernel.create_file(kernel_dims=param_grid_dims)
 
-    # Create instance of KernelParams to hold the parameter set (initialize with default values)
+    # Create instance of KernelParams to hold the parameter set (initialize with default values unless keyword arguments are specified)
     params = KernelParams()
     # compute data and write to file
     compute_grid_and_store(
-        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=h5_kernel
+        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=h5_kernel, optimize=True
     )
+

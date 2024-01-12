@@ -1,7 +1,7 @@
 import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_matrix.kernel_matrix import KernelMatrix
-from src.kernel_params.parameter_validator import ParameterValidator
+from src.kernel_params.kernel_params import KernelParams
 
 
 class DiscrError(KernelMatrix):
@@ -70,7 +70,7 @@ class DiscrError(KernelMatrix):
         self.discrete_integral_init = self.discrete_integral()
 
         # compute continous integral
-        ParameterValidator.validate_upper_cutoff(upper_cutoff)
+        KernelParams.validate_upper_cutoff(upper_cutoff)
         self.upper_cutoff = (
             upper_cutoff  # upper frequency cutoff for continuous integration
         )

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg.interpolative as sli
 from src.utils import common_funcs as cf
-from src.kernel_params.parameter_validator import ParameterValidator
+from src.kernel_params.kernel_params import KernelParams
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.discr_error.discr_error import DiscrError
 
@@ -90,7 +90,7 @@ class DecompKernel(KernelMatrix):
         """
         # Extract eps, validate, and initialize
         eps = D.eps
-        ParameterValidator.validate_eps(eps)
+        KernelParams.validate_eps(eps)
         self.eps = eps
 
         params_KernelMatrix = D.get_shared_attributes()
@@ -105,12 +105,12 @@ class DecompKernel(KernelMatrix):
 
     def _initialize_from_kwargs(self,kwargs, compute_SVD: bool) -> None:
         # Check that all required parameters (defined in RtDlr.REQUIRED_PARAMS) are present
-        ParameterValidator.validate_required_params(
+        KernelParams.validate_required_params(
             kwargs, DecompKernel.REQUIRED_PARAMS
         )
         # read error and initialize.
         eps = kwargs.pop("eps", None)  # Extract 'eps' and remove it from kwargs
-        ParameterValidator.validate_eps(eps)
+        KernelParams.validate_eps(eps)
         self.eps = eps
         # initialize base class
         super().__init__(**kwargs)

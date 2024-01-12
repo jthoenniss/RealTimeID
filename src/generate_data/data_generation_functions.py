@@ -26,7 +26,7 @@ def compute_grid_and_store(
         betas (array type): Array of inverse temperature values to be evaluated.
         params (KernelParams): An instance of KernelParams that holds the parameter set.
         h5_kernel (Hdf5Kernel): An instance of Hdf5Kernel associated with the HDF5 file for storing the results.
-        optimize (bool): If True, the values for m and n are optimized to reduce frequenc interval with addional error at most 1% of discretization error.
+        optimize (bool): If True, the values for m and n are optimized to reduce the frequency interval with addional error at most 10% of discretization error.
 
     Returns:
         None

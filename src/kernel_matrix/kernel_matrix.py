@@ -1,6 +1,6 @@
 import numpy as np
 from src.utils import common_funcs as cf
-from src.kernel_params.parameter_validator import ParameterValidator
+from src.kernel_params.kernel_params import KernelParams
 
 class KernelMatrix:
 
@@ -34,11 +34,11 @@ class KernelMatrix:
     ):
        
         # check if all parameters are valid
-        ParameterValidator.validate_m_n(m, n)
-        ParameterValidator.validate_beta(beta)
-        ParameterValidator.validate_N_max_and_delta_t(N_max, delta_t)
-        ParameterValidator.validate_h(h)
-        ParameterValidator.validate_phi(phi)
+        KernelParams.validate_m_n(m, n)
+        KernelParams.validate_beta(beta)
+        KernelParams.validate_N_max_and_delta_t(N_max, delta_t)
+        KernelParams.validate_h(h)
+        KernelParams.validate_phi(phi)
        
         # Store parameters
         self.m, self.n = m, n
