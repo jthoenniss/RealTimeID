@@ -2,8 +2,6 @@ import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.kernel_params.kernel_params import KernelParams
-from typing import Tuple
-
 
 class DiscrError(KernelMatrix):
 
@@ -181,18 +179,19 @@ class DiscrError(KernelMatrix):
 
         return rel_error_time_integrated
 
-    def optimize(self, update_params: KernelParams = None) -> "DiscrError":
+    def optimize(self, update_params: KernelParams = None, rel_error_diff = 0.1) -> "DiscrError":
         """
         Optimize the number of modes (m and n) to balance accuracy and computational cost.
         Parameters:
         - update_params (KernelParams, optional): An instance of KernelParams that holds the parameter set.
+        - rel_error_diff (float, optional): Threshold for the relative difference between the old and new error
         """
 
         nbr_freqs = len(self.fine_grid)
 
         # search for number of points one can spare in m and n without making an error that dominate the discretization error w.r.t. to continuous integration
-        m_count_final = self._optimize_mode_count(self.m, lambda mc: [0, nbr_freqs - mc])
-        n_count_final = self._optimize_mode_count(self.n, lambda nc: [nc, nbr_freqs])
+        m_count_final = self._optimize_mode_count(self.m, lambda mc: [0, nbr_freqs - mc], rel_error_diff)
+        n_count_final = self._optimize_mode_count(self.n, lambda nc: [nc, nbr_freqs], rel_error_diff)
 
         # update m,n, kernel, grids for frequency, and spectr. density, discrete integral, and eps
         self._update_reduced_kernel_and_grids(m_count_final, n_count_final)
@@ -207,7 +206,7 @@ class DiscrError(KernelMatrix):
 
         return self
 
-    def _optimize_mode_count(self, max_count, interval_idcs, error_diff_rel_threshold = 0.1):
+    def _optimize_mode_count(self, max_count, interval_idcs, rel_error_diff):
         """
         Helper method to optimize mode count (either m or n), such that the relative difference between the old and new error
         is at most 10% of the discretization error.
@@ -215,7 +214,7 @@ class DiscrError(KernelMatrix):
         Parameters:
         - max_count (int): maximal number of frequencies by which the interval can be shrinked
         - interval_icds (array): array containing the lower and upper bound of the frequency interval considered
-        - error_diff_rel_threshold (float, optional): threshold for the relative difference between the old and new error
+        - rel_error_diff (float): threshold for the relative difference between the old and new error
 
 
         Returns:
@@ -231,14 +230,14 @@ class DiscrError(KernelMatrix):
             ]
 
             #compute the relative difference between the old and new error
-            error_diff_rel = abs(eps_reduced - self.eps) / self.eps
+            error_deviation = abs(eps_reduced - self.eps) / (self.eps + eps_reduced) 
 
             # if the relative difference in errors is larger than 10% of the discretization error, return the previous count
-            if error_diff_rel > error_diff_rel_threshold:
+            if error_deviation > rel_error_diff:
                 return count - 1  # Found the optimal count
             
         # In case no optimal count is found, return the last valid count
-        return max_count - 1  
+        return max_count - 1 
 
     def _get_reduced_kernel_and_error(self, lower_idx: int, upper_idx: int) -> dict:
         """

@@ -64,32 +64,6 @@ def check_error_condition(eps_current, eps_previous):
     return False
 
 
-def update_parameters(params, updates):
-    
-    #Update grid parameters with new values.
-
-    #Parameters:
-    #- params (dict): Dictionary containing grid parameters.
-    #- updates (dict): Dictionary containing parameter names and their new values.
-
-    #Returns:
-    #- None
-    
-
-    for name, value in updates.items():
-        params[name] = value
-        if name == "h":
-            # when h is varied, also update m and n
-            params["m"] = math.ceil(15.0 / value) # with this choice, the frequency grid reaches up to 1.e6 or higher.
-            params["n"] = math.ceil(3.6 / value) # with this choice, the frequency grid reaches down to 1.e-16 or lower.
-
-    # If m and n are varied simultaneously, throw warning.
-    updated_params = set(updates.keys())
-    intersection = updated_params.intersection({"h", "m", "n"})
-    if len(intersection) > 1:
-        print(
-            f"Warning: Attempting to update the parameters {intersection} simultaneously. Double check that this is intended."
-        )
 
 
 def distr(t, x, beta: float):
