@@ -111,16 +111,17 @@ class KernelParams:
         if not isinstance(updates, dict):
             raise TypeError(f"Input must be of type dict, not {type(updates)}.")
         
+        # Check for simultaneous updates of 'h', 'm', and 'n' and issue warning if necessary
+        if "h" in updates:
+            intersection = set(updates).intersection({"m", "n"})#get intersection of keys in updates and keys "m", "n"
+            if intersection: #if intersection is not empty
+                print(f"Warning: Simultaneous updates to parameters 'h' and {intersection} detected. Please double-check for consistency.")
+
         for key, value in updates.items():
             
             self._set(key, value)#set parameter value
 
             if key == "h":  # Special handling when 'h' is updated
-                # Check for simultaneous updates to 'm' and 'n'
-                if "m" in updates or "n" in updates:
-                    intersection = set(updates).intersection({"h", "m", "n"})
-                    print(f"Warning: Simultaneous updates to parameters {intersection} detected. Please double-check for consistency.")
-
                 # Update 'm' and 'n' based on the new value of 'h'
                 self._params["m"] = math.ceil(self.get("upper_cutoff_discrete") / value) #set value of m such that is reaches up to upper_cutoff_discrete for given h
                 self._params["n"] = math.ceil(self.get("lower_cutoff_discrete") / value) #set value of n such that is reaches down to lower_cutoff_discrete for given h
