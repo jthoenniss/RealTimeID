@@ -43,22 +43,27 @@ class KernelParams:
 
         #Initialize dictionary of parameters to default values
         self._params = {
-            "m": None,
-            "n": None,
-            "N_max": None,
+            "m": 10,
+            "n": 10,
+            "N_max": 10,
             "delta_t": 0.1,
             "beta": np.inf,
             "upper_cutoff": np.inf, 
-            "upper_cutoff_discrete": 15.0, # with this choice, the frequency grid reaches up to 1.e6 or higher.
-            "lower_cutoff_discrete": 3.6, # with this choice, the frequency grid reaches down to 1.e-16 or lower.
-            "h": None,
+            "h": 0.1,
             "phi": np.pi / 4,
             "spec_dens": lambda x: 1.
         }    
-
+        
         # For those parameters that are specified as keyword arguments, update the values
         for key, value in kwargs.items():
-            self._set(key, value)
+            self.set_param(key, value)
+
+        # Set the discrete cutoffs to default values
+        #reach up to 1.e6 or higher.
+        self._upper_cutoff_discrete =  15.0
+        #reach down to 1.e-16 or lower
+        self._lower_cutoff_discrete = 3.6 
+    
 
     @property
     def params(self) -> dict:
@@ -67,7 +72,7 @@ class KernelParams:
         """
         return self._params
     
-    def get(self, key: str) -> Any:
+    def get_param(self, key: str) -> Any:
         """
         Get the value of a parameter by providing its key
         """
@@ -77,7 +82,7 @@ class KernelParams:
 
         return self._params.get(key)
     
-    def _set(self, key: str, value: Any) -> None:
+    def set_param(self, key: str, value: Any) -> None:
         """
         Set the value of a parameter by providing its key and value
         - key (str): The key of the parameter to be set
@@ -123,13 +128,35 @@ class KernelParams:
 
         for key, value in updates.items():
             
-            self._set(key, value)#set parameter value
+            self.set_param(key, value)#set parameter value
 
             if key == "h":  # Special handling when 'h' is updated
                 # Update 'm' and 'n' based on the new value of 'h'
-                self._params["m"] = math.ceil(self.get("upper_cutoff_discrete") / value) #set value of m such that is reaches up to upper_cutoff_discrete for given h
-                self._params["n"] = math.ceil(self.get("lower_cutoff_discrete") / value) #set value of n such that is reaches down to lower_cutoff_discrete for given h
+                lower_cutoff_discrete, upper_cutoff_discrete = self.get_discrete_cutoffs()
+                self.set_param("m", math.ceil(upper_cutoff_discrete / value)) #set value of m such that is reaches up to upper_cutoff_discrete for given h
+                self.set_param("n", math.ceil(lower_cutoff_discrete / value)) #set value of n such that is reaches down to lower_cutoff_discrete for given h
 
+
+    def set_discrete_cutoffs(self, lower_cutoff_discrete: float, upper_cutoff_discrete: float) -> None:
+        """
+        Set the values of the discrete cutoffs for the frequency grid.
+        - lower_cutoff_discrete (float): The lower cutoff for the frequency grid.
+        - upper_cutoff_discrete (float): The upper cutoff for the frequency grid.
+
+        Returns:
+        - None
+        """
+        self.validate_lower_cutoff_discrete(lower_cutoff_discrete)
+        self.validate_upper_cutoff_discrete(upper_cutoff_discrete)
+        
+        self._lower_cutoff_discrete = lower_cutoff_discrete
+        self._upper_cutoff_discrete = upper_cutoff_discrete
+
+    def get_discrete_cutoffs(self) -> tuple:
+        """
+        Get the values of the discrete cutoffs for the frequency grid.
+        """
+        return self._lower_cutoff_discrete, self._upper_cutoff_discrete
 
     @staticmethod
     def validate_m_n(m: int, n: int):
@@ -162,6 +189,7 @@ class KernelParams:
 
         if delta_t <= 0:
             raise ValueError(f"Attribute 'delta_t' must be positive, got {delta_t}.")
+
             
     @staticmethod
     def validate_eps(eps: float):

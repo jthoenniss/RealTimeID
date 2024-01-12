@@ -40,14 +40,14 @@ def compute_grid_and_store(
 
             # set time grid
             times = cf.set_time_grid(
-                N_max=params.get("N_max"), delta_t=params.get("delta_t")
+                N_max=params.get_param("N_max"), delta_t=params.get_param("delta_t")
             )
             # compute continous-frequency integral
             cont_integral = cf.cont_integral(
                 t=times,
-                beta=params.get("beta"),
-                upper_cutoff=params.get("upper_cutoff"),
-                spec_dens=params.get("spec_dens"),
+                beta=params.get_param("beta"),
+                upper_cutoff=params.get_param("upper_cutoff"),
+                spec_dens=params.get_param("spec_dens"),
             )
 
             for h, h_val in enumerate(h_vals):

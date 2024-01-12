@@ -1,6 +1,8 @@
 import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_params.kernel_params import KernelParams
+from typing import Tuple
+
 
 class KernelMatrix:
 
@@ -32,14 +34,13 @@ class KernelMatrix:
         phi: float,
         spec_dens: callable,
     ):
-       
         # check if all parameters are valid
         KernelParams.validate_m_n(m, n)
         KernelParams.validate_beta(beta)
         KernelParams.validate_N_max_and_delta_t(N_max, delta_t)
         KernelParams.validate_h(h)
         KernelParams.validate_phi(phi)
-       
+
         # Store parameters
         self.m, self.n = m, n
         self.beta = beta
@@ -49,31 +50,28 @@ class KernelMatrix:
         self.phi = phi
         self.spec_dens = spec_dens
 
-
-        # Initialize array attributes, will be filled in _initialize_kernel_and_grids()
-        self.times = None
-        self.fine_grid = None
-        self.k_values = None
-        self.kernel = None
-        self.spec_dens_array_cmplx = None
-
-        # Initialize kernel matrix and grids declared above
+        # Initialize kernel matrix and grids
         self._initialize_kernel_and_grids()
-    
-    
-    def _initialize_kernel_and_grids(self) -> None:
+
+    def _initialize_kernel_and_grids(
+        self,
+    ) -> None:
         """
-        (Re)compute the time grid, fine frequency grid, the kernel matrix and the vectorized spectrald density. 
+        (Re)compute the time grid, fine frequency grid, the kernel matrix and the vectorized spectrald density.
         Needed for initialization and after change of parameters.
+
+        Returns:
+        - None
         """
-        #set time grid
-        self.times = cf.set_time_grid(N_max = self.N_max, delta_t= self.delta_t)
-        #initialize frequency grid
+        # set time grid
+        self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
+        # initialize frequency grid
         self.fine_grid, self.k_values = self._initialize_fine_grid()
-        #initialize matrix kernel
+        # initialize matrix kernel
         self.kernel = self._initialize_kernel()
-        #initialize the spectral density evaluated at the grid points (rotated in complex plane)
+        # initialize the spectral density evaluated at the grid points (rotated in complex plane)
         self.spec_dens_array_cmplx = self._compute_vectorized_spec_dens()
+
 
     def _initialize_fine_grid(self) -> np.ndarray:
         """
@@ -87,7 +85,6 @@ class KernelMatrix:
         fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
         return fine_grid, k_values
 
-
     def _initialize_kernel(self) -> np.ndarray:
         """
         Creates the kernel matrix using the Fermi distribution function and spectral density.
@@ -95,26 +92,28 @@ class KernelMatrix:
         Returns:
         - np.ndarray: Kernel matrix.
         """
-        times_arr = self.times[:, np.newaxis] # enable broadcasting
+        times_arr = self.times[:, np.newaxis]  # enable broadcasting
         fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
 
         # Kernel defined by Fermi distribution
         K = cf.distr(times_arr, fine_grid_complex, self.beta)
-        K *= self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex #factors from measure
+        K *= (
+            self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex
+        )  # factors from measure
 
         return K
 
     def _compute_vectorized_spec_dens(self) -> np.ndarray:
         """
-        Helper function for vecotized computation 
+        Helper function for vecotized computation
 
         Returns:
         np.ndarray: array with values of spec_dens for all values of self.fine_grid (rotated in complex plane)
         """
-        #create numpy vectorized version of callable
+        # create numpy vectorized version of callable
         spec_dens_vectorized = np.vectorize(self.spec_dens)
 
-        return spec_dens_vectorized(self.fine_grid * np.exp(1.j * self.phi))
+        return spec_dens_vectorized(self.fine_grid * np.exp(1.0j * self.phi))
 
     def get_shared_attributes(self) -> dict:
         """
@@ -125,12 +124,28 @@ class KernelMatrix:
         Returns:
             dict: Dictionary containing all class attributes of KernelMatrix.
         """
-        base_class_attributes = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
-        
-        base_class_attrs = {key: getattr(self, key, None) for key in base_class_attributes}
+        base_class_attributes = [
+            "m",
+            "n",
+            "beta",
+            "N_max",
+            "delta_t",
+            "h",
+            "phi",
+            "times",
+            "fine_grid",
+            "k_values",
+            "kernel",
+            "spec_dens",
+            "spec_dens_array_cmplx",
+        ]
+
+        base_class_attrs = {
+            key: getattr(self, key, None) for key in base_class_attributes
+        }
 
         return base_class_attrs
-    
+
     def get_params(self):
         """
         Returns a dict containing the parameters associated with an instance of the class and stored as attributes
@@ -141,4 +156,3 @@ class KernelMatrix:
         param_dict = {key: getattr(self, key) for key in param_keys}
 
         return param_dict
-        
