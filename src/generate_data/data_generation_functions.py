@@ -12,7 +12,7 @@ from src.kernel_params.kernel_params import KernelParams
 
 
 def compute_grid_and_store(
-    h_vals, N_maxs, betas, params: KernelParams, h5_kernel: Hdf5Kernel
+    h_vals, N_maxs, betas, params: KernelParams, h5_kernel: Hdf5Kernel, optimize: bool = False
 ) -> None:
     """
     Compute discretization error and store results in an HDF5 file.
@@ -26,6 +26,7 @@ def compute_grid_and_store(
         betas (array type): Array of inverse temperature values to be evaluated.
         params (KernelParams): An instance of KernelParams that holds the parameter set.
         h5_kernel (Hdf5Kernel): An instance of Hdf5Kernel associated with the HDF5 file for storing the results.
+        optimize (bool): If True, the values for m and n are optimized to reduce frequenc interval with addional error at most 1% of discretization error.
 
     Returns:
         None
@@ -58,7 +59,9 @@ def compute_grid_and_store(
                 discr_error = DiscrError(
                     **params.params, cont_integral_init=cont_integral
                 )
-                discr_error.optimize()  # optimize values for m and n
+
+                if optimize:
+                    discr_error.optimize()  # optimize values for m and n
 
                 # Exit the loop it error is below machine precision, otherwise, append to hdf5 file
                 if discr_error.eps < 1.0e-14:
