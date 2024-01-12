@@ -33,7 +33,7 @@ class TestDiscError(unittest.TestCase):
 
     def test_initialization(self):
         
-        # Test initialization of RtDlr
+        # Test initialization of DiscrError
         self.assertEqual(self.D.m, 10)
         self.assertEqual(self.D.n, 5)
         self.assertEqual(self.D.beta, 1.0)
