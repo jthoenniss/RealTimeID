@@ -3,6 +3,7 @@ import numpy as np
 import src.utils.common_funcs as cf
 from src.discr_error.discr_error import DiscrError
 from src.kernel_params.kernel_params import KernelParams
+import math #for floor and ceiling
 
 class TestDiscError(unittest.TestCase):
     def setUp(self):
@@ -75,6 +76,69 @@ class TestDiscError(unittest.TestCase):
         D_comp = DiscrError(**params_comp)
         self.assertTrue(np.array_equal(grids_reduced["discrete_integral_reduced"], D_comp.discrete_integral_init[:]))
         self.assertTrue(np.array_equal(grids_reduced["eps_reduced"], D_comp.eps))
+
+
+    def test_optimize_mode_count(self):
+        nbr_freqs = len(self.D.fine_grid)
+        
+        #_______CASE 1: rel_error_diff = 0_______
+        #if threshold for additional error from shrinked grid is 0, 
+        #then the mode count should yield 0.
+        rel_error_diff = 0
+        m_count = self.D._optimize_mode_count(self.params_DiscrError["m"], lambda mc: [0, nbr_freqs - mc], rel_error_diff=rel_error_diff)
+        n_count = self.D._optimize_mode_count(self.params_DiscrError["m"], lambda nc: [nc, nbr_freqs], rel_error_diff=rel_error_diff)
+
+        self.assertEqual(m_count, 0)
+        self.assertEqual(n_count, 0)
+
+
+        #_______CASE 2: rel_error_diff = 1.0_______
+        #if threshold for additional error from shrinked grid is 1.0, 
+        #then the mode count should yield the maximum count m-1 or n-1, resp.
+        rel_error_diff = 1.0
+        m_count = self.D._optimize_mode_count(self.params_DiscrError["m"], lambda mc: [0, nbr_freqs - mc], rel_error_diff=rel_error_diff)
+        n_count = self.D._optimize_mode_count(self.params_DiscrError["n"], lambda nc: [nc, nbr_freqs], rel_error_diff=rel_error_diff)
+        
+        self.assertEqual(m_count, self.params_DiscrError["m"]-1)
+        self.assertEqual(n_count, self.params_DiscrError["n"]-1)
+
+
+    def test_optimize_rel_error_0(self):
+
+        #_______CASE: rel_error_diff = 0_______
+        #if threshold for additional error from shrinked grid is 0, 
+        #then 'm' and 'n' should not be changed during optimization.
+        params = KernelParams(**self.params_DiscrError)
+        rel_error_diff = 0
+        D_opt = self.D.optimize(update_params=params, rel_error_diff=rel_error_diff)
+        self.assertEqual(D_opt.m, self.params_DiscrError["m"])
+        self.assertEqual(D_opt.n, self.params_DiscrError["n"])
+
+        #check that external parameters are updated correctly
+        self.assertEqual(D_opt.m, params.get_param("m"))
+        self.assertEqual(D_opt.n, params.get_param("n"))
+        discrete_cutoffs = params.get_discrete_cutoffs()
+        self.assertEqual(D_opt.fine_grid[0], discrete_cutoffs[0])#lower discrete cutoff
+        self.assertEqual(D_opt.fine_grid[-1], discrete_cutoffs[1])#upper discrete cutoff
+
+    def test_optimize_rel_error_1(self):
+
+        #_______CASE: rel_error_diff = 1.0_______
+        #if threshold for additional error from shrinked grid is 1.0, 
+        #then 'm' and 'n' should be reduced by 1 during optimization.
+        params = KernelParams(**self.params_DiscrError)
+        rel_error_diff = 1.0
+        D_opt = self.D.optimize(update_params=params, rel_error_diff=rel_error_diff)
+        self.assertEqual(D_opt.m, 1)
+        self.assertEqual(D_opt.n, 1)
+        
+        #check that external parameters are updated correctly
+        self.assertEqual(D_opt.m, params.get_param("m"))
+        self.assertEqual(D_opt.n, params.get_param("n"))
+        discrete_cutoffs = params.get_discrete_cutoffs()
+        self.assertEqual(D_opt.fine_grid[0], discrete_cutoffs[0])#lower discrete cutoff
+        self.assertEqual(D_opt.fine_grid[-1], discrete_cutoffs[1])#upper discrete cutoff
+
 
 if __name__ == "__main__":
     unittest.main()
