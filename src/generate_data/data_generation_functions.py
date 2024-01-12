@@ -64,7 +64,7 @@ def compute_grid_and_store(
                     discr_error.optimize()  # optimize values for m and n
 
                 # Exit the loop it error is below machine precision, otherwise, append to hdf5 file
-                if discr_error.eps < 1.0e-14:
+                if discr_error.eps < 1.0e-16:
                     break
                 else:
                     # create DlrKernel object based on DiscrError object
