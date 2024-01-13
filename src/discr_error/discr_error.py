@@ -209,7 +209,7 @@ class DiscrError(KernelMatrix):
         return self
     
 
-    
+
 
     def _update_external_params(self, update_params: KernelParams) -> None:
         """
@@ -227,7 +227,7 @@ class DiscrError(KernelMatrix):
         update_params.update_parameters({"m": self.m,"n": self.n})
 
         # update discrete cutoffs in external KernelParams object
-        w_min, w_max = self.fine_grid[0], self.fine_grid[-1]#
+        w_min, w_max = self.fine_grid[0], self.fine_grid[-1]
         lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
         upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
         update_params.set_discrete_cutoffs(lower_cutoff_argument_discrete=lower_cutoff_argument_discrete, upper_cutoff_argument_discrete=upper_cutoff_argument_discrete)
