@@ -57,7 +57,7 @@ class TestKernelMatrix(unittest.TestCase):
     def test_spec_dens_array(self):
         # Check for a nontrival function that spectral density (e.g. x**2) is correctly computed
         params_comp = self.params_KernelMatrix.copy()
-        params_comp["spec_dens"] = lambda x: x**2
+        params_comp["spec_dens"] = lambda x: np.exp(-x**2)
 
         K_comp = KernelMatrix(**params_comp)
         spec_dens_array = K_comp.spec_dens_array_cmplx

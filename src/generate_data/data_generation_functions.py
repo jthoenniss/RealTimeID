@@ -12,7 +12,7 @@ from src.kernel_params.kernel_params import KernelParams
 
 
 def compute_grid_and_store(
-    h_vals, N_maxs, betas, params: KernelParams, h5_kernel: Hdf5Kernel, optimize: bool = False
+    h_vals, N_maxs, betas, params: KernelParams, h5_kernel: Hdf5Kernel, optimize: bool = False, rel_error_diff: float = None
 ) -> None:
     """
     Compute discretization error and store results in an HDF5 file.
@@ -26,17 +26,17 @@ def compute_grid_and_store(
         betas (array type): Array of inverse temperature values to be evaluated.
         params (KernelParams): An instance of KernelParams that holds the parameter set.
         h5_kernel (Hdf5Kernel): An instance of Hdf5Kernel associated with the HDF5 file for storing the results.
-        optimize (bool): If True, the values for m and n are optimized to reduce the frequency interval with addional error at most 10% of discretization error.
-
+        optimize (bool, optional): If True, the values for m and n are optimized to reduce the frequency interval with addional error at most rel_error_diff of discretization error.
+        rel_error_diff (float, optional): If optimize is True, this is the relative error difference that is allowed between the optimized and unoptimized values for m and n. If not set, default value defined in function 'optimize'.
     Returns:
         None
 
     """
     for b, beta in enumerate(betas):
+        params.update_parameters({"beta": beta})
+
         for tau, N_max in enumerate(N_maxs):
-            # update parameters
             params.update_parameters({"N_max": N_max})
-            params.update_parameters({"beta": beta})
 
             # set time grid
             times = cf.set_time_grid(
@@ -51,6 +51,7 @@ def compute_grid_and_store(
             )
 
             for h, h_val in enumerate(h_vals):
+
                 params.update_parameters(
                     {"h": h_val}
                 )  # this automatically updates "m" and "n".
@@ -61,13 +62,11 @@ def compute_grid_and_store(
                 )
 
                 if optimize:
-                    discr_error.optimize()  # optimize values for m and n
+                    discr_error.optimize(rel_error_diff=rel_error_diff)  # optimize values for m and n
 
-                # Exit the loop it error is below machine precision, otherwise, append to hdf5 file
-                if discr_error.eps < 1.0e-16:
-                    break
-                else:
-                    # create DlrKernel object based on DiscrError object
-                    kernel = DlrKernel(discr_error)
-                    # store to hdf5 file
-                    h5_kernel.append_kernel_element(kernel, (h, tau, b))
+               
+                # create DlrKernel object based on DiscrError object
+                kernel = DlrKernel(discr_error)
+                # store to hdf5 file
+                h5_kernel.append_kernel_element(kernel, (h, tau, b))
+            

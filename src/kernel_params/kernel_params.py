@@ -4,6 +4,8 @@ from typing import Any #for type hinting
 
 class KernelParams:
     MAX_EPS = 1.0
+    UPPER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT = 15.
+    LOWER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT = 3.5
     """
     A class designed to encapsulate and manage parameters essential for specifying a kernel matrix
     and its associated continuous integration results.
@@ -21,8 +23,8 @@ class KernelParams:
         - delta_t (float): Time step for the time grid.
         - beta (float): Inverse temperature, a crucial thermodynamic parameter.
         - upper_cutoff (float): Frequency cutoff for continuous integrations.
-        - upper_cutoff_discrete (float): Frequency cutoff for discrete integrations.
-        - lower_cutoff_discrete (float): Frequency cutoff for discrete integrations.
+        - upper_cutoff_argument_discrete (float): Frequency cutoff for discrete integrations.
+        - lower_cutoff_argument_discrete (float): Frequency cutoff for discrete integrations.
         - h (float): Discretization parameter, influencing frequency grid resolution.
         - phi (float): Rotation angle in the complex frequency plane.
         - spec_dens (callable): Single-parameter function returning the spectral density.
@@ -40,7 +42,7 @@ class KernelParams:
     """
     
     def __init__(self, **kwargs):
-
+        
         #Initialize dictionary of parameters to default values
         self._params = {
             "m": 10,
@@ -56,14 +58,11 @@ class KernelParams:
         
         # For those parameters that are specified as keyword arguments, update the values
         for key, value in kwargs.items():
-            self.set_param(key, value)
+            self._set_param(key, value)
 
-        # Set the discrete cutoffs to default values
-        #reach up to 1.e6 or higher.
-        self._upper_cutoff_discrete =  15.0
-        #reach down to 1.e-16 or lower
-        self._lower_cutoff_discrete = 3.6 
-    
+
+        # Set the cutoff arguments for the discrete integrals to default value:    
+        self.set_discrete_cutoffs()
 
     @property
     def params(self) -> dict:
@@ -71,6 +70,8 @@ class KernelParams:
         Return the dictionary of parameters that are stored as attributes
         """
         return self._params
+    
+
     
     def get_param(self, key: str) -> Any:
         """
@@ -82,7 +83,7 @@ class KernelParams:
 
         return self._params.get(key)
     
-    def set_param(self, key: str, value: Any) -> None:
+    def _set_param(self, key: str, value: Any) -> None:
         """
         Set the value of a parameter by providing its key and value
         - key (str): The key of the parameter to be set
@@ -128,35 +129,42 @@ class KernelParams:
 
         for key, value in updates.items():
             
-            self.set_param(key, value)#set parameter value
+            self._set_param(key, value)#set parameter value
 
             if key == "h":  # Special handling when 'h' is updated
                 # Update 'm' and 'n' based on the new value of 'h'
-                lower_cutoff_discrete, upper_cutoff_discrete = self.get_discrete_cutoffs()
-                self.set_param("m", math.ceil(upper_cutoff_discrete / value)) #set value of m such that is reaches up to upper_cutoff_discrete for given h
-                self.set_param("n", math.ceil(lower_cutoff_discrete / value)) #set value of n such that is reaches down to lower_cutoff_discrete for given h
+                lower_cutoff_argument_discrete, upper_cutoff_argument_discrete = self.get_discrete_cutoffs()
+                self._set_param("m", math.ceil(upper_cutoff_argument_discrete / value)) 
+                self._set_param("n", math.ceil(lower_cutoff_argument_discrete / value)) 
 
-
-    def set_discrete_cutoffs(self, lower_cutoff_discrete: float, upper_cutoff_discrete: float) -> None:
+    def set_discrete_cutoffs(self, lower_cutoff_argument_discrete: float = None, upper_cutoff_argument_discrete: float = None) -> None:
         """
         Set the values of the discrete cutoffs for the frequency grid.
-        - lower_cutoff_discrete (float): The lower cutoff for the frequency grid.
-        - upper_cutoff_discrete (float): The upper cutoff for the frequency grid.
+        - lower_cutoff_argument_discrete (float, optional): The lower cutoff for the frequency grid.
+        - upper_cutoff_argument_discrete (float, optional): The upper cutoff for the frequency grid.
 
         Returns:
         - None
         """
-        self.validate_lower_cutoff_discrete(lower_cutoff_discrete)
-        self.validate_upper_cutoff_discrete(upper_cutoff_discrete)
-        
-        self._lower_cutoff_discrete = lower_cutoff_discrete
-        self._upper_cutoff_discrete = upper_cutoff_discrete
+        #Choose w, such that exp(-w - exp(w)) = 1.e-16 or lower
+        if lower_cutoff_argument_discrete is not None:
+            self.validate_lower_cutoff_argument_discrete(lower_cutoff_argument_discrete)
+            self._lower_cutoff_argument_discrete = lower_cutoff_argument_discrete
+        else:
+            self._lower_cutoff_argument_discrete = KernelParams.LOWER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT
+
+        #Choose w, such that exp(w - exp(-w)) = 1.e6 or higher
+        if upper_cutoff_argument_discrete is not None:   
+            self.validate_upper_cutoff_argument_discrete(upper_cutoff_argument_discrete)
+            self._upper_cutoff_argument_discrete = upper_cutoff_argument_discrete
+        else:
+            self._upper_cutoff_argument_discrete = KernelParams.UPPER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT  
 
     def get_discrete_cutoffs(self) -> tuple:
         """
         Get the values of the discrete cutoffs for the frequency grid.
         """
-        return self._lower_cutoff_discrete, self._upper_cutoff_discrete
+        return self._lower_cutoff_argument_discrete, self._upper_cutoff_argument_discrete
 
     @staticmethod
     def validate_m_n(m: int, n: int):
@@ -212,14 +220,14 @@ class KernelParams:
             raise ValueError(f"'upper_cutoff' must be a positive number, got {upper_cutoff}")
         
     @staticmethod  
-    def validate_upper_cutoff_discrete(upper_cutoff_discrete: float):
-        if not isinstance(upper_cutoff_discrete, (float, int)) or upper_cutoff_discrete <= 0:
-            raise ValueError(f"'upper_cutoff' must be a positive number, got {upper_cutoff_discrete}")
+    def validate_upper_cutoff_argument_discrete(upper_cutoff_argument_discrete: float):
+        if not isinstance(upper_cutoff_argument_discrete, (float, int)) or upper_cutoff_argument_discrete <= 0:
+            raise ValueError(f"'upper_cutoff' must be a positive number, got {upper_cutoff_argument_discrete}")
         
     @staticmethod  
-    def validate_lower_cutoff_discrete(lower_cutoff_discrete: float):
-        if not isinstance(lower_cutoff_discrete, (float, int)) or lower_cutoff_discrete <= 0:
-            raise ValueError(f"'lower_cutoff' must be a positive number, got {lower_cutoff_discrete}")
+    def validate_lower_cutoff_argument_discrete(lower_cutoff_argument_discrete: float):
+        if not isinstance(lower_cutoff_argument_discrete, (float, int)) or lower_cutoff_argument_discrete <= 0:
+            raise ValueError(f"'lower_cutoff' must be a positive number, got {lower_cutoff_argument_discrete}")
         
 
     @staticmethod

@@ -2,6 +2,7 @@ import numpy as np
 from src.utils import common_funcs as cf
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.kernel_params.kernel_params import KernelParams
+import scipy.special as sp # for lambertw
 
 class DiscrError(KernelMatrix):
 
@@ -179,15 +180,18 @@ class DiscrError(KernelMatrix):
 
         return rel_error_time_integrated
 
-    def optimize(self, update_params: KernelParams = None, rel_error_diff = 0.1) -> "DiscrError":
+    def optimize(self, update_params: KernelParams = None, rel_error_diff: float  = 1.e-16) -> "DiscrError":
         """
         Optimize the number of modes (m and n) to balance accuracy and computational cost.
         Parameters:
         - update_params (KernelParams, optional): An instance of KernelParams that holds the parameter set.
         - rel_error_diff (float, optional): Threshold for the relative difference between the old and new error
         """
-
         nbr_freqs = len(self.fine_grid)
+
+        #temporarily store current variables to compare to optimizd variables
+        freq_limits_prev =  (self.fine_grid[0], self.fine_grid[-1])
+        eps_prev = self.eps
 
         # search for number of points one can spare in m and n without making an error that dominate the discretization error w.r.t. to continuous integration
         m_count_final = self._optimize_mode_count(self.m, lambda mc: [0, nbr_freqs - mc], rel_error_diff)
@@ -196,15 +200,34 @@ class DiscrError(KernelMatrix):
         # update m,n, kernel, grids for frequency, and spectr. density, discrete integral, and eps
         self._update_reduced_kernel_and_grids(m_count_final, n_count_final)
 
-        if update_params is not None:  # update the parameters
+        if update_params is not None:  
+            #Update the parameters and determine finite limits for discrete integral,
+            #such that one does not need to seach from large grid everytime
+            #Attention: When going from large to small errors, the limits determined in a previous calculation might not be sufficient in order to obtain a smaller error.
+            #update lower and upper discrete cutoff
     
             # update parameters in external KernelParams object
             update_params.update_parameters({"m": self.m,"n": self.n})
 
-            #update lower and upper discrete cutoff
-            update_params.set_discrete_cutoffs(lower_cutoff_discrete=self.fine_grid[0], upper_cutoff_discrete=self.fine_grid[-1])
+            # update discrete cutoffs in external KernelParams object
+            w_min, w_max = self.fine_grid[0], self.fine_grid[-1]#
+            lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
+            upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
+            update_params.set_discrete_cutoffs(lower_cutoff_argument_discrete=lower_cutoff_argument_discrete, upper_cutoff_argument_discrete=upper_cutoff_argument_discrete)
+            
+        #uncomment to print optimization results
+        self._print_optimization_results(freq_limits_prev, eps_prev)
 
         return self
+
+
+    def _print_optimization_results(self,freq_limits_prev, eps_prev):
+            """
+            Helper method to print the results of the optimization
+            """
+            print(f"For h={np.format_float_scientific(self.h, precision=3)}, beta={np.round(self.beta, 2)}, T_max={np.round(self.N_max*self.delta_t, 2)}: Changed frequency limits from [{np.format_float_scientific(freq_limits_prev[0], precision=2)}, {np.format_float_scientific(freq_limits_prev[1], precision=2)}] to [{np.format_float_scientific(self.fine_grid[0], precision=2)}, {np.format_float_scientific(self.fine_grid[-1], precision=2)}].")
+            print(f"Relative error previously: {np.format_float_scientific(eps_prev, precision=2)}, now: {np.format_float_scientific(self.eps, precision=2)}.")
+
 
     def _optimize_mode_count(self, max_count, interval_idcs, rel_error_diff):
         """
@@ -224,18 +247,15 @@ class DiscrError(KernelMatrix):
            
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
             
-            # Compute kernel and spec_dens_array on reduced frequency grid
+            # Compute the error between the old and new dsicrete integral
             eps_reduced = self._get_reduced_kernel_and_error(lower_idx, upper_idx)[
                 "eps_reduced"
             ]
 
-            #compute the relative difference between the old and new error
-            error_deviation = abs(eps_reduced - self.eps) / (self.eps + eps_reduced) 
-
-            # if the relative difference in errors is larger than 10% of the discretization error, return the previous count
-            if error_deviation > rel_error_diff:
+            if eps_reduced / self.eps > rel_error_diff:
                 return count - 1  # Found the optimal count
-            
+      
+                    
         # In case no optimal count is found, return the last valid count
         return max_count - 1 
 
@@ -259,12 +279,12 @@ class DiscrError(KernelMatrix):
         discrete_integral_reduced = self.discrete_integral(
             kernel=kernel_reduced, spec_dens_array_cmplx=spec_dens_array_cmplx_reduced
         )
-        # compute relative error between the discrete integral approximation with current m and n and continuous integral
+        # compute relative error between the discrete integral approximation with current m and n and the discrete integral with previous m and n
         eps_reduced = self.error_time_integrated(
-            time_series_exact=self.cont_integral_init,
+            time_series_exact=self.discrete_integral_init,
             time_series_approx=discrete_integral_reduced,
         )
-
+   
         return {
             "kernel_reduced": kernel_reduced,
             "spec_dens_array_cmplx_reduced": spec_dens_array_cmplx_reduced,
@@ -302,8 +322,9 @@ class DiscrError(KernelMatrix):
             "spec_dens_array_cmplx_reduced"
         ]
         self.discrete_integral_init = new_kernel_and_grids["discrete_integral_reduced"]
-        self.eps = new_kernel_and_grids["eps_reduced"]
-
+        # update error between discrete and continuos integral  (both stored as attributes)
+        self.eps =  self.error_time_integrated()
+   
         # update frequency grid and k values
         self.fine_grid = self.fine_grid[n_count : nbr_freqs - m_count]
         self.k_values = self.k_values[n_count : nbr_freqs - m_count]

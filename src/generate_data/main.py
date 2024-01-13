@@ -19,7 +19,7 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    h_vals = np.logspace(-0.2, -2, 15)
+    h_vals = np.logspace(-2, -.2, 15)
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
     N_maxs = list(map(int, np.logspace(1, 2, 10)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
@@ -39,6 +39,6 @@ if __name__ == "__main__":
     params = KernelParams()
     # compute data and write to file
     compute_grid_and_store(
-        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=h5_kernel, optimize=True
+        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=h5_kernel, optimize=True, rel_error_diff=1.e-16
     )
 
