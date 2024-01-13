@@ -201,24 +201,36 @@ class DiscrError(KernelMatrix):
         self._update_reduced_kernel_and_grids(m_count_final, n_count_final)
 
         if update_params is not None:  
-            #Update the parameters and determine finite limits for discrete integral,
-            #such that one does not need to seach from large grid everytime
-            #Attention: When going from large to small errors, the limits determined in a previous calculation might not be sufficient in order to obtain a smaller error.
-            #update lower and upper discrete cutoff
-    
-            # update parameters in external KernelParams object
-            update_params.update_parameters({"m": self.m,"n": self.n})
+            self._update_external_params(update_params)
 
-            # update discrete cutoffs in external KernelParams object
-            w_min, w_max = self.fine_grid[0], self.fine_grid[-1]#
-            lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
-            upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
-            update_params.set_discrete_cutoffs(lower_cutoff_argument_discrete=lower_cutoff_argument_discrete, upper_cutoff_argument_discrete=upper_cutoff_argument_discrete)
-            
         #uncomment to print optimization results
         self._print_optimization_results(freq_limits_prev, eps_prev)
 
         return self
+    
+
+    
+
+    def _update_external_params(self, update_params: KernelParams) -> None:
+        """
+        Update the external KernelParams object and determine finite limits for discrete integral,
+        such that one does not need to seach from large grid everytime
+        Attention: When going from large to small errors, the limits determined in a previous calculation might not be sufficient in order to obtain a smaller error.
+
+        Parameters:
+        - update_params (KernelParams): An instance of KernelParams that holds the parameter set.
+
+        Returns:
+        - None
+        """
+        # update parameters in external KernelParams object
+        update_params.update_parameters({"m": self.m,"n": self.n})
+
+        # update discrete cutoffs in external KernelParams object
+        w_min, w_max = self.fine_grid[0], self.fine_grid[-1]#
+        lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
+        upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
+        update_params.set_discrete_cutoffs(lower_cutoff_argument_discrete=lower_cutoff_argument_discrete, upper_cutoff_argument_discrete=upper_cutoff_argument_discrete)
 
 
     def _print_optimization_results(self,freq_limits_prev, eps_prev):
