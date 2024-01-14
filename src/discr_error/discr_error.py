@@ -259,7 +259,7 @@ class DiscrError(KernelMatrix):
            
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
             
-            # Compute the error between the old and new dsicrete integral
+            # Compute the error between the old and new discrete integral
             eps_reduced = self._get_reduced_kernel_and_error(lower_idx, upper_idx)[
                 "eps_reduced"
             ]
@@ -334,7 +334,10 @@ class DiscrError(KernelMatrix):
             "spec_dens_array_cmplx_reduced"
         ]
         self.discrete_integral_init = new_kernel_and_grids["discrete_integral_reduced"]
-        # update error between discrete and continuos integral  (both stored as attributes)
+
+        # update error between discrete and continuos integral, both stored as attributes
+        # (comment: don't use new_kernel_and_grids["eps_reduced"] here because that is the error between the new and the old DISCRETE integral
+        # and not between the new discrete integral and the continuous integral)
         self.eps =  self.error_time_integrated()
    
         # update frequency grid and k values

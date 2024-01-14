@@ -116,6 +116,7 @@ class Hdf5Kernel:
                 grid_point_group.attrs[key] = value
 
             # Store all kernel-related quantities except for those already stored as attributes
+            #and except for the spectral density which is a callable function
             for key, value in vars(kernel_object).items():
                 if key not in ("kernel", "spec_dens") and key not in param_keys:
                     grid_point_group.create_dataset(key, data=value)

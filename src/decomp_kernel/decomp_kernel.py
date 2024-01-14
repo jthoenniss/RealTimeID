@@ -183,4 +183,58 @@ class DecompKernel(KernelMatrix):
         param_dict["eps"] = getattr(self, "eps")#add parameters for eps which does not exist in base class KernelMatrix.
 
         return param_dict
+    
+
+    def get_projection_matrix(self):
+        """
+        Compute the projection matrix needed to compute effective couplings
+        """
+        P = np.hstack([np.eye(self.ID_rank), self.proj])[
+            :, np.argsort(self.idx)
+        ]  # projection matrix
+
+        return P
+    
+    def coupl_eff(self):
+        """
+        Compute effective couplings: multiply vector of spectral density at fine grid points with projection matrix P.
+        """
+        P = self.get_projection_matrix()
+        coupl_eff = P @ self.spec_dens_array_cmplx
+        return coupl_eff
+    
+
+    def reconstr_interp_matrix(self):
+        """
+        Parameters:
+
+        Returns:
+        2D matrix with np.complex_: ID reconstructed matrix
+        """
+
+        # __reconstruct kernel matrix__:
+        B = sli.reconstruct_skel_matrix(self.kernel, self.ID_rank, self.idx)
+        # reconstructed kernelmatrix:
+        kernel_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
+
+        return kernel_reconstr
+    
+    def reconstruct_propagator(self):
+        """
+        Reconstructs the propagator from the ID approximation.
+
+        Args:
+        - None
+
+        Returns:
+        - np.ndarray: Reconstructed propagator.
+
+        """
+
+        # Reconstruct the kernel matrix from the ID approximation
+        K_reconstr = self.reconstr_interp_matrix()  
+        # Reconstruct the propagator from the reconstructed kernel matrix
+        G_reconstr = K_reconstr @ self.spec_dens_array_cmplx
+
+        return G_reconstr
 

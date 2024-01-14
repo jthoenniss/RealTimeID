@@ -4,7 +4,7 @@ import numpy as np
 # Import Custom Modules
 from src.utils.module_utils.all_custom_modules import (
     DiscrError,
-    DlrKernel,
+    DecompKernel,
     cf,
     Hdf5Kernel,
 )  # Consolidated custom modules import
@@ -64,9 +64,16 @@ def compute_grid_and_store(
                 if optimize:
                     discr_error.optimize(rel_error_diff=rel_error_diff)  # optimize values for m and n
 
-               
+                cont_integral = discr_error.cont_integral_init
                 # create DlrKernel object based on DiscrError object
-                kernel = DlrKernel(discr_error)
+                decomp_kernel = DecompKernel(discr_error)
+
+                # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
+                propagator_reconstr = decomp_kernel.reconstruct_propagator()
+                eps = discr_error.error_time_integrated(time_series_approx=propagator_reconstr)
+            
+                print(f"Discretization error: {discr_error.eps:.2e}, reconstruction error: {eps:.2e}.")
+
                 # store to hdf5 file
-                h5_kernel.append_kernel_element(kernel, (h, tau, b))
+                h5_kernel.append_kernel_element(decomp_kernel, (h, tau, b))
             
