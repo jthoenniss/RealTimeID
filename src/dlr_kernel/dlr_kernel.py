@@ -80,7 +80,7 @@ class DlrKernel(DecompKernel):
 
             # in the relative error, the time steps cancels out and is thus not needed.
             error_rel = np.sum(abs(propag_exact - G_reconstr)) / np.sum(
-                abs(propag_exactgit ) + abs(G_reconstr)
+                abs(propag_exact) + abs(G_reconstr)
             )
 
             yield error_rel
