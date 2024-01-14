@@ -55,30 +55,32 @@ class DlrKernel(DecompKernel):
 
         return kernel_reconstr
 
-    def reconstruct_propag(self, compute_error=False):
+    def reconstruct_propag(self, compute_error=False, times_series_exact: np.ndarray = None):
         """
         Reconstruct the propagator with ID approximation. Optionally also compute error to original propagator
         Parameters:
-        compute_error (bool): flag that decides wheather the relative time-integrated error to original propagator is computed
-
+        - compute_error (bool): flag that decides wheather the relative time-integrated error to original propagator is computed
+        - time_series_exact (np.ndarray): exact time series of propagator (only needed if compute_error is set to 'True'
         Returns:
         - np.array(np.complex_): propagator at all time points of fine grid
         - float: relative error between original and reconstructed Green's function [only if compute_error flag is set to 'True']
         """
         K_reconstr = self.reconstr_interp_matrix()  # ID-reconstructed kernel matrix
-        Gamma = self.spec_dens_array_cmplx  # spectral density evaluated on fine grid points
+
 
         # yields the propagators where the array elements correspond to the different time points:
-        G_reconstr = K_reconstr @ Gamma
+        G_reconstr = K_reconstr @ self.spec_dens_array_cmplx
 
         yield G_reconstr  # return reconstructed Green's function
 
         if compute_error:  # evaluate error if flag is true
-            G_orig = self.kernel @ Gamma
+            
+            # use argument 'times_series_exact' if given, otherwise use orginial discrete approximation as reference
+            propag_exact = times_series_exact if times_series_exact is not None else self.kernel @ self.spec_dens_array_cmplx
 
             # in the relative error, the time steps cancels out and is thus not needed.
-            error_rel = np.sum(abs(G_orig - G_reconstr)) / np.sum(
-                abs(G_orig) + abs(G_reconstr)
+            error_rel = np.sum(abs(propag_exact - G_reconstr)) / np.sum(
+                abs(propag_exactgit ) + abs(G_reconstr)
             )
 
             yield error_rel
