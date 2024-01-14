@@ -62,7 +62,7 @@ class TestKernelMatrix(unittest.TestCase):
         K_comp = KernelMatrix(**params_comp)
         spec_dens_array = K_comp.spec_dens_array_cmplx
         fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)
-        spec_dens_array_check = np.array([x**2 for x in fine_grid_complex])
+        spec_dens_array_check = np.array([np.exp(-x**2) for x in fine_grid_complex])
         self.assertTrue(np.array_equal(spec_dens_array, spec_dens_array_check))
 
 

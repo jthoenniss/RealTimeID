@@ -74,8 +74,11 @@ class TestDiscError(unittest.TestCase):
         params_comp["m"] =  6
         params_comp["n"] = 3
         D_comp = DiscrError(**params_comp)
-        self.assertTrue(np.array_equal(grids_reduced["discrete_integral_reduced"], D_comp.discrete_integral_init[:]))
-        self.assertTrue(np.array_equal(grids_reduced["eps_reduced"], D_comp.eps))
+        self.assertTrue(np.allclose(grids_reduced["discrete_integral_reduced"], D_comp.discrete_integral_init[:]))
+
+        #grids_reduced["eps_reduced"] is the relative error between the reduced and the orginial discretized 
+        eps_comp = D_comp.error_time_integrated(time_series_exact = self.D.discrete_integral_init)
+        self.assertTrue(np.allclose(grids_reduced["eps_reduced"],eps_comp))
 
 
     def test_optimize_mode_count(self):
@@ -92,10 +95,10 @@ class TestDiscError(unittest.TestCase):
         self.assertEqual(n_count, 0)
 
 
-        #_______CASE 2: rel_error_diff = 1.0_______
-        #if threshold for additional error from shrinked grid is 1.0, 
+        #_______CASE 2: rel_error_diff = np.inf_______
+        #if threshold for additional error from shrinked grid is np.inf, 
         #then the mode count should yield the maximum count m-1 or n-1, resp.
-        rel_error_diff = 1.0
+        rel_error_diff = np.inf
         m_count = self.D._optimize_mode_count(self.params_DiscrError["m"], lambda mc: [0, nbr_freqs - mc], rel_error_diff=rel_error_diff)
         n_count = self.D._optimize_mode_count(self.params_DiscrError["n"], lambda nc: [nc, nbr_freqs], rel_error_diff=rel_error_diff)
         
@@ -118,16 +121,17 @@ class TestDiscError(unittest.TestCase):
         self.assertEqual(D_opt.m, params.get_param("m"))
         self.assertEqual(D_opt.n, params.get_param("n"))
         discrete_cutoffs = params.get_discrete_cutoffs()
-        self.assertEqual(D_opt.fine_grid[0], discrete_cutoffs[0])#lower discrete cutoff
-        self.assertEqual(D_opt.fine_grid[-1], discrete_cutoffs[1])#upper discrete cutoff
+        lowest_freq, largest_freq = np.exp(-discrete_cutoffs[0] - np.exp(discrete_cutoffs[0])), np.exp(discrete_cutoffs[1] - np.exp(-discrete_cutoffs[1]))
+        self.assertEqual(D_opt.fine_grid[0], lowest_freq)#lower discrete cutoff
+        self.assertEqual(D_opt.fine_grid[-1], largest_freq)#upper discrete cutoff
 
-    def test_optimize_rel_error_1(self):
+    def test_optimize_rel_error_inf(self):
 
-        #_______CASE: rel_error_diff = 1.0_______
-        #if threshold for additional error from shrinked grid is 1.0, 
+        #_______CASE: rel_error_diff = np.inf_______
+        #if threshold for additional error from shrinked grid is np.inf, 
         #then 'm' and 'n' should be reduced by 1 during optimization.
         params = KernelParams(**self.params_DiscrError)
-        rel_error_diff = 1.0
+        rel_error_diff = np.inf
         D_opt = self.D.optimize(update_params=params, rel_error_diff=rel_error_diff)
         self.assertEqual(D_opt.m, 1)
         self.assertEqual(D_opt.n, 1)
@@ -136,9 +140,9 @@ class TestDiscError(unittest.TestCase):
         self.assertEqual(D_opt.m, params.get_param("m"))
         self.assertEqual(D_opt.n, params.get_param("n"))
         discrete_cutoffs = params.get_discrete_cutoffs()
-        self.assertEqual(D_opt.fine_grid[0], discrete_cutoffs[0])#lower discrete cutoff
-        self.assertEqual(D_opt.fine_grid[-1], discrete_cutoffs[1])#upper discrete cutoff
-
+        lowest_freq, largest_freq = np.exp(-discrete_cutoffs[0] - np.exp(discrete_cutoffs[0])), np.exp(discrete_cutoffs[1] - np.exp(-discrete_cutoffs[1]))
+        self.assertEqual(D_opt.fine_grid[0], lowest_freq)#lower discrete cutoff
+        self.assertEqual(D_opt.fine_grid[-1], largest_freq)#upper discrete cutoff
 
 if __name__ == "__main__":
     unittest.main()
