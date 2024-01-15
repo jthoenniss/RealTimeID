@@ -281,57 +281,48 @@ class Hdf5Kernel:
             else:
                 raise KeyError(f"Group {group_name} not found in file {self._filename}.")
 
-    def read_to_array(self):
+    def read_scalars_to_array(self, keys: list) -> dict:
         """
-        Reads data from a given file and returns array for different quantities.
+        Reads data from a given file and returns a dictionary where each key corresponds to a list of data items.
 
         Args:
-        - None
+        - keys (list): List of keys for which data is to be read from the file.
 
         Returns:
-        - Tuple[dict, np.ndarray]: Tuple containing a dictionary with data arrays, corresponding to different quantities at all parameter combinations, and np.ndarray which holds the kernel dimensions.
+        - Tuple[list,dict]: first element: List containing the kernel dimensions. 
+                            second element: A dictionary where each key maps to a numpy array of scalar data items.
         """
 
-        with h5py.File(self._filename, "r") as hdf:
-            kernel_dims_flat = np.prod(self.kernel_dims)
+        kernel_dims_flat = np.prod(self.kernel_dims)
+ 
+        # Initialize dictionary to hold data to be read out
+        data_dict = {}
+        
+        for idx in range(kernel_dims_flat):
+            # Read parameters and data from file
+            params, data = self.read_kernel_element(idx=idx, isFlatIndex=True)
+            
+            for key in keys:
+                if key in params:
+                    data_read = params[key]
+                    if data_read.ndim > 0:
+                        raise ValueError(f"Parameter {key} is not a scalar.")
+                elif key in data:
+                    data_read = data[key]
+                    if data_read.ndim > 0:
+                        raise ValueError(f"Data {key} is not a scalar.")
+                else:
+                    raise KeyError(f"Key {key} not found in file {self._filename}.")
+                
+                # Append data to list in dictionary under the corresponding key
+                data_dict.setdefault(key, []).append(data_read)
 
-            errors = np.empty((kernel_dims_flat,))
-            m_vals = np.empty((kernel_dims_flat,))
-            n_vals = np.empty((kernel_dims_flat,))
-            h_vals = np.empty((kernel_dims_flat,))
-            N_maxs = np.empty((kernel_dims_flat,))
-            betas = np.empty((kernel_dims_flat,))
-            ID_ranks = np.empty((kernel_dims_flat,))
-            delta_t_vals = np.empty((kernel_dims_flat,))
+        # Convert lists to arrays
+        for key, value in data_dict.items():
+            data_dict[key] = np.array(value).reshape(self.kernel_dims)
 
-            for idx in range(kernel_dims_flat):
-                # read parameters and data from file
-                params, data = self.read_kernel_element(idx=idx, isFlatIndex=True)
-
-                ID_ranks[idx] = data["ID_rank"]
-
-                errors[idx] = params["eps"]
-                m_vals[idx] = params["m"]
-                n_vals[idx] = params["n"]
-                h_vals[idx] = params["h"]
-                betas[idx] = params["beta"]
-                N_maxs[idx] = params["N_max"]
-                delta_t_vals[idx] = params["delta_t"]
-
-        # reshape arrays to original shape when returning
-        return (
-            {
-                "errors": errors.reshape(self._kernel_dims),
-                "m_vals": m_vals.reshape(self._kernel_dims),
-                "n_vals": n_vals.reshape(self._kernel_dims),
-                "h_vals": h_vals.reshape(self._kernel_dims),
-                "betas": betas.reshape(self._kernel_dims),
-                "N_maxs": N_maxs.reshape(self._kernel_dims),
-                "ID_ranks": ID_ranks.reshape(self._kernel_dims),
-                "delta_t_vals": delta_t_vals.reshape(self._kernel_dims),
-            },
-            self.kernel_dims,
-        )
+        return self.kernel_dims, data_dict
+    
 
     def _validate_and_flatten_index(self, idx, isFlatIndex: bool):
         """

@@ -21,12 +21,12 @@ if __name__ == "__main__":
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
     h_vals = np.logspace(-2, -.2, 15)
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 2, 10)))
+    N_maxs = list(map(int, np.logspace(1, 5, 10)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
     betas = [0, 20, 100, 10000]
 
     # Define filename of hdf5 file holding the data
-    filename = f"data/filename.h5"
+    filename = f"data/delta_t=0.1_large.h5"
 
     # Create instance of Hdf5Kernel to be associated with the file
     h5_kernel = Hdf5Kernel(filename=filename)

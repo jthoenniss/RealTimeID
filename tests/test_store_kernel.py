@@ -178,7 +178,7 @@ class Test_store_kernel(unittest.TestCase):
                     
 
 
-    def test_read_to_array(self):
+    def test_read_scalars_to_array(self):
         #ToDo: Extend to test all other attributes
 
         #store an array of kernel objects
@@ -186,53 +186,26 @@ class Test_store_kernel(unittest.TestCase):
         array = np.array([[self.kernel,self.kernel],[self.kernel,self.kernel]])
         hdf_kernel.store_kernel_array(array)
     
-        #read out a single element and see if correct values are obtained
+
+        keys = ["eps", "m", "n", "h", "ID_rank", "N_max", "beta", "delta_t"]
         
-        data, kernel_dims  = hdf_kernel.read_to_array()
-
-        errors = data["errors"]
-        m_vals = data["m_vals"]
-        n_vals = data["n_vals"]
-        h_vals = data["h_vals"]
-        ID_ranks = data["ID_ranks"]
-        N_maxs = data["N_maxs"]
-        betas = data["betas"]
-        delta_t_vals = data["delta_t_vals"]
-
+        #read out single elements and see if correct values are obtained
+        kernel_dims, data = hdf_kernel.read_scalars_to_array(keys=keys)
         #check that data is equal to data directly extracted from kernel objects
-        data_comp, kernel_dims_comp = cf.create_numpy_arrays_from_kernel(array)
+        kernel_dims_comp, data_comp = cf.create_numpy_arrays_from_kernel(array)
 
-        errors_comp = data_comp["errors"]
-        m_vals_comp = data_comp["m_vals"]
-        n_vals_comp = data_comp["n_vals"]
-        h_vals_comp = data_comp["h_vals"]
-        ID_ranks_comp = data_comp["ID_ranks"]
-        N_maxs_comp = data_comp["N_maxs"]
-        betas_comp = data_comp["betas"]
-        delta_t_vals_comp = data_comp["delta_t_vals"]
-
-        self.assertTrue(np.allclose(errors, errors_comp))
-        self.assertTrue(np.allclose(m_vals, m_vals_comp))
-        self.assertTrue(np.allclose(n_vals, n_vals_comp))
-        self.assertTrue(np.allclose(h_vals, h_vals_comp))
-        self.assertTrue(np.allclose(ID_ranks, ID_ranks_comp))
-        self.assertTrue(np.allclose(N_maxs, N_maxs_comp))
-        self.assertTrue(np.allclose(betas, betas_comp))
-        self.assertTrue(np.allclose(delta_t_vals, delta_t_vals_comp))
-
+        #___Check kernel dimensions____
+        #check that kernel_dims are equivalent
         self.assertTrue(np.allclose(kernel_dims, kernel_dims_comp))
-
-        #check that data is equal to data taken from a single kernel (all kernels in the array are equivalent here)
-        self.assertTrue(np.all([val == self.kernel.eps for val in errors]))
-        self.assertTrue(np.all([val == self.kernel.m for val in m_vals]))
-        self.assertTrue(np.all([val == self.kernel.n for val in n_vals]))
-        self.assertTrue(np.all([val == self.kernel.h for val in h_vals]))
-        self.assertTrue(np.all([val == self.kernel.ID_rank for val in ID_ranks]))
-        self.assertTrue(np.all([val == self.kernel.beta for val in betas]))
-        self.assertTrue(np.all([val == self.kernel.delta_t for val in delta_t_vals]))
-        self.assertTrue(np.all([val == self.kernel.N_max for val in N_maxs]))
+        #check that they are equal to the kernel_dims specified in setUp
         self.assertTrue(np.allclose(kernel_dims, np.array([2,2])))
 
+        #_____Check data elements for keys 'keys'______
+        for key in keys:
+            #check that data is equivalent in both cases 
+            self.assertTrue(np.allclose(data[key], data_comp[key]))
+            #check that data is equal to data taken from a single kernel (all kernels in the array are equivalent here)
+            self.assertTrue(np.all([np.allclose(val, getattr(self.kernel, key)) for val in data[key]]))
     
 
     def tearDown(self):
