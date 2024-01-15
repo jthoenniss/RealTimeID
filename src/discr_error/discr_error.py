@@ -204,7 +204,7 @@ class DiscrError(KernelMatrix):
             self._update_external_params(update_params)
 
         #uncomment to print optimization results
-        self._print_optimization_results(freq_limits_prev, eps_prev)
+        #self._print_optimization_results(freq_limits_prev, eps_prev)
 
         return self
     
