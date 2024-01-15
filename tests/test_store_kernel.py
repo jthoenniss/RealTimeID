@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
 from src.decomp_kernel.decomp_kernel import DecompKernel
+from src.discr_error.discr_error import DiscrError
 from src.store_kernel.store_kernel import Hdf5Kernel
 from src.utils import common_funcs as cf
 import os
@@ -41,6 +42,7 @@ class Test_store_kernel(unittest.TestCase):
         }
 
         self.kernel = DecompKernel(**self.params_DecompKernel)
+        
 
         name_template = 'data_temp/beta={}_delta_t={}_unittest.h5'
         self._filename = name_template.format(self.params_DecompKernel["beta"], self.params_DecompKernel["delta_t"])
@@ -102,7 +104,7 @@ class Test_store_kernel(unittest.TestCase):
         for i in range (2):
             for j in range (2):
                 #append data
-                hdf_kernel.append_kernel_element(kernel_object=arr[i,j], idx = (i,j))
+                hdf_kernel.append_kernel_element(idx = (i,j), kernel_object=arr[i,j])
     
     
         #read out single elements and see if correct values are obtained
@@ -122,6 +124,58 @@ class Test_store_kernel(unittest.TestCase):
                 self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
                 self.assertTrue(np.allclose(data["spec_dens_array_cmplx"], self.kernel.spec_dens_array_cmplx))
 
+    def test_append_element_two_kernels_and_dict(self):
+        #take over parameters specified in setUp
+        params_DiscrError = self.params_DecompKernel.copy()
+        #eps not needed as parameter to initialize, remove it
+        del params_DiscrError["eps"]
+
+        #first, create DiscrError kernel 
+        kernel_discr = DiscrError(**params_DiscrError, upper_cutoff= 10)
+        #then create DecompKernel from DiscrError instance
+        kernel_decomp = DecompKernel(kernel_discr)
+
+        test_data = np.arange(10)
+        dict_supp = {"test_data": test_data}
+        
+        #store an array of kernel objects directly by feeding array
+        arr_decomp = np.array([[kernel_decomp,kernel_decomp],[kernel_decomp,kernel_decomp]])
+        arr_discr = np.array([[kernel_discr,kernel_discr],[kernel_discr,kernel_discr]])
+        arr_dict = np.array([[dict_supp,dict_supp],[dict_supp,dict_supp ]])
+
+        #create file
+        hdf_kernel = Hdf5Kernel(filename=self._filename).create_file(kernel_dims=arr_decomp.shape)
+
+        for i in range (2):
+            for j in range (2):
+                #append data: Store both kernels and a dictionary
+                hdf_kernel.append_kernel_element(idx = (i,j), kernel_object=arr_decomp[i,j], kernel_object2=arr_discr[i,j], dict_data=arr_dict[i,j])
+    
+    
+        #read out single elements and see if correct values are obtained
+        for i in range (2):
+            for j in range (2):
+                params, data  = hdf_kernel.read_kernel_element((i,j))
+     
+                #check that parameters are equal
+                for key, val in params.items():  
+                    self.assertTrue(np.allclose(val,getattr(kernel_discr,key)), f"parameters differ for key {key}: {val, self.params_DecompKernel[key]}")
+
+                #check that data is equal to data directly extracted from kernel objects
+                kernel_decomp_keys = vars(kernel_decomp).keys()
+                kernel_discr_keys = vars(kernel_discr).keys()
+
+                for key, val in data.items():  
+                    if key in kernel_decomp_keys:
+                        self.assertTrue(np.allclose(val, getattr(kernel_decomp, key)), f"Data differs for key {key}")
+                    elif key in kernel_discr_keys:
+                        self.assertTrue(np.allclose(val, getattr(kernel_discr, key)), f"Data differs for key {key}")
+                    elif key in dict_supp.keys():
+                        self.assertTrue(np.allclose(val, dict_supp.get(key)), f"Data differs for key {key}")
+                    else:
+                        raise ValueError(f"Key {key} not found in kernel objects or dictionary.")
+
+                    
 
 
     def test_read_to_array(self):

@@ -70,10 +70,8 @@ def compute_grid_and_store(
 
                 # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
                 propagator_reconstr = decomp_kernel.reconstruct_propagator()
-                eps = discr_error.error_time_integrated(time_series_approx=propagator_reconstr)
+                error_reconstr_vs_cont = discr_error.error_time_integrated(time_series_approx=propagator_reconstr)
             
-                print(f"Discretization error: {discr_error.eps:.2e}, reconstruction error: {eps:.2e}.")
-
                 # store to hdf5 file
-                h5_kernel.append_kernel_element(decomp_kernel, (h, tau, b))
+                h5_kernel.append_kernel_element((h, tau, b), kernel_object=decomp_kernel, kernel_object2=discr_error, dict_data={"error_reconstr_vs_cont": error_reconstr_vs_cont})
             

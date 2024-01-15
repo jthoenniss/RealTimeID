@@ -2,6 +2,7 @@ import numpy as np
 import h5py
 from typing import Tuple, Dict, Any  # for clear function signatures
 import os
+from src.kernel_matrix.kernel_matrix import KernelMatrix
 
 
 class Hdf5Kernel:
@@ -78,14 +79,16 @@ class Hdf5Kernel:
         self._kernel_dims = kernel_dims_array
 
     def append_kernel_element(
-        self, kernel_object, idx, isFlatIndex: bool = False
+        self, idx, kernel_object, kernel_object2 = None, dict_data = None, isFlatIndex: bool = False
     ) -> None:
         """
-        Appends a kernel to an HDF5 file. Creates a new group for the kernel object.
+        Append content one or two kernels to an HDF5 file. Creates a new group for the kernel object.
 
         Args:
-        - kernel_object: The kernel object to be appended. Must have a 'get_params' method.
         - idx (tuple or int): Index pointing to a specific point group. Tuple for multidimensional or int for flat arrays.
+        - kernel_object: The kernel object to be appended. Must have a 'get_params' method.
+        - kernel_object2 (optional): A supplementary kernel object to be appended. Must have a 'get_params' method.
+        - dict_data (optional): A dictionary containing additional data to be stored.
         - isFlatIndex (bool): Specifies whether index refers to flattened or multidimensional array.
 
         Raises:
@@ -110,16 +113,105 @@ class Hdf5Kernel:
 
             grid_point_group = hdf.create_group(group_name)
 
+            #get parameters of main kernel object
             params = kernel_object.get_params()
-            param_keys = set(params.keys())
+            #and store their respective keys in an array
+            used_keys = [*params.keys()]
+
+            #store parameters as attributes for the group
             for key, value in params.items():
                 grid_point_group.attrs[key] = value
 
-            # Store all kernel-related quantities except for those already stored as attributes
-            #and except for the spectral density which is a callable function
-            for key, value in vars(kernel_object).items():
-                if key not in ("kernel", "spec_dens") and key not in param_keys:
-                    grid_point_group.create_dataset(key, data=value)
+
+            #_______Store kernel data________:
+            #store kernel data (except 'kernel' (which may be large) and 'spec_dens' which is a callable function)
+            self._store_kernel_data(group=grid_point_group, kernel_object=kernel_object, used_keys=used_keys)
+
+
+            #_______Store supplementary kernel data (if provided)________:
+            if kernel_object2 is not None:       
+                #check that kernel objects are compatible. 
+                self._kernel_objects_compatible(kernel_main = kernel_object, kernel2 = kernel_object2)#Raises Error if not compatible.
+                #store kernel data (except 'kernel' (which may be large) and 'spec_dens' which is a callable function)
+                self._store_kernel_data(group = grid_point_group, kernel_object = kernel_object2, used_keys = used_keys)
+
+            #______Strore additional data (if provided)________:
+            # Store all additional data except for those already stored as attributes
+            if dict_data is not None:
+                #store additional data
+                self._store_dict_data(grid_point_group, dict_data, used_keys)
+
+            
+    def _kernel_objects_compatible(self, kernel_main: KernelMatrix, kernel2: KernelMatrix) -> None:
+            """
+            Check if the two kernel objects share the same base attributes
+
+            Args:
+                kernel_main (KernelMatrix): The main kernel object.
+                kernel2 (KernelMatrix): The second kernel object.
+
+            Raises:
+                ValueError: If the parameters are not equivalent for a specific key.
+
+            Returns:
+                None
+            """
+            for key, val in kernel_main.get_shared_attributes().items():
+                #check that all attributes are equivalent except for the spectral density which is a callable
+                if key != "spec_dens":
+                    #check that the attributes are equivalent
+                    if not np.allclose(val, getattr(kernel2, key)):
+                        raise ValueError(f"Attributes for kernel objects are not equivalent for key {key}: {val, getattr(kernel2, key)}.")
+                    
+                else:#check that the spectral density is equivalent for a range of frequencies
+                    test_freq_array = np.arange(-1000,1000,0.1)
+                    if not np.allclose(val(test_freq_array), getattr(kernel2, key)(test_freq_array)):
+                        raise ValueError(f"Callables for spectral density give different results on test grid: {val(test_freq_array), getattr(kernel2, key)(test_freq_array)}")
+        
+
+    def _store_kernel_data(self, group, kernel_object, used_keys):
+        """
+        Stores the data of a kernel object in the given HDF5 group.
+        """
+        #check that kernel_object is of type KernelMatrix (typically is it one of its derived classes)
+        if not isinstance(kernel_object, KernelMatrix):
+            raise TypeError(f"Supplementary kernel object must be of type KernelMatrix, got {type(kernel_object)}.")
+
+        # Store additional attributes of the kernel object
+        for key, value in vars(kernel_object).items():
+            #Store all kernel-related quantities except for those already stored 
+            #Exclude also the spectral density which is a callable function
+            #and the kernel matrix which may be a large object
+            if key not in used_keys and key not in ["kernel", "spec_dens"]:
+                group.create_dataset(key, data=value)
+                used_keys.append(key)#append key to list of used keys
+
+    def _store_dict_data(self, group, dict_data, used_keys):
+        """
+        Store dictionary data in an HDF5 group.
+
+        Args:
+            group (h5py.Group): The HDF5 group to store the data in.
+            dict_data (dict): The dictionary containing the data to be stored.
+            used_keys (list): A list of keys that have already been stored.
+
+        Raises:
+            ValueError: If `dict_data` is not a dictionary.
+
+        """
+        # Check that dict_data is a dict
+        if not isinstance(dict_data, dict):
+            raise ValueError(f"Additional data must be provided as a dictionary, got {type(dict_data)}.")
+
+        for key, value in dict_data.items():
+            # Store all kernel-related quantities except for those already stored
+            # Exclude also the spectral density which is a callable function
+            # and the kernel matrix which may be a large object
+            if key not in ("kernel", "spec_dens") and key not in used_keys:
+                group.create_dataset(key, data=value)
+                used_keys.append(key)
+
+
 
     def store_kernel_array(self, kernel_object: np.ndarray) -> None:
         """
@@ -133,7 +225,7 @@ class Hdf5Kernel:
             ValueError: If 'kernel_object' is None, not an array, or its shape does not match 'self._kernel_dims'.
         """
         if kernel_object is None or not isinstance(kernel_object, np.ndarray):
-            raise ValueError("Invalid kernel_object: Must be a non-empty NumPy array.")
+            raise ValueError("Invalid kernel_object.")
 
         # in case kernel_object is zero-dimensional, convert to 1D array with one element
         kernel_object = np.atleast_1d(kernel_object)
@@ -147,7 +239,7 @@ class Hdf5Kernel:
 
         try:
             for i, k in enumerate(kernel_flat):
-                self.append_kernel_element(kernel_object=k, idx=i, isFlatIndex=True)
+                self.append_kernel_element(idx = i, kernel_object=k, isFlatIndex=True)
         except Exception as e:
             raise RuntimeError(f"An error occurred while storing kernel data: {e}")
 
