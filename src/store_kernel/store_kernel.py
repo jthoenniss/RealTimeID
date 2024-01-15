@@ -163,48 +163,31 @@ class Hdf5Kernel:
         Returns:
             Tuple[np.ndarray, np.ndarray]: Two arrays containing dictionaries (for parameters) and DataFrames (for data correspnding to the parameters),
                 respectively. Each element corresponds to kernel data at a specific index.
+
+        Raises:
+            FileNotFoundError: If the HDF5 file does not exist.
+            KeyError: If the group with the given index does not exist.
         """
 
         with h5py.File(self._filename, "r") as hdf:
-            idx_flat = self._validate_and_flatten_index(
-                idx, isFlatIndex=isFlatIndex
-            )  # convert to 1D index after validation
+            
+            # convert to 1D index after validation
+            idx_flat = self._validate_and_flatten_index(idx, isFlatIndex=isFlatIndex)  
 
             group_name = f"grid_point.idx_{idx_flat}"
 
+            # Attempt to access the group directly
             if group_name in hdf:
-                # Attempt to access the group directly
-                grid_point_group = hdf[group_name]
-
-                # If the group is found, read its data
-                params, data = self._access_kernel_element(grid_point_group)
-                return params, data
-
+                try:
+                    grid_point_group = hdf[group_name]
+                    params, data = self._access_kernel_element(grid_point_group)
+                    return params, data
+                except Exception as e:
+                    raise RuntimeError(
+                        f"An error occurred while accessing group {group_name}: {e}"
+                    )
             else:
-                # If the group does not exist in the file, return default values.
-                params = {
-                    "N_max": 0,
-                    "beta": 0.0,
-                    "delta_t": 0.0,
-                    "eps": 0.0,
-                    "h": 0.0,
-                    "m": 0,
-                    "n": 0,
-                    "phi": 0.0,
-                }
-                data = {
-                    "ID_rank": 0,
-                    "coarse_grid": np.array([]),
-                    "fine_grid": np.array([]),
-                    "idx": np.array([]),
-                    "k_values": np.array([]),
-                    "nbr_sv_above_eps": 0,
-                    "proj": np.array([]),
-                    "singular_values": np.array([]),
-                    "times": np.array([]),
-                    "spec_dens_array_cmplx": np.array([])
-                }
-                return params, data
+                raise KeyError(f"Group {group_name} not found in file {self._filename}.")
 
     def read_to_array(self):
         """
