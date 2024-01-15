@@ -12,7 +12,13 @@ from src.kernel_params.kernel_params import KernelParams
 
 
 def compute_grid_and_store(
-    h_vals, N_maxs, betas, params: KernelParams, h5_kernel: Hdf5Kernel, optimize: bool = False, rel_error_diff: float = None
+    h_vals,
+    N_maxs,
+    betas,
+    params: KernelParams,
+    h5_kernel: Hdf5Kernel,
+    optimize: bool = False,
+    rel_error_diff: float = None,
 ) -> None:
     """
     Compute discretization error and store results in an HDF5 file.
@@ -51,10 +57,9 @@ def compute_grid_and_store(
             )
 
             for h, h_val in enumerate(h_vals):
-
                 params.update_parameters(
                     {"h": h_val}
-                )  # this automatically updates "m" and "n".
+                )  # this automatically updates "m" and "n" to reach to discrete cutoffs defined in class 'KernelParams'.
 
                 # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
                 discr_error = DiscrError(
@@ -62,16 +67,36 @@ def compute_grid_and_store(
                 )
 
                 if optimize:
-                    discr_error.optimize(rel_error_diff=rel_error_diff)  # optimize values for m and n
+                    discr_error.optimize(
+                        rel_error_diff=rel_error_diff
+                    )  # optimize values for m and n
 
-                cont_integral = discr_error.cont_integral_init
-                # create DlrKernel object based on DiscrError object
+                # create DecompKernel object which holds the kernel matrix and all associated parameters.
+                # Note: big data attributes are not copied but passed as references to the original object, avoiding memory duplication.
                 decomp_kernel = DecompKernel(discr_error)
 
                 # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
                 propagator_reconstr = decomp_kernel.reconstruct_propagator()
-                error_reconstr_vs_cont = discr_error.error_time_integrated(time_series_approx=propagator_reconstr)
-            
+
+                # compute error between reconstructed and continuous-frequency propagator
+                error_reconstr_vs_cont = discr_error.error_time_integrated(
+                    time_series_approx=propagator_reconstr
+                )
+                # compute error between reconstructed and discrete propagator
+                error_reconstr_vs_discr = discr_error.error_time_integrated(
+                    time_series_exact=propagator_reconstr
+                )
+
+                # store error data in dictionary whose content will be added to hdf5 file.
+                ID_propagator_error = {
+                    "error_reconstr_vs_cont": error_reconstr_vs_cont,
+                    "error_reconstr_vs_discr": error_reconstr_vs_discr,
+                }
+
                 # store to hdf5 file
-                h5_kernel.append_kernel_element((h, tau, b), kernel_object=decomp_kernel, kernel_object2=discr_error, dict_data={"error_reconstr_vs_cont": error_reconstr_vs_cont})
-            
+                h5_kernel.append_kernel_element(
+                    (h, tau, b),
+                    kernel_object=decomp_kernel,
+                    kernel_object2=discr_error,
+                    dict_data=ID_propagator_error,
+                )
