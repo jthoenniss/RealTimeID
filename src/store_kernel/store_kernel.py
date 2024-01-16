@@ -3,6 +3,7 @@ import h5py
 from typing import Tuple, Dict, Any  # for clear function signatures
 import os
 from src.kernel_matrix.kernel_matrix import KernelMatrix
+import re#used for sorting keys in hdf5 file
 
 
 class Hdf5Kernel:
@@ -37,6 +38,24 @@ class Hdf5Kernel:
 
         return self._kernel_dims
 
+
+    def keys(self):
+        """
+        Returns a sorted list of all keys in the file.
+        """
+        #Regular expression to sort keys based on numerical content of key names
+        def numerical_sort_key(s):
+            return [int(text) if text.isdigit() else text.lower() for text in re.split('([0-9]+)', s)]
+
+        try:
+            with h5py.File(self._filename, "r") as hdf:    
+                return sorted(list(hdf.keys()), key=numerical_sort_key)
+
+        except FileNotFoundError:
+            raise FileNotFoundError(
+                f"File {self._filename} not found. Unable to retrieve keys."
+            )
+        
     def create_file(self, kernel_dims):
         """
         Creates a new hdf5 file with the filename self._filename and sets the kernel dimensions used to convert between multiindices and scalar indices.
