@@ -1,7 +1,7 @@
 import numpy as np
 
 MAX_EXP_ARG = np.log(np.finfo(np.float64).max)
-
+MAX_FLOAT = np.finfo(np.float64).max
 
 # define a collection of vectorized spectral densities
 def spec_dens_gapless(
@@ -29,8 +29,8 @@ def spec_dens_gapless(
     #hard code sharpness
     sharpness = 50 * Gamma
 
-    safe_omega_upper = np.clip(sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG)
-    safe_omega_lower = np.clip(-sharpness * (omega - cutoff_lower), None, MAX_EXP_ARG)
+    safe_omega_upper = np.clip(sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG/2 )
+    safe_omega_lower = np.clip(-sharpness * (omega - cutoff_lower), None, MAX_EXP_ARG/2 )
 
     denominator = (1 + np.exp(safe_omega_lower)) * (1 + np.exp(safe_omega_upper))
 
