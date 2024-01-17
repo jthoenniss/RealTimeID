@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.utils import common_funcs as cf
+from src.spec_dens.spec_dens import spec_dens_gapless
 
 class TestKernelMatrix(unittest.TestCase):
     def setUp(self):
@@ -14,7 +15,7 @@ class TestKernelMatrix(unittest.TestCase):
             "delta_t": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
-            "spec_dens": lambda x: 1.
+            "spec_dens":  lambda x: spec_dens_gapless(x)
         }
         self.K = KernelMatrix(**self.params_KernelMatrix)
 

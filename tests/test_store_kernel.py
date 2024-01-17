@@ -4,6 +4,7 @@ from src.decomp_kernel.decomp_kernel import DecompKernel
 from src.discr_error.discr_error import DiscrError
 from src.store_kernel.store_kernel import Hdf5Kernel
 from src.utils import common_funcs as cf
+from src.spec_dens.spec_dens import spec_dens_gapless
 import os
 
 class Test_store_kernel(unittest.TestCase):
@@ -38,7 +39,7 @@ class Test_store_kernel(unittest.TestCase):
             "eps": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
-            "spec_dens": lambda x: 1.
+            "spec_dens": lambda x: spec_dens_gapless(x)
         }
 
         self.kernel = DecompKernel(**self.params_DecompKernel)

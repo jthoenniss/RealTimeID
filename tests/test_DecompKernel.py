@@ -3,7 +3,7 @@ import numpy as np
 import src.utils.common_funcs as cf
 from src.decomp_kernel.decomp_kernel import DecompKernel
 from src.discr_error.discr_error import DiscrError
-
+from src.spec_dens.spec_dens import spec_dens_gapless
 
 class TestDecompKernel_with_kwargs(unittest.TestCase):
     
@@ -19,7 +19,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             eps=0.1,
             h=0.2,
             phi=np.pi / 4,
-            spec_dens = lambda x: 1.
+            spec_dens = lambda x: spec_dens_gapless(x)
         )
 
     def test_initialization(self):
@@ -116,7 +116,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "h": 0.2,
             "phi": np.pi / 4,
             "upper_cutoff": 600,
-            "spec_dens": lambda x: 1.
+            "spec_dens": lambda x: spec_dens_gapless(x)
         }
         D = DiscrError(**params_DiscrError)
 
