@@ -41,7 +41,7 @@ if __name__ == "__main__":
     h5_kernel.create_file(kernel_dims=param_grid_dims)
 
     # Create instance of KernelParams to hold the parameter set (initialize with default values unless keyword arguments are specified)
-    params = KernelParams()
+    params = KernelParams(spec_dens = lambda x: spec_dens_gapless(x))
 
     print(f"Starting computation of data on parameter grid with dimensions {param_grid_dims}.")
     # compute data and write to file
