@@ -3,7 +3,7 @@ import numpy as np
 import src.utils.common_funcs as cf
 from src.discr_error.discr_error import DiscrError
 from src.kernel_params.kernel_params import KernelParams
-from src.spec_dens.spec_dens import spec_dens_gapless
+from src.spec_dens.spec_dens import spec_dens_gapless, spec_dens_gapped_sym
 
 class TestDiscError(unittest.TestCase):
     def setUp(self):
@@ -17,7 +17,7 @@ class TestDiscError(unittest.TestCase):
             "h": 0.2,
             "phi": np.pi / 4,
             "upper_cutoff" : 600,
-            "spec_dens": lambda x: spec_dens_gapless(x)
+            "spec_dens": lambda x: spec_dens_gapped_sym(x)
         }
         self.D = DiscrError(**self.params_DiscrError)
 
