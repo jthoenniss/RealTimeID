@@ -6,8 +6,8 @@ MAX_FLOAT = np.finfo(np.float64).max
 # define a collection of vectorized spectral densities
 def spec_dens_gapless(
     omega: np.ndarray,
-    cutoff_lower: float = -10.0,
-    cutoff_upper: float = 10.0,
+    cutoff_lower: float = -1.e6,
+    cutoff_upper: float = 1.e6,
     Gamma: float = 1.0,
 ) -> np.ndarray:
     """
@@ -41,8 +41,8 @@ def spec_dens_gapless(
 
 def spec_dens_gapped_sym(
     omega: np.ndarray,
-    cutoff_lower: float = 2.0,
-    cutoff_upper: float = 10.0,
+    cutoff_lower: float = .5,
+    cutoff_upper: float = 1.e6,
     Gamma: float = 1.0,
 ) -> np.ndarray:
     """
