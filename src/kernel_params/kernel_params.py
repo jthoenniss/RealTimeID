@@ -1,6 +1,7 @@
 import numpy as np
 import math  # for floor and ceiling
 from typing import Any #for type hinting
+from src.spec_dens.spec_dens import spec_dens_gapless
 
 class KernelParams:
     MAX_EPS = 1.0
@@ -53,7 +54,7 @@ class KernelParams:
             "upper_cutoff": np.inf, 
             "h": 0.1,
             "phi": np.pi / 4,
-            "spec_dens": lambda x: 1.
+            "spec_dens": lambda x: spec_dens_gapless(x)
         }    
         
         # For those parameters that are specified as keyword arguments, update the values
