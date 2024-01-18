@@ -71,6 +71,7 @@ def compute_grid_and_store(
                         rel_error_diff=rel_error_diff
                     )  # optimize values for m and n
 
+                #print(*zip( discr_error.fine_grid, discr_error.spec_dens_array_cmplx))
                 # create DecompKernel object which holds the kernel matrix and all associated parameters.
                 # Note: big data attributes are not copied but passed as references to the original object, avoiding memory duplication.
                 decomp_kernel = DecompKernel(discr_error)
