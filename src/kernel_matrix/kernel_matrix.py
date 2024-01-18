@@ -70,7 +70,7 @@ class KernelMatrix:
         # initialize matrix kernel
         self.kernel = self._initialize_kernel()
         # initialize the spectral density evaluated at the grid points (rotated in complex plane)
-        self.spec_dens_array_cmplx = self._compute_vectorized_spec_dens()
+        self.spec_dens_array_cmplx = self._compute_spec_dens_array_cmplx()
 
 
     def _initialize_fine_grid(self) -> np.ndarray:
@@ -103,7 +103,7 @@ class KernelMatrix:
 
         return K
 
-    def _compute_vectorized_spec_dens(self) -> np.ndarray:
+    def _compute_spec_dens_array_cmplx(self) -> np.ndarray:
         """
         Helper function for vecotized computation
 
@@ -111,9 +111,10 @@ class KernelMatrix:
         np.ndarray: array with values of spec_dens for all values of self.fine_grid (rotated in complex plane)
         """
         # create numpy vectorized version of callable
-        spec_dens_vectorized = np.vectorize(self.spec_dens)
+    
+        spec_dens_array_cmplx = self.spec_dens(self.fine_grid * np.exp(1.0j * self.phi))
 
-        return spec_dens_vectorized(self.fine_grid * np.exp(1.0j * self.phi))
+        return spec_dens_array_cmplx
 
     def get_shared_attributes(self) -> dict:
         """
