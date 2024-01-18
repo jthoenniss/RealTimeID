@@ -26,8 +26,8 @@ def spec_dens_gapless(
     Returns:
     scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
     """
-    #hard code sharpness
-    sharpness = 50 * Gamma
+    #hard code sharpness (chosen by hand based on experience)
+    sharpness = 10
 
     safe_omega_upper = np.clip(sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG/2 )
     safe_omega_lower = np.clip(-sharpness * (omega - cutoff_lower), None, MAX_EXP_ARG/2 )
@@ -72,9 +72,11 @@ if __name__ == "__main__":
     # plot spectral densities
     import matplotlib.pyplot as plt
 
-    x = np.linspace(-15, 15, 1000)
-    plt.plot(x, spec_dens_gapless(x), linewidth = 3, label="gapless")
-    plt.plot(x, spec_dens_gapped_sym(x), linewidth = 1.5, linestyle = 'dashed', label="gapped")
+    x = np.linspace(0,1400, 1000) #* np.exp(1j * np.pi / 4)
+    #plt.plot(x, np.real(spec_dens_gapless(x)), linewidth = 3, label="gapless", color = 'blue')
+    #plt.plot(x, np.imag(spec_dens_gapless(x)), linewidth = 3, alpha = 0.5, color = 'blue')
+    plt.plot(x, np.real(spec_dens_gapped_sym(x, cutoff_lower=1000, cutoff_upper=1.e6)), linewidth = 1.5, linestyle = 'dashed', label="gapped", color = 'red')
+    plt.plot(x, np.imag(spec_dens_gapped_sym(x, cutoff_lower=1000, cutoff_upper=1.e6)), linewidth = 1.5, linestyle = 'dashed', alpha = 0.5, color = 'red')
     plt.legend(loc = "upper right")
     plt.xlabel("Frequency " + r"$\omega$")
     plt.ylabel("Spectral density " + r"$\Gamma(\omega)$")
