@@ -108,6 +108,7 @@ def plot_modes_vs_final_time_fixed_eps(kernel_dims, data_h5: dict) -> (plt.Figur
     delta_t_vals = data_h5["delta_t"]
     ID_ranks = data_h5["ID_rank"]
 
+    nbr_mode_vals = m_vals + n_vals
 
     cmap = plt.get_cmap("Blues_r")
     cmap_reds = plt.get_cmap("Reds_r")
@@ -120,8 +121,8 @@ def plot_modes_vs_final_time_fixed_eps(kernel_dims, data_h5: dict) -> (plt.Figur
 
         
 
-    n_vals_interp = np.zeros((len(error_grid), kernel_dims[1]))
-    m_vals_interp = np.zeros((len(error_grid), kernel_dims[1]))
+    nbr_mode_vals_interp = np.zeros((len(error_grid), kernel_dims[1]))
+    
     ID_ranks_interp = np.zeros((len(error_grid), kernel_dims[1]))
 
     t_data = np.array([np.max(N_maxs[:,tau,:] * delta_t_vals[:,tau,:]) for tau in range (kernel_dims[1])])
@@ -135,62 +136,71 @@ def plot_modes_vs_final_time_fixed_eps(kernel_dims, data_h5: dict) -> (plt.Figur
     # Interpolation and plotting
     for b in range (kernel_dims[2]):
 
-        fitting_params_a = np.zeros((len(error_grid),))
+        ID_fitting_params_a = np.zeros((len(error_grid),))
+        nbr_mode_fitting_params_a = np.zeros((len(error_grid),))
 
         for tau in range (kernel_dims[1]):
             mask = errors[:,tau,b] > 0. # Mask to filter values clearly above machine precision
-            N_VALS_INTERP = DataInterp(errors[mask, tau,b], n_vals[mask, tau,b])
-            M_VALS_INTERP = DataInterp(errors[mask, tau,b], m_vals[mask, tau,b])
+            NBR_MODE_VALS_INTERP = DataInterp(errors[mask, tau,b], nbr_mode_vals[mask, tau,b])
             ID_RANKS_INTERP = DataInterp(errors[mask, tau,b], ID_ranks[mask, tau,b])
 
-            n_vals_interp[:, tau] = N_VALS_INTERP.interp(error_grid, x_scale='log')
-            m_vals_interp[:, tau] = M_VALS_INTERP.interp(error_grid, x_scale='log')
+            nbr_mode_vals_interp[:, tau] = NBR_MODE_VALS_INTERP.interp(error_grid, x_scale='log')
+
             ID_ranks_interp[:, tau] = ID_RANKS_INTERP.interp(error_grid, x_scale='log')
         
         
         for eps_iter, eps_val in enumerate(error_grid):
             label = f'${eps_val:.1e}$'  # Scientific notation for error values
             #plot only nonzero values
-            mask_m = m_vals_interp[eps_iter, :] > 0.
-            mask_n = n_vals_interp[eps_iter, :] > 0.
+            mask_nbr_mode = nbr_mode_vals_interp[eps_iter, :] > 0.
 
-            axs[b,0].plot(t_data[mask_m], m_vals_interp[eps_iter, mask_m], marker="o", linestyle="-", markersize=3, color=cmap(norm(eps_val)), label=label)
-            axs[b,1].plot(t_data[mask_n], m_vals_interp[eps_iter, mask_n], marker="o", linestyle="-", markersize=3, color=cmap(norm(eps_val)), label=label)
-            axs[b,2].plot(t_data[mask_n], ID_ranks_interp[eps_iter, mask_n], marker="o", linestyle="-", markersize=3, color=cmap(norm(eps_val)), label=label)
+            axs[b,0].plot(t_data[mask_nbr_mode], nbr_mode_vals_interp[eps_iter, mask_nbr_mode], marker="o", linestyle="-", markersize=3, color=cmap_reds(norm(eps_val)), label=label)
+            axs[b,2].plot(t_data[mask_nbr_mode], ID_ranks_interp[eps_iter, mask_nbr_mode], marker="o", linestyle="-", markersize=3, color=cmap(norm(eps_val)), label=label)
             
             #fit logarithmic curves
-            params = fit_logarithmic(t_data[mask_m][3:], ID_ranks_interp[eps_iter, mask_m][3:])
-            fitting_params_a[eps_iter] = params[0]
+            params_nbr_mode_fit = fit_logarithmic(t_data[mask_nbr_mode][:], nbr_mode_vals_interp[eps_iter, mask_nbr_mode][:])
+            nbr_mode_fitting_params_a[eps_iter] = params_nbr_mode_fit[0]
 
-            axs[b,2].plot(t_data[mask_m], log_func(t_data[mask_m], *params),  color=cmap(norm(eps_val)), linestyle = 'dotted')
-            
+            params_ID_fit = fit_logarithmic(t_data[mask_nbr_mode][3:], ID_ranks_interp[eps_iter, mask_nbr_mode][3:])
+            ID_fitting_params_a[eps_iter] = params_ID_fit[0]
+
+            axs[b,2].plot(t_data[mask_nbr_mode], log_func(t_data[mask_nbr_mode], *params_ID_fit),  color=cmap(norm(eps_val)), linestyle = 'dotted')
+            axs[b,0].plot(t_data[mask_nbr_mode], log_func(t_data[mask_nbr_mode], *params_nbr_mode_fit),  color=cmap_reds(norm(eps_val)), linestyle = 'dotted')
+
         
             #plot fitting parameters
-            axs[b,3].scatter(eps_val, params[0], marker="o",  color=cmap(norm(eps_val)), label = r'$a$')
-            #axs[b,3].scatter(eps_val, params[1], marker="o",  color=cmap_reds(norm(eps_val)), label = r'$b$')
+            axs[b,3].scatter(eps_val, params_ID_fit[0], marker="o",  color=cmap(norm(eps_val)), label = r'$a$')
+            axs[b,1].scatter(eps_val, params_nbr_mode_fit[0], marker="o",  color=cmap_reds(norm(eps_val)), label = r'$a$')
+         
+        ID_a_fitting_params= fit_logarithmic(error_grid, ID_fitting_params_a)
+        nbr_mode_a_fitting_params= fit_logarithmic(error_grid, nbr_mode_fitting_params_a)
 
-        a_fitting_params= fit_logarithmic(error_grid, fitting_params_a)
-
-        axs[b,3].plot(error_grid, log_func(error_grid,*a_fitting_params), color = 'black', linestyle = 'dashed')
+        axs[b,3].plot(error_grid, log_func(error_grid,*ID_a_fitting_params), color = 'black', linestyle = 'dashed')
+        #axs[b,1].plot(error_grid, log_func(error_grid,*nbr_mode_a_fitting_params), color = 'black', linestyle = 'dashed')
 
         axs[b, 0].set_title(r'$\beta = {}$'.format(np.max(betas[:,:,b])), loc='right', x = .4, y=0.85)
         axs[b, 1].set_title(r'$\beta = {}$'.format(np.max(betas[:,:,b])), loc='right', x = .4, y=0.85)
         axs[b, 2].set_title(r'$\beta = {}$'.format(np.max(betas[:,:,b])), loc='right', x = .4, y=0.85)
         axs[b, 2].set_title("Fitting function: \n" + r'$y = a \log (t) + b$', loc='right', x = .7, y=0.7)
-        axs[b, 3].set_title("Fitting function: \n" + r'$y = {} \log (\epsilon) {}$'.format(*np.round(a_fitting_params,2)), loc='right', x = .9, y=0.7)
+        axs[b, 0].set_title("Fitting function: \n" + r'$y = a \log (t) + b$', loc='right', x = .7, y=0.7)
+        axs[b, 3].set_title("Fitting function: \n" + r'$y = {} \log (\epsilon) {}$'.format(*np.round(ID_a_fitting_params,2)), loc='right', x = .9, y=0.7)
+        #axs[b, 1].set_title("Fitting function: \n" + r'$y = {} \log (\epsilon) {}$'.format(*np.round(nbr_mode_a_fitting_params,2)), loc='right', x = .9, y=0.7)
         
 
-        axs[b,0].set_ylabel(r'$m$')
-        axs[b,1].set_ylabel(r'$n$')
+        axs[b,0].set_ylabel(r'$m+ n$')
+        axs[b,1].set_ylabel("fitting parameter " + r'$a$')
         axs[b,2].set_ylabel('ID-rank')
         axs[b,3].set_ylabel("fitting parameter " + r'$a$')
     
 
         axs[b,0].set_xscale('log')
         axs[b,1].set_xscale('log')
+        axs[b,1].set_ylim(bottom=0)
         axs[b,2].set_xscale('log')
+        
 
         axs[b,3].set_xscale('log')
+        axs[b,3].set_ylim(bottom=0)
 
 
         
