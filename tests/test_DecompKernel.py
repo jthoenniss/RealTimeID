@@ -88,7 +88,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             "singular_values",
             "nbr_sv_above_eps",
             "spec_dens",
-            "spec_dens_array_cmplx"
+            "spec_dens_array_fine"
         }
 
         # dictionary of all class attributes
@@ -143,7 +143,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "k_values",
             "kernel",
             "spec_dens",
-            "spec_dens_array_cmplx"
+            "spec_dens_array_fine"
         ]
 
         present_keys = vars(self.dck).keys()

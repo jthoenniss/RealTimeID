@@ -21,7 +21,7 @@ class TestKernelMatrix(unittest.TestCase):
 
 
     def test_all_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine"]
 
         KernelMatrix_keys = vars(self.K).keys()
 
@@ -61,7 +61,7 @@ class TestKernelMatrix(unittest.TestCase):
         params_comp["spec_dens"] = lambda x: np.exp(-x**2)
 
         K_comp = KernelMatrix(**params_comp)
-        spec_dens_array = K_comp.spec_dens_array_cmplx
+        spec_dens_array = K_comp._compute_spec_dens_array_cmplx()
         fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)
         spec_dens_array_check = np.array([np.exp(-x**2) for x in fine_grid_complex])
         self.assertTrue(np.array_equal(spec_dens_array, spec_dens_array_check))

@@ -24,7 +24,7 @@ class TestDiscError(unittest.TestCase):
 
 
     def test_base_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_cmplx"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine"]
 
         KernelMatrix_keys = vars(self.D).keys()
 
@@ -59,13 +59,13 @@ class TestDiscError(unittest.TestCase):
 
         #check shapes
         self.assertEqual(grids_reduced["kernel_reduced"].shape, (nbr_times, upper_idx - lower_idx))
-        self.assertEqual(grids_reduced["spec_dens_array_cmplx_reduced"].shape, (upper_idx - lower_idx,))
+        self.assertEqual(grids_reduced["spec_dens_array_fine_reduced"].shape, (upper_idx - lower_idx,))
         self.assertEqual(grids_reduced["discrete_integral_reduced"].shape, (nbr_times,))
         self.assertEqual(grids_reduced["eps_reduced"].shape, ())
 
         #check that correct sub arrays are returned
         self.assertTrue(np.array_equal(grids_reduced["kernel_reduced"], self.D.kernel[:, lower_idx:upper_idx]))
-        self.assertTrue(np.array_equal(grids_reduced["spec_dens_array_cmplx_reduced"], self.D.spec_dens_array_cmplx[lower_idx:upper_idx]))
+        self.assertTrue(np.array_equal(grids_reduced["spec_dens_array_fine_reduced"], self.D.spec_dens_array_fine[lower_idx:upper_idx]))
         
         
         #______Check that the discrete integral and error are computed correctly_____

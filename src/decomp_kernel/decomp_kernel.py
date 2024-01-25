@@ -68,7 +68,7 @@ class DecompKernel(KernelMatrix):
             "idx",
             "proj",
             "coarse_grid",
-            "spec_dens_array_cmplx"
+            "spec_dens_array_fine"
         ]
 
         for member in integer_attributes:
@@ -200,7 +200,7 @@ class DecompKernel(KernelMatrix):
         Compute effective couplings: multiply vector of spectral density at fine grid points with projection matrix P.
         """
         P = self.get_projection_matrix()
-        coupl_eff = P @ self.spec_dens_array_cmplx
+        coupl_eff = P @ self.spec_dens_array_fine
         return coupl_eff
     
 
@@ -234,7 +234,7 @@ class DecompKernel(KernelMatrix):
         # Reconstruct the kernel matrix from the ID approximation
         K_reconstr = self.reconstr_interp_matrix()  
         # Reconstruct the propagator from the reconstructed kernel matrix
-        G_reconstr = K_reconstr @ self.spec_dens_array_cmplx
+        G_reconstr = K_reconstr @ self.spec_dens_array_fine
 
         return G_reconstr
 

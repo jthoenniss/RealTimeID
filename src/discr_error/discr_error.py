@@ -97,14 +97,14 @@ class DiscrError(KernelMatrix):
         )
 
     def discrete_integral(
-        self, kernel: np.ndarray = None, spec_dens_array_cmplx: np.ndarray = None
+        self, kernel: np.ndarray = None, spec_dens_array_fine: np.ndarray = None
     ) -> np.ndarray:
         """
         Computes the discrete approximation to the frequency integral at the times defined on the time grid
 
         Parameters:
         - kernel (np.ndarray, optional): Kernel matrix, where different rows correspond to different time steps, and different columns correspond to different frequencies
-        - spec_dens_array_cmplx (np.ndarray, optional): Array of spectral density values at the frequency points in the complex plane
+        - spec_dens_array_fine (np.ndarray, optional): Array of spectral density values at the frequency points in the complex plane
 
         Returns:
         - np.ndarray: Discrete approximation result to frequency integral at times on time grid
@@ -113,9 +113,9 @@ class DiscrError(KernelMatrix):
         # Use provided or default kernel and spec_dens_array
         kernel_eff = self.kernel if kernel is None else kernel
         spec_dens_array_eff_cmplx = (
-            self.spec_dens_array_cmplx
-            if spec_dens_array_cmplx is None
-            else spec_dens_array_cmplx
+            self.spec_dens_array_fine
+            if spec_dens_array_fine is None
+            else spec_dens_array_fine
         )
 
         if not isinstance(kernel_eff, np.ndarray):
@@ -129,7 +129,7 @@ class DiscrError(KernelMatrix):
             )
         if kernel_eff.shape[1] != len(spec_dens_array_eff_cmplx):
             raise RuntimeError(
-                f"Frequency dimension of 'kernel' must match length of 'spec_dens_array'. Respective values found: {kernel_eff.shape[1]}, {len(spec_dens_array_cmplx)}"
+                f"Frequency dimension of 'kernel' must match length of 'spec_dens_array'. Respective values found: {kernel_eff.shape[1]}, {len(spec_dens_array_fine)}"
             )
 
         # Sum over the frequency axis
@@ -281,15 +281,15 @@ class DiscrError(KernelMatrix):
         - upper_idx (int): upper index of frequency interval
 
         Returns:
-        - dict: dictionary containing the reduced kernel, reduced spec_dens_array_cmplx, reduced discrete integral, and reduced error
+        - dict: dictionary containing the reduced kernel, reduced spec_dens_array_fine, reduced discrete integral, and reduced error
         """
-        # compute reduced kernel and spec_dens_array_cmplx
+        # compute reduced kernel and spec_dens_array_fine
         kernel_reduced = self.kernel[:, lower_idx:upper_idx]
-        spec_dens_array_cmplx_reduced = self.spec_dens_array_cmplx[lower_idx:upper_idx]
+        spec_dens_array_fine_reduced = self.spec_dens_array_fine[lower_idx:upper_idx]
 
         # compute the corresponding discrete-frequency approximation
         discrete_integral_reduced = self.discrete_integral(
-            kernel=kernel_reduced, spec_dens_array_cmplx=spec_dens_array_cmplx_reduced
+            kernel=kernel_reduced, spec_dens_array_fine=spec_dens_array_fine_reduced
         )
         # compute relative error between the discrete integral approximation with current m and n and the discrete integral with previous m and n
         eps_reduced = self.error_time_integrated(
@@ -299,7 +299,7 @@ class DiscrError(KernelMatrix):
    
         return {
             "kernel_reduced": kernel_reduced,
-            "spec_dens_array_cmplx_reduced": spec_dens_array_cmplx_reduced,
+            "spec_dens_array_fine_reduced": spec_dens_array_fine_reduced,
             "discrete_integral_reduced": discrete_integral_reduced,
             "eps_reduced": eps_reduced,
         }
@@ -323,15 +323,15 @@ class DiscrError(KernelMatrix):
         self.m -= m_count
         self.n -= n_count
 
-        # get reduced kernel, spec_dens_array_cmplx, discrete integral, and error
+        # get reduced kernel, spec_dens_array_fine, discrete integral, and error
         new_kernel_and_grids = self._get_reduced_kernel_and_error(
             lower_idx=n_count, upper_idx=nbr_freqs - m_count
         )
 
-        # update kernel, spec_dens_array_cmplx, discrete integral, and error
+        # update kernel, spec_dens_array_fine, discrete integral, and error
         self.kernel = new_kernel_and_grids["kernel_reduced"]
-        self.spec_dens_array_cmplx = new_kernel_and_grids[
-            "spec_dens_array_cmplx_reduced"
+        self.spec_dens_array_fine = new_kernel_and_grids[
+            "spec_dens_array_fine_reduced"
         ]
         self.discrete_integral_init = new_kernel_and_grids["discrete_integral_reduced"]
 

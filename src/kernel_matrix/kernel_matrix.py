@@ -69,8 +69,8 @@ class KernelMatrix:
         self.fine_grid, self.k_values = self._initialize_fine_grid()
         # initialize matrix kernel
         self.kernel = self._initialize_kernel()
-        # initialize the spectral density evaluated at the grid points (rotated in complex plane)
-        self.spec_dens_array_cmplx = self._compute_spec_dens_array_cmplx()
+        # initialize the spectral density as 1 for all values of the fine grid (spec_dens is included in the kernel matrix)
+        self.spec_dens_array_fine = np.ones_like(self.fine_grid)
 
 
     def _initialize_fine_grid(self) -> np.ndarray:
@@ -94,11 +94,12 @@ class KernelMatrix:
         """
         times_arr = self.times[:, np.newaxis]  # enable broadcasting
         fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
+        spec_dens_array_cmplx = self._compute_spec_dens_array_cmplx()
 
-        # Kernel defined by Fermi distribution
-        K = cf.distr(times_arr, fine_grid_complex, self.beta)
+        # Kernel defined by Fermi distribution and spectral density
+        K = cf.distr(times_arr, fine_grid_complex, self.beta) * spec_dens_array_cmplx
         K *= (
-            self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex
+            self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex 
         )  # factors from measure
 
         return K
@@ -138,7 +139,7 @@ class KernelMatrix:
             "k_values",
             "kernel",
             "spec_dens",
-            "spec_dens_array_cmplx",
+            "spec_dens_array_fine",
         ]
 
         base_class_attrs = {

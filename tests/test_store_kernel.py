@@ -27,7 +27,7 @@ class Test_store_kernel(unittest.TestCase):
             "coarse_grid",
             "singular_values",
             "nbr_sv_above_eps",
-            "spec_dens_array_cmplx"
+            "spec_dens_array_fine"
         }
 
         self.params_DecompKernel = {
@@ -82,7 +82,7 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
                 
                 for key, val in params.items():
-                    if key != "spec_dens_array_cmplx":
+                    if key != "spec_dens_array_fine":
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
 
                     else:
@@ -90,7 +90,7 @@ class Test_store_kernel(unittest.TestCase):
                         self.assertEqual(val(0), 1.)
                         
                 self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
-                self.assertTrue(np.allclose(data["spec_dens_array_cmplx"], self.kernel.spec_dens_array_cmplx))
+                self.assertTrue(np.allclose(data["spec_dens_array_fine"], self.kernel.spec_dens_array_fine))
 
 
     def test_append_element(self):
@@ -114,7 +114,7 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
      
                 for key, val in params.items():
-                    if key != "spec_dens_array_cmplx":
+                    if key != "spec_dens_array_fine":
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
 
                     else:
@@ -123,7 +123,7 @@ class Test_store_kernel(unittest.TestCase):
                         
 
                 self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
-                self.assertTrue(np.allclose(data["spec_dens_array_cmplx"], self.kernel.spec_dens_array_cmplx))
+                self.assertTrue(np.allclose(data["spec_dens_array_fine"], self.kernel.spec_dens_array_fine))
 
     def test_append_element_two_kernels_and_dict(self):
         #take over parameters specified in setUp
