@@ -29,10 +29,17 @@ def spec_dens_gapless(
     #hard code sharpness (chosen by hand)
     sharpness = 10 * Gamma
 
-    safe_omega_upper = np.clip(sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG/2 )
-    safe_omega_lower = np.clip(-sharpness * (omega - cutoff_lower), None, MAX_EXP_ARG/2 )
+    arg = sharpness * (omega - cutoff_lower)
+    arg_real = np.real(arg)
+    arg_imag = np.imag(arg)
 
-    denominator = (1 + np.exp(safe_omega_lower)) * (1 + np.exp(safe_omega_upper))
+    safe_arg_upper_real = np.clip(arg_real, None, MAX_EXP_ARG/2 )
+    safe_arg_upper = safe_arg_upper_real + 1.0j * arg_imag
+
+    safe_arg_lower_real = np.clip(-arg_real, None, MAX_EXP_ARG/2 )
+    safe_arg_lower = safe_arg_lower_real - 1.0j * arg_imag
+
+    denominator = (1 + np.exp(safe_arg_lower)) * (1 + np.exp(safe_arg_upper))
 
     val = Gamma / denominator
 
@@ -80,7 +87,7 @@ def spec_dens_exp(omega: np.ndarray, Gamma: float = 1.0, Lambda: float = 1.e4) -
     Returns:
     scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
     """
-  
+    
 
     val = Gamma * np.exp(- omega / Lambda)
     return val

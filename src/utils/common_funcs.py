@@ -1,7 +1,7 @@
 import numpy as np
 import math  # for floor and ceiling
 from scipy import integrate
-
+MAX_EXP_ARG = np.log(np.finfo(np.float64).max)
 
 def create_numpy_arrays_from_kernel(D):
     """
@@ -78,7 +78,17 @@ def distr(t, x, beta: float):
     Returns:
     int: Kernel evaluated at specified paramters
     """
-    return np.exp(1.0j * x * t) / (1 + np.exp(-beta * x))
+    # Calculate the real part of the exponent
+    real_exponent = -beta * np.real(x)
+    imag_exponent = -beta * np.imag(x)
+    # Clip the real part of the exponent to avoid overflow
+    safe_real_exponent = np.clip(real_exponent, None, MAX_EXP_ARG)
+
+    # Combine the safe real exponent with the original imaginary part
+    safe_exponent = safe_real_exponent + 1j * imag_exponent
+
+
+    return np.exp(1.0j * x * t) / (1 + np.exp(safe_exponent))
 
 
 
