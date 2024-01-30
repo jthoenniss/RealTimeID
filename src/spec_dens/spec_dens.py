@@ -67,6 +67,25 @@ def spec_dens_gapped_sym(
     return val
 
 
+
+def spec_dens_exp(omega: np.ndarray, Gamma: float = 1.0, Lambda: float = 1.e4) -> np.ndarray:
+    """
+    Exponential spectral density.
+
+    Parameters:
+    - omega (scalar/np.ndarray): Frequency values at which the spectral density is evaluated.
+    - Gamma (float, optional): Energy scale of the spectral density.
+    - Lambda (float, optional): Cutoff frequency.
+
+    Returns:
+    scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
+    """
+  
+
+    val = Gamma * np.exp(- omega / Lambda)
+    return val
+
+
 if __name__ == "__main__":
  
     # plot spectral densities
