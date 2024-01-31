@@ -497,3 +497,29 @@ def plot_frequency_grids(h5_kernel: Hdf5Kernel) -> (plt.Figure, plt.Axes):
 
 
     return fig, axs
+
+def plot_h_vs_eps(kernel_dims, data_h5: dict) -> (plt.Figure, plt.Axes):
+    """
+    Function to plot the discretization parameter h versus the error eps for fixed final time t.
+    """
+    errors = data_h5["eps"]
+    h_vals = data_h5["h"]
+    N_maxs = data_h5["N_max"]
+
+    # Choose a colormap
+    fig, axs = plt.subplots(1,1, figsize=(8, 5))
+    cmap_blues = plt.get_cmap('Blues_r') 
+    # Normalize h_val values to the 0-1 range
+    norm = mcolors.Normalize(vmin=N_maxs[0,0,0], vmax=1.2 * N_maxs[0,-1,0])
+
+    for tau in range (kernel_dims[1]):
+        N_max = N_maxs[0,tau,0]
+        axs.plot(1 / np.log(1 / errors[:, tau, 0]), h_vals[:, tau, 0], marker="o", linestyle="-", markersize=3, color = cmap_blues(norm(N_max)), label = r"${}$".format(data_h5["delta_t"][0,tau,0]*N_max ))
+
+    #add legend
+    axs.legend(title = r'$t$')
+    axs.set_xlabel(r"$1/\log(\epsilon_{discr}^{-1})$")
+    axs.set_ylabel(r"$h(\epsilon_{discr})$")
+
+
+    return fig, axs
