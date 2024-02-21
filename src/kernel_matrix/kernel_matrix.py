@@ -21,6 +21,9 @@ class KernelMatrix:
         - h (float): Discretization parameter.
         - phi (float): Rotation angle in the complex plane.
         - spec_dens (callable): Spectral density as a function with one parameter
+        - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
+            Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
+            Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
     """
 
     def __init__(
@@ -33,6 +36,7 @@ class KernelMatrix:
         h: float,
         phi: float,
         spec_dens: callable,
+        freq_parametrization: str,
     ):
         # check if all parameters are valid
         KernelParams.validate_m_n(m, n)
@@ -40,6 +44,7 @@ class KernelMatrix:
         KernelParams.validate_N_max_and_delta_t(N_max, delta_t)
         KernelParams.validate_h(h)
         KernelParams.validate_phi(phi)
+        KernelParams.validate_freq_parametrization(freq_parametrization)
 
         # Store parameters
         self.m, self.n = m, n
@@ -49,6 +54,7 @@ class KernelMatrix:
         self.h = h
         self.phi = phi
         self.spec_dens = spec_dens
+        self.freq_parametrization = freq_parametrization
 
         # Initialize kernel matrix and grids
         self._initialize_kernel_and_grids()
@@ -59,7 +65,8 @@ class KernelMatrix:
         """
         (Re)compute the time grid, fine frequency grid, the kernel matrix and the vectorized spectrald density.
         Needed for initialization and after change of parameters.
-
+        Parameters:
+        - None
         Returns:
         - None
         """
@@ -73,18 +80,31 @@ class KernelMatrix:
         self.spec_dens_array_fine = np.ones_like(self.fine_grid)
 
 
-    def _initialize_fine_grid(self) -> np.ndarray:
+    def _initialize_fine_grid(self) -> tuple:
         """
         Generates a fine grid for given discretization parameters.
-
+        Parameters:
+        - None
         Returns:
-        - np.ndarray: The generated fine grid as a NumPy array.
-        - np.ndarray: The values for k that define the points on the grid.
-        - np.ndarray: The Jacobian of the transformation from the measure: dw/dk.
+        Tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing:
+        - The generated fine grid as a NumPy array.
+        - The k values that define the grid points.
+        - The Jacobian of the transformation from the measure (dw/dk).
         """
         k_values = np.arange(-self.n, self.m + 1)
-        fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
-        jacobian = self.h * (1 + np.exp(-self.h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
+
+        #initialize fine grid and Jacobian with exact implementation depending on the grid parametrization
+        if self.freq_parametrization == "simple_exp":
+            fine_grid = np.exp(self.h * k_values)
+            jacobian = self.h * fine_grid
+
+        elif self.freq_parametrization == "fancy_exp":
+            fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
+            jacobian = self.h * (1 + np.exp(-self.h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
+       
+        else:
+            raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + self.freq_parametrization)
+        
         return fine_grid, k_values, jacobian
 
     def _initialize_kernel(self, jacobian: np.ndarray) -> np.ndarray:
@@ -142,6 +162,7 @@ class KernelMatrix:
             "kernel",
             "spec_dens",
             "spec_dens_array_fine",
+            "freq_parametrization",
         ]
 
         base_class_attrs = {
@@ -155,7 +176,7 @@ class KernelMatrix:
         Returns a dict containing the parameters associated with an instance of the class and stored as attributes
         """
 
-        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi"]
+        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi", "freq_parametrization"]
 
         param_dict = {key: getattr(self, key) for key in param_keys}
 

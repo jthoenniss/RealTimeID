@@ -134,7 +134,7 @@ class Hdf5Kernel:
 
             #get parameters of main kernel object
             params = kernel_object.get_params()
-            #and store their respective keys in an array
+            #and store their respective keys in an array that identifies them as parameters
             used_keys = [*params.keys()]
 
             #store parameters as attributes for the group
@@ -177,11 +177,14 @@ class Hdf5Kernel:
             """
             for key, val in kernel_main.get_shared_attributes().items():
                 #check that all attributes are equivalent except for the spectral density which is a callable
-                if key != "spec_dens":
+                if key not in ["spec_dens", "freq_parametrization"]:
                     #check that the attributes are equivalent
                     if not np.allclose(val, getattr(kernel2, key)):
                         raise ValueError(f"Attributes for kernel objects are not equivalent for key {key}: {val, getattr(kernel2, key)}.")
-                    
+                elif key == "freq_parametrization":
+                    #check that the frequency parametrization is equivalent
+                    if val != getattr(kernel2, key):
+                        raise ValueError(f"Frequency parametrization is not equivalent for kernel objects: {val, getattr(kernel2, key)}.")
                 else:#check that the spectral density is equivalent for a range of frequencies
                     test_freq_array = np.arange(-1000,1000,0.1)
                     if not np.allclose(val(test_freq_array), getattr(kernel2, key)(test_freq_array)):

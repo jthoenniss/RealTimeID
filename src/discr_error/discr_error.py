@@ -39,7 +39,8 @@ class DiscrError(KernelMatrix):
         h: float,
         phi: float,
         spec_dens: callable,
-        cont_integral_init: np.ndarray = None
+        freq_parametrization: str,
+        cont_integral_init: np.ndarray = None,
     ):
         """
         Parameters:
@@ -52,6 +53,9 @@ class DiscrError(KernelMatrix):
         - h (float): Discretization parameter
         - phi (float): rotation angle in complex plane
         - spec_dens (callable): Single-parameter function for the spectral density
+        - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
+            Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
+            Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
         - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid.
         """
 
@@ -64,6 +68,7 @@ class DiscrError(KernelMatrix):
             h=h,
             phi=phi,
             spec_dens=spec_dens,
+            freq_parametrization=freq_parametrization,
         )
 
         # compute discrete integral
@@ -228,8 +233,16 @@ class DiscrError(KernelMatrix):
 
         # update discrete cutoffs in external KernelParams object
         w_min, w_max = self.fine_grid[0], self.fine_grid[-1]
-        lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
-        upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
+        
+        if self.freq_parametrization == "fancy_exp":
+            lower_cutoff_argument_discrete = - np.log (w_min) - np.real(sp.lambertw(1/w_min))#Choose cutoff, such that exp(-cutoff - exp(cutoff)) = w_min
+            upper_cutoff_argument_discrete = np.log (w_max) + np.real(sp.lambertw(1/w_max))#Choose cutoff, such that exp(cutoff - exp(-cutoff)) = w_max
+        elif self.freq_parametrization == "simple_exp":
+            lower_cutoff_argument_discrete = - np.log (w_min) #Choose cutoff, such that exp(-cutoff) = w_min
+            upper_cutoff_argument_discrete = np.log (w_max) #Choose cutoff, such that exp(cutoff) = w_max
+        else:
+            raise ValueError(f"Frequency parametrization {self.freq_parametrization} not recognized.")
+
         update_params.set_discrete_cutoffs(lower_cutoff_argument_discrete=lower_cutoff_argument_discrete, upper_cutoff_argument_discrete=upper_cutoff_argument_discrete)
 
 

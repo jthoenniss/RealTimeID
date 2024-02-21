@@ -29,6 +29,9 @@ class KernelParams:
         - h (float): Discretization parameter, influencing frequency grid resolution.
         - phi (float): Rotation angle in the complex frequency plane.
         - spec_dens (callable): Single-parameter function returning the spectral density.
+        - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
+            Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
+            Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
         
 
     Attributes:
@@ -54,7 +57,8 @@ class KernelParams:
             "upper_cutoff": np.inf, 
             "h": 0.1,
             "phi": np.pi / 4,
-            "spec_dens": lambda x: spec_dens_gapless(x)
+            "spec_dens": lambda x: spec_dens_gapless(x),
+            "freq_parametrization": "fancy_exp"
         }    
         
         # For those parameters that are specified as keyword arguments, update the values
@@ -219,6 +223,11 @@ class KernelParams:
     def validate_upper_cutoff(upper_cutoff: float):
         if not isinstance(upper_cutoff, (float, int)) or upper_cutoff <= 0:
             raise ValueError(f"'upper_cutoff' must be a positive number, got {upper_cutoff}")
+        
+    @staticmethod
+    def validate_freq_parametrization(freq_parametrization: str):
+        if freq_parametrization not in ["fancy_exp", "simple_exp"]:
+            raise ValueError(f"Invalid grid parametrization: {freq_parametrization}. Valid options are 'fancy_exp' and 'simple_exp'.")
         
     @staticmethod  
     def validate_upper_cutoff_argument_discrete(upper_cutoff_argument_discrete: float):
