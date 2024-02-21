@@ -5,8 +5,12 @@ from src.spec_dens.spec_dens import spec_dens_gapless
 
 class KernelParams:
     MAX_EPS = 1.0
-    UPPER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT = 15.
-    LOWER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT = 3.5
+    #default cutoff for fancy_exp parametrization
+    UPPER_CUTOFF_ARGUMENT_DISCRETE_FANCY_EXP_DEFAULT = 15.
+    LOWER_CUTOFF_ARGUMENT_DISCRETE_FANCY_EXP_DEFAULT = 3.5
+    #default cutoff for simple_exp parametrization
+    UPPER_CUTOFF_ARGUMENT_DISCRETE_SIMPLE_EXP_DEFAULT = 15.
+    LOWER_CUTOFF_ARGUMENT_DISCRETE_SIMPLE_EXP_DEFAULT = 40.
     """
     A class designed to encapsulate and manage parameters essential for specifying a kernel matrix
     and its associated continuous integration results.
@@ -151,19 +155,29 @@ class KernelParams:
         Returns:
         - None
         """
-        #Choose w, such that exp(-w - exp(w)) = 1.e-16 or lower
+        #Choose w, such that exp(-w) or exp(-w - exp(w)) = 1.e-16 or lower
         if lower_cutoff_argument_discrete is not None:
             self.validate_lower_cutoff_argument_discrete(lower_cutoff_argument_discrete)
             self._lower_cutoff_argument_discrete = lower_cutoff_argument_discrete
         else:
-            self._lower_cutoff_argument_discrete = KernelParams.LOWER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT
-
-        #Choose w, such that exp(w - exp(-w)) = 1.e6 or higher
+            if self.get_param("freq_parametrization") == "simple_exp":
+                self._lower_cutoff_argument_discrete = KernelParams.LOWER_CUTOFF_ARGUMENT_DISCRETE_SIMPLE_EXP_DEFAULT
+            elif self.get_param("freq_parametrization") == "fancy_exp":
+                self._lower_cutoff_argument_discrete = KernelParams.LOWER_CUTOFF_ARGUMENT_DISCRETE_FANCY_EXP_DEFAULT
+            else:
+                raise ValueError(f"Invalid grid parametrization: {self.get_param('freq_parametrization')}. Valid options are 'fancy_exp' and 'simple_exp'.")
+        
+        #Choose w, such that exp(w) or exp(w - exp(-w)) = 1.e6 or higher
         if upper_cutoff_argument_discrete is not None:   
             self.validate_upper_cutoff_argument_discrete(upper_cutoff_argument_discrete)
             self._upper_cutoff_argument_discrete = upper_cutoff_argument_discrete
         else:
-            self._upper_cutoff_argument_discrete = KernelParams.UPPER_CUTOFF_ARGUMENT_DISCRETE_DEFAULT  
+            if self.get_param("freq_parametrization") == "simple_exp":
+                self._upper_cutoff_argument_discrete = KernelParams.UPPER_CUTOFF_ARGUMENT_DISCRETE_SIMPLE_EXP_DEFAULT
+            elif self.get_param("freq_parametrization") == "fancy_exp":
+                self._upper_cutoff_argument_discrete = KernelParams.UPPER_CUTOFF_ARGUMENT_DISCRETE_FANCY_EXP_DEFAULT  
+            else:
+                raise ValueError(f"Invalid grid parametrization: {self.get_param('freq_parametrization')}. Valid options are 'fancy_exp' and 'simple_exp'.")
 
     def get_discrete_cutoffs(self) -> tuple:
         """
