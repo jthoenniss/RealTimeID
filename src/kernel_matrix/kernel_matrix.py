@@ -66,9 +66,9 @@ class KernelMatrix:
         # set time grid
         self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
         # initialize frequency grid
-        self.fine_grid, self.k_values = self._initialize_fine_grid()
+        self.fine_grid, self.k_values, jacobian = self._initialize_fine_grid()
         # initialize matrix kernel
-        self.kernel = self._initialize_kernel()
+        self.kernel = self._initialize_kernel(jacobian=jacobian)
         # initialize the spectral density as 1 for all values of the fine grid (spec_dens is included in the kernel matrix)
         self.spec_dens_array_fine = np.ones_like(self.fine_grid)
 
@@ -80,14 +80,18 @@ class KernelMatrix:
         Returns:
         - np.ndarray: The generated fine grid as a NumPy array.
         - np.ndarray: The values for k that define the points on the grid.
+        - np.ndarray: The Jacobian of the transformation from the measure: dw/dk.
         """
         k_values = np.arange(-self.n, self.m + 1)
         fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
-        return fine_grid, k_values
+        jacobian = self.h * (1 + np.exp(-self.h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
+        return fine_grid, k_values, jacobian
 
-    def _initialize_kernel(self) -> np.ndarray:
+    def _initialize_kernel(self, jacobian: np.ndarray) -> np.ndarray:
         """
         Creates the kernel matrix using the Fermi distribution function and spectral density.
+        Parameters:
+        - jacobian (np.ndarray): The Jacobian of the transformation from the measure: dw/dk.
 
         Returns:
         - np.ndarray: Kernel matrix.
@@ -98,9 +102,7 @@ class KernelMatrix:
 
         # Kernel defined by Fermi distribution and spectral density
         K = cf.distr(times_arr, fine_grid_complex, self.beta) * spec_dens_array_cmplx
-        K *= (
-            self.h * (1 + np.exp(-self.h * self.k_values)) * fine_grid_complex 
-        )  # factors from measure
+        K *= jacobian * np.exp(1.j * self.phi) # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
 
         return K
 
