@@ -10,26 +10,6 @@ import os
 class Test_store_kernel(unittest.TestCase):
     def setUp(self):
 
- 
-
-        REQUIRED_KEYS = {
-            "m",
-            "n",
-            "beta",
-            "N_max",
-            "delta_t",
-            "h",
-            "phi",
-            "ID_rank",
-            "proj",
-            "idx",
-            "fine_grid",
-            "coarse_grid",
-            "singular_values",
-            "nbr_sv_above_eps",
-            "spec_dens_array_fine"
-        }
-
         self.params_DecompKernel = {
             "m": 10,
             "n": 5,
@@ -39,7 +19,8 @@ class Test_store_kernel(unittest.TestCase):
             "eps": 0.1,
             "h": 0.2,
             "phi": np.pi / 4,
-            "spec_dens": lambda x: spec_dens_gapless(x)
+            "spec_dens": lambda x: spec_dens_gapless(x),
+            "freq_parametrization": "fancy_exp",
         }
 
         self.kernel = DecompKernel(**self.params_DecompKernel)
@@ -82,9 +63,10 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
                 
                 for key, val in params.items():
-                    if key != "spec_dens_array_fine":
+                    if key not in ["spec_dens_array_fine", "freq_parametrization"]:
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
-
+                    elif key == "freq_parametrization":
+                        self.assertEqual(val, self.params_DecompKernel[key])
                     else:
                         self.assertEqual(val, getattr(self.params_DecompKernel, key), f"parameters differ for key {key}")
                         self.assertEqual(val(0), 1.)
@@ -114,9 +96,10 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
      
                 for key, val in params.items():
-                    if key != "spec_dens_array_fine":
+                    if key not in ["spec_dens_array_fine", "freq_parametrization"]:
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
-
+                    elif key == "freq_parametrization":
+                        self.assertEqual(val, self.params_DecompKernel[key])
                     else:
                         self.assertEqual(val, self.params_DecompKernel[key], f"parameters differ for key {key}")
                         self.assertEqual(val(0), 1.)
@@ -160,8 +143,11 @@ class Test_store_kernel(unittest.TestCase):
      
                 #check that parameters are equal
                 for key, val in params.items():  
-                    self.assertTrue(np.allclose(val,getattr(kernel_discr,key)), f"parameters differ for key {key}: {val, self.params_DecompKernel[key]}")
-
+                    if key != "freq_parametrization":
+                        self.assertTrue(np.allclose(val,getattr(kernel_discr,key)), f"parameters differ for key {key}: {val, self.params_DecompKernel[key]}")
+                    else:
+                        self.assertEqual(val, self.params_DecompKernel[key])
+                
                 #check that data is equal to data directly extracted from kernel objects
                 kernel_decomp_keys = vars(kernel_decomp).keys()
                 kernel_discr_keys = vars(kernel_discr).keys()

@@ -17,14 +17,15 @@ class TestDiscError(unittest.TestCase):
             "h": 0.2,
             "phi": np.pi / 4,
             "upper_cutoff" : 600,
-            "spec_dens": lambda x: spec_dens_gapped_sym(x)
+            "spec_dens": lambda x: spec_dens_gapped_sym(x),
+            "freq_parametrization": "fancy_exp",
         }
         self.D = DiscrError(**self.params_DiscrError)
 
 
 
     def test_base_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine","freq_parametrization"]
 
         KernelMatrix_keys = vars(self.D).keys()
 
@@ -43,6 +44,7 @@ class TestDiscError(unittest.TestCase):
         )
         self.assertEqual(self.D.h, 0.2)
         self.assertEqual(self.D.phi, np.pi / 4)
+        self.assertEqual(self.D.freq_parametrization, "fancy_exp")
 
     def test_eps(self):#check that relative error is leq 1.
         self.assertLessEqual(self.D.eps, 1.0)

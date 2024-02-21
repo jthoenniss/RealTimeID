@@ -19,7 +19,8 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             eps=0.1,
             h=0.2,
             phi=np.pi / 4,
-            spec_dens = lambda x: spec_dens_gapless(x)
+            spec_dens = lambda x: spec_dens_gapless(x),
+            freq_parametrization="fancy_exp",
         )
 
     def test_initialization(self):
@@ -36,11 +37,13 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
         self.assertEqual(self.K.h, 0.2)
         self.assertEqual(self.K.phi, np.pi / 4)
         self.assertEqual(self.K.spec_dens(0), 1.)
+        self.assertEqual(self.K.freq_parametrization, "fancy_exp")
 
     def test_create_kernel(self):
         # Test the kernel creation method
         fine_grid, k_values = self.K.fine_grid, self.K.k_values
         k_values_check = np.arange(-self.K.n, self.K.m + 1)
+        #check that the fine grid is correctly computed for the fancy_exp parametrization
         fine_grid_check = np.exp(
             self.K.h * k_values_check - np.exp(-self.K.h * k_values_check)
         )
@@ -88,7 +91,8 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             "singular_values",
             "nbr_sv_above_eps",
             "spec_dens",
-            "spec_dens_array_fine"
+            "spec_dens_array_fine",
+            "freq_parametrization",
         }
 
         # dictionary of all class attributes
@@ -116,7 +120,8 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "h": 0.2,
             "phi": np.pi / 4,
             "upper_cutoff": 600,
-            "spec_dens": lambda x: spec_dens_gapless(x)
+            "spec_dens": lambda x: spec_dens_gapless(x),
+            "freq_parametrization": "fancy_exp",
         }
         D = DiscrError(**params_DiscrError)
 
@@ -143,7 +148,8 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "k_values",
             "kernel",
             "spec_dens",
-            "spec_dens_array_fine"
+            "spec_dens_array_fine",
+            "freq_parametrization",
         ]
 
         present_keys = vars(self.dck).keys()
@@ -154,12 +160,14 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
         # check that initialization is equivalent to initialization with kwargs
         for key, val in vars(self.dck).items():
       
-            if key != "spec_dens":
+            if key not in ["spec_dens", "freq_parametrization"]:
                 self.assertTrue(
                     np.allclose(val,
                     getattr(self.dck_kwargs, key)),
                     f"The following attributes differs: {key},{val}, {getattr(self.dck_kwargs, key)}",
                 )
+            elif key == "freq_parametrization":
+                self.assertEqual(val, getattr(self.dck_kwargs, key))
             else:
                 self.assertEqual(val, getattr(self.dck_kwargs, key))
                 self.assertEqual(val(0), 1.)
