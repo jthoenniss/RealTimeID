@@ -514,7 +514,8 @@ def plot_h_vs_eps(kernel_dims, data_h5: dict) -> (plt.Figure, plt.Axes):
 
     for tau in range (kernel_dims[1]):
         N_max = N_maxs[0,tau,0]
-        axs.plot(1 / np.log(1 / errors[:, tau, 0]), h_vals[:, tau, 0], marker="o", linestyle="-", markersize=3, color = cmap_blues(norm(N_max)), label = r"${}$".format(data_h5["delta_t"][0,tau,0]*N_max ))
+        mask = errors[:,tau,0] > 1.e-15
+        axs.plot(1 / np.log(1 / errors[mask, tau, 0]), h_vals[mask, tau, 0], marker="o", linestyle="-", markersize=3, color = cmap_blues(norm(N_max)), label = r"${}$".format(data_h5["delta_t"][0,tau,0]*N_max ))
 
     #add legend
     axs.legend(title = r'$t$')
