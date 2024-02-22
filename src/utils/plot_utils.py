@@ -206,7 +206,7 @@ def plot_modes_vs_final_time_fixed_eps(kernel_dims, data_h5: dict) -> (plt.Figur
         
     # Setting labels and legend
     axs[-1,0].set_xlabel(r'$t$')
-    axs[-1,1].set_xlabel(r'$t$')
+    axs[-1,1].set_xlabel(r'$\epsilon$')
     axs[-1,2].set_xlabel(r'$t$')
     axs[-1,3].set_xlabel(r'$\epsilon$')
 
