@@ -55,39 +55,58 @@ def error_function(propag1: np.ndarray, propag2:np.ndarray) -> float:
 
     return error
 
-# Custom Keras layer to wrap your function
+# Define the propagator function that takes a list of parameters and a time grid and returns the propagator
 class PropagLayer(tf.keras.layers.Layer):
-    #
+    """ 
+    Custom layer that computes the propagator from a list of parameters and a time grid.
+    This is convenient because it allows us to use the keras API to optimize the parameters.
+    """
+
     def __init__(self, time_grid, **kwargs):
+        #initialize the layer with the time grid
         super(PropagLayer, self).__init__(**kwargs)
         self.time_grid = time_grid
 
     def call(self, parameters):
-        # Note: You might need to ensure that `propag_from_params`
-        # can operate on TensorFlow tensors and is differentiable.
+        #convert python function using numpy to tensorflow function:
         return tf.numpy_function(propag_from_params, [parameters, self.time_grid], Tout=tf.float32)
 
-# Custom model that includes your layer
+# Define the model
 class PropagModel(tf.keras.Model):
+    """
+    Custom model that includes the PropagLayer. The parameters are the only trainable variables in the model.
+    """
     def __init__(self, time_grid, initial_params):
+        #initialize the model with the time grid and the initial parameters
         super(PropagModel, self).__init__()
+        # Initialize the propagator layer
         self.propag_layer = PropagLayer(time_grid)
         # Initialize parameters as a trainable variable
         self.params = tf.Variable(initial_params, dtype=tf.float32)
 
     def call(self, x):
+        # Call the propagator layer with the parameters
         return self.propag_layer(self.params)
 
 # Define your target vector and time grid
-target_vector = np.array([...]) # Your target vector here
-time_grid = np.array([...]) # Your time grid here
-initial_params = np.array([...]) # Initial guess of your parameters
+target_vector = np.array([...]) 
+time_grid = np.array([...])
+initial_params = np.array([...]) 
 
 # Instantiate model
 model = PropagModel(time_grid, initial_params)
 
 # Loss function: Sum of squared errors
-def custom_loss(y_true, y_pred):
+def custom_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
+    """
+    Function to compute the loss between the target vector and the predicted vector.
+    Parameters:
+    - y_true: tf.Tensor, the target vector
+    - y_pred: tf.Tensor, the predicted vector
+
+    Returns:
+    - tf.Tensor: the loss between the two vectors
+    """
     return tf.reduce_sum(tf.square(y_true - y_pred))
 
 # Compile the model
