@@ -8,52 +8,34 @@ from tensorflow.keras import layers
 # define the propagator function that takes a list of parameters and a time grid and returns the propagator
 def propag_from_params(parameters: np.ndarray, time_grid) -> np.ndarray:
     """
-    Function that yields the propagator g(t) = \sum_k Gamma(k) * exp((1j * omega - gamma) * t)
+    Vectorized function that yields the propagator g(t) = \sum_k Gamma(k) * exp((1j * omega - gamma) * t)
 
     Parameters:
-    List of dictionaries containing the parameters for each mode. Each dictionary contains the following
-    keys:
-        - Gamma: float (encoding cupling)
-        - omega: float (encoding unitary evolution)
-        - gamma: float (encoding decay)
-
+    - parameters: np.ndarray, shape (3, N_modes), where N_modes is the number of modes. 
+        The first row contains the Gamma parameters describing coupling strength, 
+        the second row contains the omega parameters describing unitary evolution, 
+        and the third row contains the gamma parameters, describing decay.
+    
     Returns:
     np.ndarray: the propagator g(t) for the given parameters and time grid
     """
-    # collect every parameter type for all modes in a numpy array, respectively.
-    Gamma_k = np.array([params['Gamma'] for params in parameters]) 
-    omega_k = np.array([params['omega'] for params in parameters])
-    gamma_k = np.array([params['gamma'] for params in parameters])
+    
+    Gammas = parameters[0] # shape (N_modes,). Encoding coupling strength
+    omegas = parameters[1] # shape (N_modes,). Encoding unitary evolution
+    gammas = parameters[2] # shape (N_modes,). Encoding decay
 
-    #broadcast time grid to match the shape of the parameters
-    time_grid_broad = time_grid[:, np.newaxis] 
+    # Use broadcasting to create a (N_timesteps, N_modes) shaped array for time-dependent exponent
+    exponent = (1j * omegas - gammas) * time_grid[:, np.newaxis]
 
-    # initialize the propagator matrix where rows are time steps and columns are modes
-    propag_mat = Gamma_k * np.exp((1j * omega_k - gamma_k) * time_grid_broad)
+    # Calculate the full propagator matrix
+    propag_mat = Gammas * np.exp(exponent)
 
-    # sum over all modes and flatten array:
-    propag_vec = np.sum(propag_mat, axis=1).flatten()# Resulting shape: (N_timesteps,)
+    # Sum over all modes to get the final propagator vector
+    propag_vec = np.sum(propag_mat, axis=1)
 
-    #return propagator
     return propag_vec
 
 
-# define the error function
-def error_function(propag1: np.ndarray, propag2:np.ndarray) -> float:
-    """
-    Function to compute the error between two propagators. The error is the sum of the squared differences at each time point.
-    Parameters:
-    - propag1: np.ndarray, the first propagator
-    - propag2: np.ndarray, the second propagator
-
-    Returns:
-    - float: the error between the two propagators
-    """
-
-    # compute the error
-    error = np.sum(np.abs(propag1 - propag2)**2)
-
-    return error
 
 # Define the propagator function that takes a list of parameters and a time grid and returns the propagator
 class PropagLayer(tf.keras.layers.Layer):
@@ -116,3 +98,11 @@ model.compile(optimizer='adam', loss=custom_loss)
 # we use a dummy input (x) and the target vector as y.
 # The actual optimization occurs with respect to the parameters within the model.
 model.fit(x=np.zeros((1, 1)), y=target_vector.reshape(1, -1), epochs=100)
+
+
+"""if __name__== "__main__":
+    # test the function propag_from_params
+    parameters = [{'Gamma': 1, 'omega': 1, 'gamma': 1}, {'Gamma': 2, 'omega': 2, 'gamma': 2}]
+    time_grid = np.array([0, 1, 2, 3, 4, 5])
+    propag = propag_from_params(parameters, time_grid)
+    expected_propag = """
