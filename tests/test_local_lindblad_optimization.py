@@ -1,5 +1,6 @@
 import unittest
 import numpy as np
+import tensorflow as tf
 
 from src.lindblad_optimization.local_lindblad_optimization import propag_from_params
 
@@ -13,8 +14,9 @@ class test_propag_from_params(unittest.TestCase):
         omega_1, omega_2 = 3., 4.
         gamma_1, gamma_2 = 5., 6.
         
+
         self.parameters = np.array([[Gamma_1, Gamma_2], [omega_1, omega_2], [gamma_1, gamma_2]])
-        
+
         # array of time points
         self.time_grid = np.array([0, 1, 2, 3, 4, 5])
 
