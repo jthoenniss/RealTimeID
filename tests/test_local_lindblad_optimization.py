@@ -15,20 +15,23 @@ class test_propag_from_params(unittest.TestCase):
         gamma_1, gamma_2 = 5., 6.
         
 
-        self.parameters = np.array([[Gamma_1, Gamma_2], [omega_1, omega_2], [gamma_1, gamma_2]])
+        self.parameters_tf = tf.Variable([[Gamma_1, Gamma_2], [omega_1, omega_2], [gamma_1, gamma_2]], dtype=tf.float64)
 
         # array of time points
-        self.time_grid = np.array([0, 1, 2, 3, 4, 5])
+        self.time_grid = [0, 1, 2, 3, 4, 5]
+        self.time_grid_np = np.array(self.time_grid)
+        self.time_grid_tf = tf.cast(tf.expand_dims(self.time_grid, -1), tf.float64)  # Equivalent to[:, np.newaxis] in numpy
 
         # expected propagator. Compute separately for both modes
         propag_mode1 = Gamma_1 * np.exp(
             (1.0j * omega_1 - gamma_1)
-            * self.time_grid
+            * self.time_grid_np
         )
         propag_mode2 = Gamma_2 * np.exp(
             (1.0j * omega_2 - gamma_2)
-            * self.time_grid
+            * self.time_grid_np
         )
+
 
         # create matrix where each column corresponds to the propagator of a mode:
         propagmatrix = np.hstack(
@@ -39,8 +42,8 @@ class test_propag_from_params(unittest.TestCase):
         self.expected_propag = np.sum(propagmatrix, axis=1)
 
     def test_propag_from_params(self):
-        # test the function propag_from_params by computing the propagator
-        propag = propag_from_params(self.parameters, self.time_grid)
+        
+        propag = propag_from_params(self.parameters_tf, self.time_grid_tf) 
         # check that the computed propagator is close to the expected propagator
         self.assertTrue(np.allclose(propag, self.expected_propag))
 
