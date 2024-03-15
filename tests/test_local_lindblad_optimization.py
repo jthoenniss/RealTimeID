@@ -15,15 +15,15 @@ class test_propag_from_params(unittest.TestCase):
         gamma_k = [5., 6.]# gamma_1, gamma_2 = 5., 6.
     
 
-        self.Gamma_k_tf = tf.constant(Gamma_k, dtype=tf.float64)
-        self.omega_k_tf = tf.constant(omega_k, dtype=tf.float64)
-        self.gamma_k_tf = tf.constant(gamma_k, dtype=tf.float64)
+        self.Gamma_k_tf = tf.constant(Gamma_k, dtype=tf.float32)
+        self.omega_k_tf = tf.constant(omega_k, dtype=tf.float32)
+        self.gamma_k_tf = tf.constant(gamma_k, dtype=tf.float32)
 
         # array of time points
         self.time_grid = [0, 1, 2, 3, 4, 5]
         self.time_grid_np = np.array(self.time_grid)
 
-        self.time_grid_tf = tf.cast(tf.expand_dims(self.time_grid, -1), tf.float64)  # Equivalent to[:, np.newaxis] in numpy
+        self.time_grid_tf = tf.cast(tf.expand_dims(self.time_grid, -1), tf.float32)  # Equivalent to[:, np.newaxis] in numpy
 
         # expected propagator. Compute separately for both modes
         propag_mode1 = Gamma_k[0] * np.exp(
@@ -61,10 +61,10 @@ class test_custom_loss(unittest.TestCase):
 
     def setUp(self) -> None:
         time_grid = [1.,2.,3.,4.,5.,6.]
-        self.time_grid_tf = tf.cast(tf.expand_dims(time_grid, -1), tf.float64)  # Equivalent to[:, np.newaxis] in numpy
+        self.time_grid_tf = tf.cast(tf.expand_dims(time_grid, -1), tf.float32)  # Equivalent to[:, np.newaxis] in numpy
 
-        self.propag_reference = propag_from_params(time_grid=self.time_grid_tf,Gamma_k=tf.constant([1., 2.], dtype= tf.float64), omega_k=tf.constant([3., 4.], dtype= tf.float64), gamma_k=tf.constant([5., 6.], dtype= tf.float64) )
-        self.propag_detuned = propag_from_params(time_grid=self.time_grid_tf, Gamma_k=tf.constant([1.2, 2.2], dtype= tf.float64), omega_k=tf.constant([3.2, 4.2], dtype= tf.float64), gamma_k=tf.constant([5.2, 6.2], dtype= tf.float64) )
+        self.propag_reference = propag_from_params(time_grid=self.time_grid_tf,Gamma_k=tf.constant([1., 2.], dtype= tf.float32), omega_k=tf.constant([3., 4.], dtype= tf.float32), gamma_k=tf.constant([5., 6.], dtype= tf.float32) )
+        self.propag_detuned = propag_from_params(time_grid=self.time_grid_tf, Gamma_k=tf.constant([1.2, 2.2], dtype= tf.float32), omega_k=tf.constant([3.2, 4.2], dtype= tf.float32), gamma_k=tf.constant([5.2, 6.2], dtype= tf.float32) )
   
         #compute the loss function explicitly using numpy commands
         self.loss_numpy = np.mean(np.abs(self.propag_reference.numpy() - self.propag_detuned.numpy())**2)

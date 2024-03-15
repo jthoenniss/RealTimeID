@@ -25,27 +25,27 @@ class PropagModel(tf.keras.Model):
     def __init__(self, time_grid: list, initial_Gamma_k: list, initial_omega_k: list, initial_gamma_k: list):
         super(PropagModel, self).__init__()
 
-        self.time_grid = tf.reshape(tf.constant(time_grid, dtype=tf.float64), (-1, 1))# Ensure time grid is a column vector
+        self.time_grid = tf.reshape(tf.constant(time_grid, dtype=tf.float32), (-1, 1))# Ensure time grid is a column vector
         
         # Directly add constrained parameters to the model
         self.Gamma_k = self.add_weight(name='Gamma_k',
                                        shape=(len(initial_Gamma_k),),
                                        initializer=tf.keras.initializers.Constant(initial_Gamma_k),
                                        constraint=tf.keras.constraints.NonNeg(),
-                                       dtype=tf.float64,
+                                       dtype=tf.float32,
                                        trainable=True)
         
         self.omega_k = self.add_weight(name='omega_k',
                                        shape=(len(initial_omega_k),),
                                        initializer=tf.keras.initializers.Constant(initial_omega_k),
-                                       dtype=tf.float64,
+                                       dtype=tf.float32,
                                        trainable=True)
         
         self.gamma_k = self.add_weight(name='gamma_k',
                                        shape=(len(initial_gamma_k),),
                                        initializer=tf.keras.initializers.Constant(initial_gamma_k),
                                        constraint=tf.keras.constraints.NonNeg(),
-                                       dtype=tf.float64,
+                                       dtype=tf.float32,
                                        trainable=True)
 
     def call(self, inputs):
@@ -144,12 +144,12 @@ if __name__== "__main__":
     # Compile the model with the custom optimizer
     model.compile(optimizer=optimizer, loss=custom_loss)
 
-    x_dummy = tf.zeros((2,len(time_grid)), dtype=tf.float64)
+    x_dummy = tf.zeros((2,len(time_grid)), dtype=tf.float32)
   
     model_init = model(x_dummy)
     
 
-    target_vector  = model.target_vector(tf.constant(target_Gamma_k, dtype=tf.float64), tf.constant(target_omega_k, dtype=tf.float64), tf.constant(target_gamma_k, dtype=tf.float64))
+    target_vector  = model.target_vector(tf.constant(target_Gamma_k, dtype=tf.float32), tf.constant(target_omega_k, dtype=tf.float32), tf.constant(target_gamma_k, dtype=tf.float32))
     
     record_parameters_callback = RecordParametersCallback()
     history = model.fit(x=x_dummy, y=target_vector, epochs=nbr_epochs, callbacks=[record_parameters_callback, PrintParametersCallback()])
@@ -199,7 +199,7 @@ if __name__== "__main__":
     propagator = []
     nbr_elements = len(gamma_k_values)
     for i in range(nbr_elements):
-        propagator = propag_from_params(tf.reshape(tf.constant(time_grid, dtype=tf.float64),(-1,1)), tf.constant(gamma_k_values[i], dtype=tf.float64), tf.constant(omega_k_values[i], dtype=tf.float64), tf.constant(gamma_k_values[i], dtype=tf.float64)).numpy()
+        propagator = propag_from_params(tf.reshape(tf.constant(time_grid, dtype=tf.float32),(-1,1)), tf.constant(gamma_k_values[i], dtype=tf.float32), tf.constant(omega_k_values[i], dtype=tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32)).numpy()
         plt.plot(np.arange(len(time_grid)), (propagator[0] - target_vector[0])/target_vector[0], color = 'blue', alpha = i / nbr_elements)
         plt.plot(np.arange(len(time_grid)), (propagator[1] - target_vector[1])/target_vector[0], color = 'red', alpha = i / nbr_elements)
 
