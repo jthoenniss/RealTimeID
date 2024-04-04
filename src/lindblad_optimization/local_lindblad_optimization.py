@@ -1,11 +1,14 @@
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
-
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 
 # define the propagator function that takes a list of parameters and a time grid and returns the propagator
 def propag_from_params(time_grid: tf.Tensor, Gamma_k: tf.Tensor, omega_k: tf.Tensor, gamma_k: tf.Tensor) -> tf.Tensor:
+    #Needs to be adjusted if couplings Gamma_k are complex.
     assert time_grid.shape[1] == 1, f"Time grid must be a column vector (i.e., have shape (n, 1)), but detected shape is {time_grid.shape}."
 
     real_part = tf.reduce_sum(tf.exp(-gamma_k * time_grid) * (Gamma_k * tf.cos(omega_k * time_grid)), axis=1)
@@ -25,7 +28,7 @@ class PropagModel(tf.keras.Model):
     def __init__(self, time_grid: list, initial_Gamma_k: list, initial_omega_k: list, initial_gamma_k: list):
         super(PropagModel, self).__init__()
 
-        self.time_grid = tf.reshape(tf.constant(time_grid, dtype=tf.float32), (-1, 1))# Ensure time grid is a column vector
+        self.time_grid = tf.cast(tf.expand_dims(time_grid, -1), tf.float32)# Ensure time grid is a column vector
         
         # Directly add constrained parameters to the model
         self.Gamma_k = self.add_weight(name='Gamma_k',
@@ -66,14 +69,13 @@ def custom_loss(y_true: tf.Tensor, y_pred: tf.Tensor) -> tf.Tensor:
     Returns:
     - A tensor containing the computed loss.
     """
-    
+   
     # Compute the combined absolute values of the filtered values
     difference = y_true - y_pred
 
-    mse_loss = tf.reduce_mean(tf.square(tf.abs(difference)))
+    mean_loss = tf.reduce_mean(tf.square(tf.abs(difference)))
 
-
-    return mse_loss
+    return mean_loss
 
 class PrintParametersCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
@@ -107,6 +109,7 @@ class RecordParametersCallback(tf.keras.callbacks.Callback):
 
 
 
+
 if __name__== "__main__":
 
     nbr_epochs = 100
@@ -114,20 +117,20 @@ if __name__== "__main__":
     #define time grid and parameters for target vector
     # consider only two modes, whose parameters are given by the following:
     # (columns correspond to different modes, rows to different parameters: Gamma, omega, and gamma)
-    Gamma_1, Gamma_2 = 1.31, 2.31
-    omega_1, omega_2 = 3.31, 4.31
-    gamma_1, gamma_2 = 5.31, 6.31
+    Gamma_1, Gamma_2 = 1.1, 2.1
+    omega_1, omega_2 = 3.1, 4.1
+    gamma_1, gamma_2 = 5.1, 6.1
 
     target_Gamma_k = [Gamma_1, Gamma_2]
     target_omega_k = [omega_1, omega_2]
     target_gamma_k = [gamma_1, gamma_2]
 
     # array of time points
-    time_grid = np.arange(.1,.5,.05).tolist() #make it a column vector
+    time_grid = np.arange(.1,10,.05).tolist() #make it a column vector
 
     # Instantiate model
-    initial_Gamma_k = [1. * Gamma_1, Gamma_2]
-    initial_omega_k =  [omega_1, omega_2]
+    initial_Gamma_k = [1.2 * Gamma_1, Gamma_2]
+    initial_omega_k = [omega_1, omega_2]
     initial_gamma_k = [gamma_1, gamma_2]
     
     # Instantiate model
@@ -136,23 +139,36 @@ if __name__== "__main__":
      
     
     # Before your model compilation, specify a custom learning rate
-    custom_learning_rate = 0.01  # This is an example value; adjust based on your needs
-
+    custom_learning_rate = 0.005  # This is an example value; adjust based on your needs
+    
     # Instantiate the Adam optimizer with the custom learning rate
     optimizer = tf.keras.optimizers.Adam(learning_rate=custom_learning_rate)
-
     # Compile the model with the custom optimizer
     model.compile(optimizer=optimizer, loss=custom_loss)
 
-    x_dummy = tf.zeros((2,len(time_grid)), dtype=tf.float32)
+
+    target_vector  = propag_from_params(time_grid= tf.cast(tf.expand_dims(time_grid, -1), tf.float32) ,Gamma_k=tf.constant(target_Gamma_k, dtype=tf.float32), omega_k=tf.constant(target_omega_k, dtype=tf.float32), gamma_k=tf.constant(target_gamma_k, dtype=tf.float32))
+    
+    x_dummy = target_vector
   
-    model_init = model(x_dummy)
+    model_init = model(x_dummy)#store for later reference
+
+    record_parameters_callback = RecordParametersCallback()
+
+    # Define your threshold value
+    loss_threshold = 0.00001
+
+    # Set up the EarlyStopping callback
+    early_stopping_callback = EarlyStopping(monitor='loss', # Monitors the training loss
+                                            mode='min', # Stops training when the quantity monitored has stopped decreasing
+                                            patience=0, # Number of epochs with no improvement after which training will be stopped. Set to 0 to stop immediately.
+                                            baseline=loss_threshold, # Stop if the model's loss goes below this baseline
+                                            verbose=1) # Print a message when stopping
+
+    history = model.fit(x=x_dummy, y=target_vector, epochs=nbr_epochs, callbacks=[record_parameters_callback, PrintParametersCallback()])
     
 
-    target_vector  = model.target_vector(tf.constant(target_Gamma_k, dtype=tf.float32), tf.constant(target_omega_k, dtype=tf.float32), tf.constant(target_gamma_k, dtype=tf.float32))
-    
-    record_parameters_callback = RecordParametersCallback()
-    history = model.fit(x=x_dummy, y=target_vector, epochs=nbr_epochs, callbacks=[record_parameters_callback, PrintParametersCallback()])
+
 
 
     print('error_init', custom_loss(target_vector, model_init))
@@ -168,13 +184,14 @@ if __name__== "__main__":
     print(model.gamma_k)
 
     #create a scatter plot where the dots are connected by a line
-    plt.plot(np.arange(0,nbr_epochs,1),history.history['loss'][::1], 'o-')
-
+    losses = history.history['loss']
+    plt.plot(np.arange(len(losses)),losses, 'o-')
+    print('losses', losses)
     plt.title('Model Loss over Epochs')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train'], loc='upper right')
-    plt.ylim(bottom=-0.1)  
+    #plt.ylim(bottom=-0.1)  
     #add vertical line
     plt.axhline(y=0, color='r', linestyle='--')
     plt.show()
@@ -184,10 +201,13 @@ if __name__== "__main__":
     #plot the parameters over time
     gamma_k_values = record_parameters_callback.parameters_over_time['Gamma_k']
     plt.plot(gamma_k_values, label='Gamma_k')
+    print('gamma_k', gamma_k_values)
     omega_k_values = record_parameters_callback.parameters_over_time['omega_k']
     plt.plot(omega_k_values, label='omega_k')
+    print('omega_k', omega_k_values)
     gamma_k_values = record_parameters_callback.parameters_over_time['gamma_k']
     plt.plot(gamma_k_values, label='gamma_k')
+    print('gamma_k', gamma_k_values)
     plt.title('Parameters values over Epochs')
     plt.legend()
     plt.xlabel('Epoch')
@@ -196,12 +216,22 @@ if __name__== "__main__":
     plt.show()
 
     #plot propagator for every set of parameters
+    # Normalize h_val values to the 0-1 range
+        
+    fig, axs = plt.subplots(1, 2, figsize=(15, 5), sharex=True)
     propagator = []
     nbr_elements = len(gamma_k_values)
-    for i in range(nbr_elements):
-        propagator = propag_from_params(tf.reshape(tf.constant(time_grid, dtype=tf.float32),(-1,1)), tf.constant(gamma_k_values[i], dtype=tf.float32), tf.constant(omega_k_values[i], dtype=tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32)).numpy()
-        plt.plot(np.arange(len(time_grid)), (propagator[0] - target_vector[0])/target_vector[0], color = 'blue', alpha = i / nbr_elements)
-        plt.plot(np.arange(len(time_grid)), (propagator[1] - target_vector[1])/target_vector[0], color = 'red', alpha = i / nbr_elements)
-
+    norm = mcolors.Normalize(-10,nbr_elements)
+    cmap_red = plt.get_cmap("Reds")
+    cmap_blue = plt.get_cmap("Blues")
+    for i in range(0,nbr_elements,10):
+        propagator = propag_from_params(tf.cast(tf.expand_dims(time_grid, -1), tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32), tf.constant(omega_k_values[i], dtype=tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32)).numpy()
+        axs[0].plot(np.arange(len(time_grid)), (propagator[0] - target_vector[0])/(abs(target_vector[0])+ abs(propagator[0])), color = cmap_blue(norm(i)))
+        axs[1].plot(np.arange(len(time_grid)), (propagator[1] - target_vector[1])/(abs(target_vector[0])+ abs(propagator[0])), color = cmap_red(norm(i)))
+    axs[1].set_xlabel('time')
+    axs[0].set_ylabel('real(Error)')
+    axs[1].set_ylabel('imag(Error)')
+    plt.legend()
+    plt.title('Error of Propagator over Epochs')
     
     plt.show()
