@@ -126,7 +126,8 @@ if __name__== "__main__":
     target_gamma_k = [gamma_1, gamma_2]
 
     # array of time points
-    time_grid = np.arange(.1,10,.05).tolist() #make it a column vector
+    delta_t = 0.05
+    time_grid = np.arange(.1,10,delta_t).tolist() #make it a column vector
 
     # Instantiate model
     initial_Gamma_k = [1.2 * Gamma_1, Gamma_2]
@@ -217,21 +218,29 @@ if __name__== "__main__":
 
     #plot propagator for every set of parameters
     # Normalize h_val values to the 0-1 range
-        
-    fig, axs = plt.subplots(1, 2, figsize=(15, 5), sharex=True)
+    fig, axs = plt.subplots(3, 1, figsize=(15, 5), sharex=True)
     propagator = []
     nbr_elements = len(gamma_k_values)
     norm = mcolors.Normalize(-10,nbr_elements)
     cmap_red = plt.get_cmap("Reds")
     cmap_blue = plt.get_cmap("Blues")
+    
     for i in range(0,nbr_elements,10):
         propagator = propag_from_params(tf.cast(tf.expand_dims(time_grid, -1), tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32), tf.constant(omega_k_values[i], dtype=tf.float32), tf.constant(gamma_k_values[i], dtype=tf.float32)).numpy()
-        axs[0].plot(np.arange(len(time_grid)), (propagator[0] - target_vector[0])/(abs(target_vector[0])+ abs(propagator[0])), color = cmap_blue(norm(i)))
-        axs[1].plot(np.arange(len(time_grid)), (propagator[1] - target_vector[1])/(abs(target_vector[0])+ abs(propagator[0])), color = cmap_red(norm(i)))
+        #Note: add imaginary part!
+        diff_real = abs(propagator[0] - target_vector[0])
+        diff_imag = abs(propagator[1] - target_vector[1])
+        axs[0].plot(np.arange(len(time_grid)) * delta_t, diff_real, color = cmap_blue(norm(i)))
+        axs[1].plot(np.arange(len(time_grid)) * delta_t, abs(target_vector[0]), color = cmap_blue(norm(i)))
+        axs[2].plot(np.arange(len(time_grid)) * delta_t, diff_real / abs(target_vector[0]) , color = cmap_blue(norm(i)))
+        axs[0].plot(np.arange(len(time_grid)) * delta_t, diff_imag, color = cmap_red(norm(i)))
+        axs[1].plot(np.arange(len(time_grid)) * delta_t, abs(target_vector[1]), color = cmap_red(norm(i)))
+        axs[2].plot(np.arange(len(time_grid)) * delta_t, diff_imag / abs(target_vector[1]) , color = cmap_red(norm(i)))
     axs[1].set_xlabel('time')
-    axs[0].set_ylabel('real(Error)')
-    axs[1].set_ylabel('imag(Error)')
+    axs[0].set_ylabel('abs(Error)')
+    axs[1].set_ylabel('abs(G_target)')
+    axs[2].set_ylabel(' Error / G_target')
     plt.legend()
-    plt.title('Error of Propagator over Epochs')
+    
     
     plt.show()
