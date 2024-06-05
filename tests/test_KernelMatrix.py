@@ -75,9 +75,9 @@ class TestKernelMatrix(unittest.TestCase):
 
         K_comp = KernelMatrix(**params_comp)
         spec_dens_array = K_comp._compute_spec_dens_array_cmplx()
-        fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)
+        fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)#rotate in complex plane
         spec_dens_array_check = np.array([np.exp(-x**2) for x in fine_grid_complex])
-        self.assertTrue(np.array_equal(spec_dens_array, spec_dens_array_check))
+        self.assertTrue(np.allclose(spec_dens_array, spec_dens_array_check))
 
     def test_simple_exp_freq_parametrization(self):
         #create new KernelMatrix object, this time with simple-exponential frequency parametrization, i.e. freq_parametrization = "simple_exp"
