@@ -160,7 +160,7 @@ def set_time_grid(N_max, delta_t):
     Returns:
     np.array(): array containing the time points
     """
-    return np.arange(1, N_max + 1) * delta_t
+    return np.arange(0, N_max + 1) * delta_t
 
 
 def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
