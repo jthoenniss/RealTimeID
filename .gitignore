@@ -167,7 +167,7 @@ plots/
 #ignore hdf5 files
 *.h5
 #ignore also virtual environment
-channel_venv/
+ModesEnv/
 
 #ignore all files named 'playground.*' which are used to test code
 playground.*
