@@ -62,7 +62,7 @@ class KernelParams:
             "h": 0.1,
             "phi": np.pi / 4,
             "spec_dens": lambda x: spec_dens_gapless(x),
-            "freq_parametrization": "fancy_exp"
+            "freq_parametrization": "simple_exp"
         }    
         
         # For those parameters that are specified as keyword arguments, update the values
