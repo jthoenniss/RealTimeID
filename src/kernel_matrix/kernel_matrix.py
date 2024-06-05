@@ -37,6 +37,7 @@ class KernelMatrix:
         phi: float,
         spec_dens: callable,
         freq_parametrization: str,
+        **kwargs
     ):
         # check if all parameters are valid
         KernelParams.validate_m_n(m, n)
@@ -45,6 +46,13 @@ class KernelMatrix:
         KernelParams.validate_h(h)
         KernelParams.validate_phi(phi)
         KernelParams.validate_freq_parametrization(freq_parametrization)
+
+        for kwarg in kwargs:# ignore if an upper cutoff is specified as this is only relevant when computing continuous frequency integral as in DiscrKernel
+            if kwarg == "upper_cutoff":
+                pass
+            else:
+                raise ValueError(f"Invalid keyword argument: {kwarg}")
+    
 
         # Store parameters
         self.m, self.n = m, n
