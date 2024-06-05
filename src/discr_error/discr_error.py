@@ -101,46 +101,6 @@ class DiscrError(KernelMatrix):
             phi=self.phi,
         )
 
-    def discrete_integral(
-        self, kernel: np.ndarray = None, spec_dens_array_fine: np.ndarray = None
-    ) -> np.ndarray:
-        """
-        Computes the discrete approximation to the frequency integral at the times defined on the time grid
-
-        Parameters:
-        - kernel (np.ndarray, optional): Kernel matrix, where different rows correspond to different time steps, and different columns correspond to different frequencies
-        - spec_dens_array_fine (np.ndarray, optional): Array of spectral density values at the frequency points in the complex plane
-
-        Returns:
-        - np.ndarray: Discrete approximation result to frequency integral at times on time grid
-        """
-
-        # Use provided or default kernel and spec_dens_array
-        kernel_eff = self.kernel if kernel is None else kernel
-        spec_dens_array_eff_cmplx = (
-            self.spec_dens_array_fine
-            if spec_dens_array_fine is None
-            else spec_dens_array_fine
-        )
-
-        if not isinstance(kernel_eff, np.ndarray):
-            raise TypeError(
-                f"'kernel' must be of type np.ndarray. Found {type(kernel_eff).__name__}"
-            )
-
-        if not isinstance(spec_dens_array_eff_cmplx, np.ndarray):
-            raise TypeError(
-                f"'spec_dens_array' must be of type np.ndarray. Found {type(spec_dens_array_eff_cmplx).__name__}"
-            )
-        if kernel_eff.shape[1] != len(spec_dens_array_eff_cmplx):
-            raise RuntimeError(
-                f"Frequency dimension of 'kernel' must match length of 'spec_dens_array'. Respective values found: {kernel_eff.shape[1]}, {len(spec_dens_array_fine)}"
-            )
-
-        # Sum over the frequency axis
-        right_segment = kernel_eff @ spec_dens_array_eff_cmplx
-
-        return right_segment
 
     def time_integrate(self, time_series):
         """
