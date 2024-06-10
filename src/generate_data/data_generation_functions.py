@@ -77,7 +77,7 @@ def compute_grid_and_store(
                 decomp_kernel = DecompKernel(discr_error)
 
                 # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
-                propagator_reconstr = decomp_kernel.reconstruct_propagator()
+                propagator_reconstr = decomp_kernel.reconstruct_propagator_ID()
 
                 # compute error between reconstructed and continuous-frequency propagator
                 error_reconstr_vs_cont = discr_error.error_time_integrated(

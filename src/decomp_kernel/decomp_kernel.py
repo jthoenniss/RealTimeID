@@ -137,6 +137,7 @@ class DecompKernel(KernelMatrix):
         else:
             self.nbr_sv_above_eps = 0
             self.singular_values = np.array([])
+    
 
     def perform_SVD(self, eps=None):
         """
@@ -161,7 +162,7 @@ class DecompKernel(KernelMatrix):
         _eps = self.eps if eps is None else eps
         ID_rank, idx, proj = sli.interp_decomp(self.kernel, _eps)
         return ID_rank, idx, proj
-
+    
     def _compute_coarse_grid(self):
         """
         Compute the coarse grid consisting of frequencies selected by ID from the fine grid.
@@ -219,7 +220,7 @@ class DecompKernel(KernelMatrix):
 
         return kernel_reconstr
     
-    def reconstruct_propagator(self):
+    def reconstruct_propagator_ID(self):
         """
         Reconstructs the propagator from the ID approximation.
 
