@@ -1,5 +1,12 @@
 import unittest
 import numpy as np
+import os, sys
+project_path = os.environ.get('REALTIMEID_PATH')
+if project_path and project_path not in sys.path:
+    sys.path.append(project_path)
+    print("Project path successfully added.")
+
+
 import src.utils.common_funcs as cf
 from src.discr_error.discr_error import DiscrError
 from src.kernel_params.kernel_params import KernelParams
@@ -21,7 +28,6 @@ class TestDiscError(unittest.TestCase):
             "freq_parametrization": "fancy_exp",
         }
         self.D = DiscrError(**self.params_DiscrError)
-
 
 
     def test_base_attrs_present(self):
@@ -60,14 +66,16 @@ class TestDiscError(unittest.TestCase):
         nbr_times = len(time_grid)
 
         #check shapes
-        self.assertEqual(grids_reduced["kernel_reduced"].shape, (nbr_times, upper_idx - lower_idx))
-        self.assertEqual(grids_reduced["spec_dens_array_fine_reduced"].shape, (upper_idx - lower_idx,))
-        self.assertEqual(grids_reduced["discrete_integral_reduced"].shape, (nbr_times,))
+        self.assertEqual(grids_reduced["kernel_reduced"].shape, (2*nbr_times, 2*(upper_idx - lower_idx))) #first factor of: particle and holes, second factor of 2: negative and positive frequencies
+        self.assertEqual(grids_reduced["spec_dens_array_fine_reduced"].shape, (2*upper_idx - 2*lower_idx,)) #factor 2: negative and positive frequencies
+        self.assertEqual(grids_reduced["discrete_integral_reduced"].shape, (2*nbr_times,)) #factor 2: particle and holes
         self.assertEqual(grids_reduced["eps_reduced"].shape, ())
 
         #check that correct sub arrays are returned
-        self.assertTrue(np.array_equal(grids_reduced["kernel_reduced"], self.D.kernel[:, lower_idx:upper_idx]))
-        self.assertTrue(np.array_equal(grids_reduced["spec_dens_array_fine_reduced"], self.D.spec_dens_array_fine[lower_idx:upper_idx]))
+        L = len(self.D.fine_grid)
+        reduced_interval = np.concatenate((np.arange(L-upper_idx, L-lower_idx), np.arange(L+lower_idx, L+upper_idx)))
+        self.assertTrue(np.array_equal(grids_reduced["kernel_reduced"], self.D.kernel[:, reduced_interval]))
+        self.assertTrue(np.array_equal(grids_reduced["spec_dens_array_fine_reduced"], self.D.spec_dens_array_fine[reduced_interval]))
         
         
         #______Check that the discrete integral and error are computed correctly_____
@@ -145,6 +153,48 @@ class TestDiscError(unittest.TestCase):
         lowest_freq, largest_freq = np.exp(-discrete_cutoffs[0] - np.exp(discrete_cutoffs[0])), np.exp(discrete_cutoffs[1] - np.exp(-discrete_cutoffs[1]))
         self.assertEqual(D_opt.fine_grid[0], lowest_freq)#lower discrete cutoff
         self.assertEqual(D_opt.fine_grid[-1], largest_freq)#upper discrete cutoff
+    
+    def test_optimize_large_grid(self):
+
+        #start with very large grid and check that the grid is reduced to the correct size, i.e. that it is significantly reduced but the error does not exceed the original error by more thatn 10%
+        params_DiscrError_wide = {
+            "m": 3000,
+            "n": 1000,
+            "beta": 1000.0,
+            "N_max": 100,
+            "delta_t": 0.001,
+            "h": 0.05,
+            "phi": np.pi / 4,
+            "upper_cutoff" : np.inf,
+            "spec_dens": lambda x: spec_dens_gapped_sym(x),
+            "freq_parametrization": "simple_exp",
+        }
+        D_wide = DiscrError(**params_DiscrError_wide) #will be reference
+        D_opt = DiscrError(**params_DiscrError_wide) #will be optimized
+
+        print("error_original: " , D_wide.error_time_integrated())
+        print("original frequency bounds: ", D_wide.fine_grid[0], D_wide.fine_grid[-1])
+
+        rel_error_diff = 0.05
+        #optimize such that the error between optimized and unoptimized is below 10%.
+        D_opt.optimize(rel_error_diff=rel_error_diff)
+
+        #check that the grid is reduced
+        self.assertLessEqual(D_opt.m, params_DiscrError_wide["m"])
+        self.assertLessEqual(D_opt.n, params_DiscrError_wide["n"])
+
+        #check that the error is below the threshold
+        error_unopt = D_opt.error_time_integrated()
+        error_between_opt_unopt = D_opt.error_time_integrated(time_series_exact = D_wide.discrete_integral_init, time_series_approx=D_opt.discrete_integral_init)
+
+        print("error after optimization: ", error_unopt)
+        print("optimized frequency bounds: ", D_opt.fine_grid[0], D_opt.fine_grid[-1])
+        print("rel. difference of error",error_between_opt_unopt / error_unopt)
+    
+        self.assertLessEqual(error_between_opt_unopt / error_unopt, 0.1) #note that there is an err0r from the upper bound and lower bound which is why 'error_between_opt_unopt / error_unopt' can be larger than 0.05 specified above. The order of magnitude of the error should be correct nonetheless.
+
+
+
 
 if __name__ == "__main__":
     unittest.main()

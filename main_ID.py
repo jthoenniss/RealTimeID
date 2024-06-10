@@ -24,11 +24,11 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    h_vals = np.logspace(-2, -.2, 3)
+    h_vals = np.logspace(-2, -.2, 1)
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 3, 3)))
+    N_maxs = list(map(int, np.logspace(1, 2, 3)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
-    betas = [0, 1.e0, 1.e1, 1.e2, 1.e3, 1.e4, 1.e5]
+    betas = [0, 1.e0, 1.e1]#, 1.e2, 1.e3, 1.e4, 1.e5]
 
     # Define filename of hdf5 file holding the data
     filename = f"data/delta_t=0.1_gapless_exp_Lambda=100_longtime.h5"
@@ -41,7 +41,7 @@ if __name__ == "__main__":
     h5_kernel.create_file(kernel_dims=param_grid_dims)
 
     # Create instance of KernelParams to hold the parameter set (initialize with default values unless keyword arguments are specified)
-    params = KernelParams(spec_dens = lambda x: spec_dens_exp(x, Gamma=1., Lambda=100))
+    params = KernelParams(spec_dens = lambda x: spec_dens_gapless(x))
 
     print(f"Starting computation of data on parameter grid with dimensions {param_grid_dims}.")
     # compute data and write to file

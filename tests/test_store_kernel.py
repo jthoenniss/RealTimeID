@@ -1,11 +1,19 @@
 import unittest
 import numpy as np
+import os, sys
+project_path = os.environ.get('REALTIMEID_PATH')
+if project_path and project_path not in sys.path:
+    sys.path.append(project_path)
+    print("Project path successfully added.")
+
+
 from src.decomp_kernel.decomp_kernel import DecompKernel
 from src.discr_error.discr_error import DiscrError
 from src.store_kernel.store_kernel import Hdf5Kernel
 from src.utils import common_funcs as cf
 from src.spec_dens.spec_dens import spec_dens_gapless
-import os
+
+
 
 class Test_store_kernel(unittest.TestCase):
     def setUp(self):
@@ -201,5 +209,5 @@ class Test_store_kernel(unittest.TestCase):
             os.remove(self._filename)
 
     
-    if __name__ == "__main__":
-        unittest.main()
+if __name__ == "__main__":
+    unittest.main()

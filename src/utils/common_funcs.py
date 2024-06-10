@@ -65,21 +65,47 @@ def check_error_condition(eps_current, eps_previous):
 
 
 
-def distr(t, x, beta: float):
+def distr_particle(t, omega, beta: float, mu: float = 0): 
     """
-    Compute time-dependent Kernel, e^{i*t*omega} * (1-n_F(omega)), where n_F is Fermi-Dirac distribution
-    Note: omega is parametrized as x * e^{i*phi}, where x is real
+    Compute time-dependent Kernel of the particle-propagator, e^{i*t*omega} * (1-n_F(omega)), where n_F is Fermi-Dirac distribution
+    Note: 1) omega is parametrized as x * e^{i*phi}, where x is real
+            2) to compute the hole propagator, set beta = -beta.
+
+    Clip the arguments of the exponentials in order to avoid overflow/underflow errors.
 
     Parameters:
     - t (float): time argument
-    - x (float/complex): frequency argument
+    - omega (float/complex): frequency argument
     - beta (float): inverse temperature
+    - mu (float): chemical potential
 
     Returns:
     int: Kernel evaluated at specified paramters
     """
-    return np.exp(1.0j * x * t) / (1 + np.exp(-beta * x))
+    # Safe limit for exponent in double precision
+    max_exponent = 700
 
+    # Compute the real and imaginary parts of omega * t
+    omega_t_real = (omega * t).real
+    omega_t_imag = (omega * t).imag
+
+    # Clip the imaginary part of omega * t (real part gives just oscillation)
+    clipped_omega_t_imag = np.clip(omega_t_imag, -max_exponent, max_exponent)
+    clipped_omega_t = omega_t_real + 1.0j * clipped_omega_t_imag
+
+    # Compute the real and imaginary parts of -beta * (omega - mu)
+    beta_omega_mu_real = (-beta * (omega - mu)).real
+    beta_omega_mu_imag = (-beta * (omega - mu)).imag
+
+    # Clip the real part of -beta * (omega - mu) (imag part gives just oscillation)
+    clipped_beta_omega_mu_real = np.clip(beta_omega_mu_real, -max_exponent, max_exponent)
+    clipped_beta_omega_mu = clipped_beta_omega_mu_real + 1.0j * beta_omega_mu_imag
+
+    # Compute the exponentials with clipped arguments
+    numerator = np.exp(1.0j * clipped_omega_t)
+    denominator = 1 + np.exp(clipped_beta_omega_mu)
+    
+    return numerator / denominator
 
 
 def compute_singular_values(matrix, relative_error):
@@ -160,7 +186,7 @@ def set_time_grid(N_max, delta_t):
     Returns:
     np.array(): array containing the time points
     """
-    return np.arange(0, N_max + 1) * delta_t
+    return np.arange(1, N_max + 1) * delta_t
 
 
 def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
@@ -179,20 +205,17 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     # Ensure t is an array
     t = np.atleast_1d(t)
 
-    # Function to integrate for real and imaginary parts
-    def integrand_real(x):
-        return np.real(
-            np.exp(1.0j * phi)
-            * distr(t, x * np.exp(1.j * phi), beta)
-            * spec_dens(x * np.exp(1.0j * phi))
-        )
+    #integrand, expressed as a sum of two parts where the first part refers to right segment of the contour and the second part to the left segment
+    def integrand (omega): 
+        freq = omega * np.exp(1.j * phi)
+        positive_segment = distr_particle(t, freq, beta) * spec_dens(freq)
+        negative_segment = distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj())
 
-    def integrand_imag(x):
-        return np.imag(
-            np.exp(1.0j * phi)
-            * distr(t, x * np.exp(1.j * phi), beta)
-            * spec_dens(x * np.exp(1.0j * phi))
-        )
+        return (positive_segment + negative_segment) * np.exp(1.0j * phi) #exponential from jacobian
+
+    #define callable functions for real and imaginary parts of the integrand
+    integrand_real = lambda omega: integrand(omega).real
+    integrand_imag = lambda omega: integrand(omega).imag
 
     # Vectorized integration for real and imaginary parts
     right_segment_cont_real, _ = integrate.quad_vec(
@@ -210,6 +233,7 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
         epsabs=1.49e-15,
         epsrel=1.49e-13
     )
+
 
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
 

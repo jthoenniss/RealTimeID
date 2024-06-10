@@ -80,12 +80,12 @@ class KernelMatrix:
         """
         # set time grid
         self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
-        # initialize frequency grid
+        # initialize frequency grid 
         self.fine_grid, self.k_values, jacobian = self._initialize_fine_grid()
         # initialize matrix kernel
         self.kernel = self._initialize_kernel(jacobian=jacobian)
         # initialize the spectral density as 1 for all values of the fine grid (spec_dens is included in the kernel matrix)
-        self.spec_dens_array_fine = np.ones_like(self.fine_grid)
+        self.spec_dens_array_fine = np.ones_like(self.kernel[0,:])
 
 
     def _initialize_fine_grid(self) -> tuple:
@@ -104,7 +104,7 @@ class KernelMatrix:
         #initialize fine grid and Jacobian with exact implementation depending on the grid parametrization
         if self.freq_parametrization == "simple_exp":
             fine_grid = np.exp(self.h * k_values)
-            jacobian = self.h * fine_grid
+            jacobian = self.h * fine_grid # Jacobian from measure. This is dw/dk.
 
         elif self.freq_parametrization == "fancy_exp":
             fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
@@ -112,7 +112,7 @@ class KernelMatrix:
        
         else:
             raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + self.freq_parametrization)
-        
+
         return fine_grid, k_values, jacobian
 
     def _initialize_kernel(self, jacobian: np.ndarray) -> np.ndarray:
@@ -126,26 +126,24 @@ class KernelMatrix:
         """
         times_arr = self.times[:, np.newaxis]  # enable broadcasting
         fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
-        spec_dens_array_cmplx = self._compute_spec_dens_array_cmplx()
-
+        # add negative frequencies
+        fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
+       
         # Kernel defined by Fermi distribution and spectral density
-        K = cf.distr(times_arr, fine_grid_complex, self.beta) * spec_dens_array_cmplx
-        K *= jacobian * np.exp(1.j * self.phi) # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
+        #particle component
+        K_particle = cf.distr_particle(times_arr, fine_grid_complex, self.beta) * self.spec_dens(fine_grid_complex)
+        #hole component (negative sign in beta for hole distribution)
+        K_hole = cf.distr_particle(times_arr, fine_grid_complex, - self.beta) * self.spec_dens(fine_grid_complex)
+
+        # Combine particle and hole contributions by stacking them on top of each other
+        K = np.vstack((K_particle, K_hole))
+        jacobian_cmplx = jacobian * np.exp(1.j * self.phi)#adjust for complex contour
+        jacobian_cmplx = np.concatenate((jacobian_cmplx[::-1], jacobian_cmplx)) # add negative frequencies
+        
+        K *= jacobian_cmplx # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
 
         return K
 
-    def _compute_spec_dens_array_cmplx(self) -> np.ndarray:
-        """
-        Helper function for vecotized computation
-
-        Returns:
-        np.ndarray: array with values of spec_dens for all values of self.fine_grid (rotated in complex plane)
-        """
-        # create numpy vectorized version of callable
-    
-        spec_dens_array_cmplx = self.spec_dens(self.fine_grid * np.exp(1.0j * self.phi))
-
-        return spec_dens_array_cmplx
 
     def get_shared_attributes(self) -> dict:
         """

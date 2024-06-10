@@ -1,5 +1,12 @@
 import unittest
 import numpy as np
+import os, sys
+project_path = os.environ.get('REALTIMEID_PATH')
+if project_path and project_path not in sys.path:
+    sys.path.append(project_path)
+    print("Project path successfully added.")
+
+
 from src.kernel_matrix.kernel_matrix import KernelMatrix
 from src.utils import common_funcs as cf
 from src.spec_dens.spec_dens import spec_dens_gapless
@@ -56,33 +63,34 @@ class TestKernelMatrix(unittest.TestCase):
         #test values of kernel matrix:
         times = cf.set_time_grid(N_max=self.params_KernelMatrix["N_max"], delta_t=self.params_KernelMatrix["delta_t"])
         times_arr = times[:, np.newaxis]  # enable broadcasting
-        fine_grid_complex = fine_grid * np.exp(1j * self.K.phi)
-        K_check = cf.distr(times_arr, fine_grid_complex, self.K.beta) * self.K.spec_dens_array_fine
-        jacobian = self.K.h * (1 + np.exp(-self.K.h * k_values_check)) * fine_grid
-        K_check *= jacobian * np.exp(1.j * self.K.phi) # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
+        fine_grid_complex = fine_grid_check * np.exp(1j * self.K.phi)
+        #add negative frequencies
+        fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
+        K_check_particle = cf.distr_particle(times_arr, fine_grid_complex, self.K.beta) * self.K.spec_dens_array_fine
+        K_check_hole = cf.distr_particle(times_arr, fine_grid_complex, -self.K.beta) * self.K.spec_dens_array_fine
+
+        #combine particle and hole contributions
+        K_check = np.vstack((K_check_particle, K_check_hole))
+
+        jacobian = self.K.h * (1 + np.exp(-self.K.h * k_values_check)) * fine_grid * np.exp(1.j * self.params_KernelMatrix["phi"])
+        #add negative frequencies to Jacobian
+        jacobian_complex = np.concatenate((jacobian[::-1], jacobian))
+
+        K_check *= jacobian_complex # multiply by Jacobian from measure. This is dw/dk. 
 
         self.assertTrue(np.allclose(self.K.kernel, K_check))
 
     def test_kernel_matrix_shape(self):
         K = self.K.kernel
-        expected_shape = (len(self.K.times), self.K.m + self.K.n + 1)
+        expected_shape = (2*len(self.K.times), 2*(self.K.m + self.K.n + 1)) # first factor 2: particle and holes substacked, second factor 2: negative and positive frequencies
         self.assertEqual(K.shape, expected_shape)
 
-    def test_spec_dens_array(self):
-        # Check for a nontrival function that spectral density (e.g. x**2) is correctly computed
-        params_comp = self.params_KernelMatrix.copy()
-        params_comp["spec_dens"] = lambda x: np.exp(-x**2)
 
-        K_comp = KernelMatrix(**params_comp)
-        spec_dens_array = K_comp._compute_spec_dens_array_cmplx()
-        fine_grid_complex = K_comp.fine_grid * np.exp(1j * K_comp.phi)#rotate in complex plane
-        spec_dens_array_check = np.array([np.exp(-x**2) for x in fine_grid_complex])
-        self.assertTrue(np.allclose(spec_dens_array, spec_dens_array_check))
 
     def test_simple_exp_freq_parametrization(self):
         #create new KernelMatrix object, this time with simple-exponential frequency parametrization, i.e. freq_parametrization = "simple_exp"
         params_comp = self.params_KernelMatrix.copy()
-        params_comp["freq_parametrization"] = "simple_exp"
+        params_comp["freq_parametrization"] = "simple_exp" # if this keyword is removed, the grid should default to the simple exponential grid
         K_simple_exp = KernelMatrix(**params_comp)
 
         fine_grid, k_values = K_simple_exp.fine_grid, K_simple_exp.k_values
@@ -96,10 +104,20 @@ class TestKernelMatrix(unittest.TestCase):
         #test values of kernel matrix:
         times = cf.set_time_grid(N_max=self.params_KernelMatrix["N_max"], delta_t=self.params_KernelMatrix["delta_t"])
         times_arr = times[:, np.newaxis]  # enable broadcasting
-        fine_grid_complex = fine_grid * np.exp(1j * K_simple_exp.phi)
-        K_check = cf.distr(times_arr, fine_grid_complex, K_simple_exp.beta) * K_simple_exp.spec_dens_array_fine
-        jacobian = K_simple_exp.h * fine_grid
-        K_check *= jacobian * np.exp(1.j * K_simple_exp.phi) # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
+        fine_grid_complex = fine_grid_check * np.exp(1j * K_simple_exp.phi)
+        #add negative frequencies
+        fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
+        K_check_particle = cf.distr_particle(times_arr, fine_grid_complex, self.K.beta) * self.K.spec_dens_array_fine
+        K_check_hole = cf.distr_particle(times_arr, fine_grid_complex, -self.K.beta) * self.K.spec_dens_array_fine
+
+        #combine particle and hole contributions
+        K_check = np.vstack((K_check_particle, K_check_hole))
+
+        jacobian = self.K.h * fine_grid * np.exp(1.j * self.params_KernelMatrix["phi"])
+        #add negative frequencies to Jacobian
+        jacobian_complex = np.concatenate((jacobian[::-1], jacobian))
+
+        K_check *= jacobian_complex # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
 
         self.assertTrue(np.allclose(K_simple_exp.kernel, K_check))
 

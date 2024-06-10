@@ -160,7 +160,8 @@ class DecompKernel(KernelMatrix):
         Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
         _eps = self.eps if eps is None else eps
-        ID_rank, idx, proj = sli.interp_decomp(self.kernel, _eps)
+        ID_rank, idx, proj = sli.interp_decomp(self.kernel, _eps, rand = False)
+        
         return ID_rank, idx, proj
     
     def _compute_coarse_grid(self):
@@ -170,7 +171,10 @@ class DecompKernel(KernelMatrix):
         Returns:
         np.ndarray: Coarse grid array.
         """
-        coarse_grid = np.array(self.fine_grid[self.idx[: self.ID_rank]])
+
+        # the coarse grid is a subset of the full frequency grid (with negative and positive frequencies)
+        fine_grid_full = np.concatenate((-self.fine_grid[::-1], self.fine_grid))
+        coarse_grid = np.array(fine_grid_full[self.idx[:self.ID_rank]])
 
         return coarse_grid
     

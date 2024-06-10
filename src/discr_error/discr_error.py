@@ -56,7 +56,7 @@ class DiscrError(KernelMatrix):
         - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
             Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
             Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
-        - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid.
+        - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid, for particle and hole component
         """
 
         super().__init__(
@@ -78,15 +78,28 @@ class DiscrError(KernelMatrix):
         KernelParams.validate_upper_cutoff(upper_cutoff)
         self.upper_cutoff = upper_cutoff
 
-        self.cont_integral_init = (
-            self.cont_integral() if cont_integral_init is None else cont_integral_init
-        )
+        if cont_integral_init is None:
+            #particle component
+            cont_integral_init_particle = (
+                self.cont_integral_particle() 
+            )
+
+            #hole component
+            cont_integral_init_hole = (
+                self.cont_integral_hole() 
+            )
+
+            self.cont_integral_init = np.concatenate((cont_integral_init_particle, cont_integral_init_hole))
+        else:
+            self.cont_integral_init = cont_integral_init
+
 
         # compute time-integrated error between discrete and continuous integral
         self.eps = self.error_time_integrated()
 
-    def cont_integral(self):
+    def cont_integral_particle(self):
         """
+        Particle component:
         Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff]
 
         Returns:
@@ -96,6 +109,23 @@ class DiscrError(KernelMatrix):
         return cf.cont_integral(
             t=self.times,
             beta=self.beta,
+            upper_cutoff=self.upper_cutoff,
+            spec_dens=self.spec_dens,
+            phi=self.phi,
+        )
+    
+    def cont_integral_hole(self):
+        """
+        Hole component:
+        Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff]
+
+        Returns:
+        - (np.complex_): Result of integration in interval [0,upper_cutoff]
+        """
+
+        return cf.cont_integral(
+            t=self.times,
+            beta= -self.beta, #change sign for hole component
             upper_cutoff=self.upper_cutoff,
             spec_dens=self.spec_dens,
             phi=self.phi,
@@ -150,11 +180,11 @@ class DiscrError(KernelMatrix):
         Optimize the number of modes (m and n) to balance accuracy and computational cost.
         Parameters:
         - update_params (KernelParams, optional): An instance of KernelParams that holds the parameter set.
-        - rel_error_diff (float, optional): Threshold for the relative difference between the old and new error
+        - rel_error_diff (float, optional): Threshold for the relative difference between the old and new error.
         """
         nbr_freqs = len(self.fine_grid)
 
-        #temporarily store current variables to compare to optimizd variables
+        #temporarily store current variables to compare to optimizd variables. Needed only for printing optimization results
         freq_limits_prev =  (self.fine_grid[0], self.fine_grid[-1])
         eps_prev = self.eps
 
@@ -226,7 +256,7 @@ class DiscrError(KernelMatrix):
 
 
         Returns:
-        - int: number of frequency points dropped without making a error larger than 10% of the discretization error
+        - int: number of frequency points dropped without making a error larger than 'rel_diff' (e.g. 10%) of the discretization error
         """
         for count in range(1, max_count):
            
@@ -236,7 +266,7 @@ class DiscrError(KernelMatrix):
             eps_reduced = self._get_reduced_kernel_and_error(lower_idx, upper_idx)[
                 "eps_reduced"
             ]
-
+        
             if eps_reduced / self.eps > rel_error_diff:
                 return count - 1  # Found the optimal count
       
@@ -257,9 +287,19 @@ class DiscrError(KernelMatrix):
         - dict: dictionary containing the reduced kernel, reduced spec_dens_array_fine, reduced discrete integral, and reduced error
         """
         # compute reduced kernel and spec_dens_array_fine
-        kernel_reduced = self.kernel[:, lower_idx:upper_idx]
-        spec_dens_array_fine_reduced = self.spec_dens_array_fine[lower_idx:upper_idx]
+        # the indices lower_idx an upper_idx refer to the positive frequencies. 
 
+        # Determine the corresponding interval on the whole frequency grid
+        L = len(self.fine_grid)
+        interval_positive = np.arange(L + lower_idx, L + upper_idx)
+        interval_negative = np.arange(L - upper_idx, L - lower_idx)
+        #concatenate the indices for positive and negative frequencies
+        indices = np.concatenate((interval_negative, interval_positive))
+        #reduce the kernel to the corresponding interval
+        kernel_reduced = self.kernel[:,indices]
+        #reduce the spectral density to the corresponding interval
+        spec_dens_array_fine_reduced = self.spec_dens_array_fine[indices]
+        
         # compute the corresponding discrete-frequency approximation
         discrete_integral_reduced = self.discrete_integral(
             kernel=kernel_reduced, spec_dens_array_fine=spec_dens_array_fine_reduced

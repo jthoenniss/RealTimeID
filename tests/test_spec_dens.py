@@ -1,5 +1,13 @@
 import unittest
 import numpy as np
+
+import os, sys
+project_path = os.environ.get('REALTIMEID_PATH')
+if project_path and project_path not in sys.path:
+    sys.path.append(project_path)
+    print("Project path successfully added.")
+
+
 from src.spec_dens.spec_dens import spec_dens_gapless, spec_dens_gapped_sym
 
 

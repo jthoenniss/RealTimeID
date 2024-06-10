@@ -49,12 +49,22 @@ def compute_grid_and_store(
                 N_max=params.get_param("N_max"), delta_t=params.get_param("delta_t")
             )
             # compute continous-frequency integral
-            cont_integral = cf.cont_integral(
+            #particle component
+            cont_integral_particle = cf.cont_integral(
                 t=times,
                 beta=params.get_param("beta"),
                 upper_cutoff=params.get_param("upper_cutoff"),
                 spec_dens=params.get_param("spec_dens"),
             )
+            #hole component (beta -> -beta)
+            cont_integral_hole = cf.cont_integral( 
+                t=times,
+                beta= - params.get_param("beta"),
+                upper_cutoff=params.get_param("upper_cutoff"),
+                spec_dens=params.get_param("spec_dens"),
+            )
+            #join the two arrays
+            cont_integral = np.concatenate((cont_integral_particle, cont_integral_hole))
 
             for h, h_val in enumerate(h_vals):
                 params.update_parameters(
@@ -71,7 +81,7 @@ def compute_grid_and_store(
                         rel_error_diff=rel_error_diff
                     )  # optimize values for m and n
 
-                #print(*zip( discr_error.fine_grid, discr_error.spec_dens_array_fine))
+         
                 # create DecompKernel object which holds the kernel matrix and all associated parameters.
                 # Note: big data attributes are not copied but passed as references to the original object, avoiding memory duplication.
                 decomp_kernel = DecompKernel(discr_error)

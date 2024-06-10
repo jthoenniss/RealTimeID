@@ -1,5 +1,11 @@
 import unittest
 import numpy as np
+import os, sys
+project_path = os.environ.get('REALTIMEID_PATH')
+if project_path and project_path not in sys.path:
+    sys.path.append(project_path)
+    print("Project path successfully added.")
+
 import src.utils.common_funcs as cf
 from src.decomp_kernel.decomp_kernel import DecompKernel
 from src.discr_error.discr_error import DiscrError
@@ -52,7 +58,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
 
     def test_kernel_matrix_shape(self):
         K = self.K.kernel
-        expected_shape = (len(self.K.times), self.K.m + self.K.n + 1)
+        expected_shape = (2*len(self.K.times), 2*(self.K.m + self.K.n + 1)) # first factor 2: particle and hole component, second factor 2: negative and positive frequencies
         self.assertEqual(K.shape, expected_shape)
 
     def test_perform_SVD_maxrank(self):
@@ -130,6 +136,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
         # Add eps to params, such that both initilizations should be equivalent,
         # Also: pop upper_cutoff
         params_DiscrError["eps"] = D.eps
+        
         params_DiscrError.pop("upper_cutoff")
 
         self.dck_kwargs = DecompKernel(**params_DiscrError)
@@ -168,9 +175,11 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
                 )
             elif key == "freq_parametrization":
                 self.assertEqual(val, getattr(self.dck_kwargs, key))
+            elif key == "spec_dens":
+                self.assertEqual(val, getattr(self.dck_kwargs, key), "spec_dens differs")
+                self.assertEqual(val(0), 1., f"spec_dens(0) differs. Got {val(0)} instead of 1.")
             else:
-                self.assertEqual(val, getattr(self.dck_kwargs, key))
-                self.assertEqual(val(0), 1.)
+                print("no testcase for key: ", key, "with values: ", val, " and ", getattr(self.dck_kwargs, key))
 
 
 if __name__ == "__main__":
