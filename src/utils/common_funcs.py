@@ -238,6 +238,40 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     return right_segment_cont_real + 1.0j * right_segment_cont_imag
 
 
+
+def initialize_fine_grid(m: int, n: int, h: float, freq_parametrization: str) -> tuple:
+        """
+        Generates a fine grid for given discretization parameters.
+        Parameters:
+        - m (int): Number of frequencies omega > 1.
+        - n (int): Number of frequencies  0 < omega < 1.
+        - h (float): Grid spacing.
+        - freq_parametrization (str): Frequency parametrization ('simple_exp' or 'fancy_exp').
+
+        Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing:
+        - The generated fine grid as a NumPy array.
+        - The k values that define the grid points.
+        - The Jacobian of the transformation from the measure (dw/dk).
+        """
+        k_values = np.arange(-n, m + 1)
+
+        #initialize fine grid and Jacobian with exact implementation depending on the grid parametrization
+        if freq_parametrization == "simple_exp":
+            fine_grid = np.exp(h * k_values)
+            jacobian = h * fine_grid # Jacobian from measure. This is dw/dk.
+
+        elif freq_parametrization == "fancy_exp":
+            fine_grid = np.exp(h * k_values - np.exp(-h * k_values))
+            jacobian = h * (1 + np.exp(-h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
+       
+        else:
+            raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + freq_parametrization)
+
+        return fine_grid, k_values, jacobian
+
+
+
 def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):
     """
     Calculate point density within specified intervals.

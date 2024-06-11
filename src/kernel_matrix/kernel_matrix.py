@@ -81,39 +81,13 @@ class KernelMatrix:
         # set time grid
         self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
         # initialize frequency grid 
-        self.fine_grid, self.k_values, jacobian = self._initialize_fine_grid()
+        self.fine_grid, self.k_values, jacobian = cf.initialize_fine_grid(self.m, self.n, self.h, self.freq_parametrization)
         # initialize matrix kernel
         self.kernel = self._initialize_kernel(jacobian=jacobian)
         # initialize the spectral density as 1 for all values of the fine grid (spec_dens is included in the kernel matrix)
         self.spec_dens_array_fine = np.ones_like(self.kernel[0,:])
 
 
-    def _initialize_fine_grid(self) -> tuple:
-        """
-        Generates a fine grid for given discretization parameters.
-        Parameters:
-        - None
-        Returns:
-        Tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing:
-        - The generated fine grid as a NumPy array.
-        - The k values that define the grid points.
-        - The Jacobian of the transformation from the measure (dw/dk).
-        """
-        k_values = np.arange(-self.n, self.m + 1)
-
-        #initialize fine grid and Jacobian with exact implementation depending on the grid parametrization
-        if self.freq_parametrization == "simple_exp":
-            fine_grid = np.exp(self.h * k_values)
-            jacobian = self.h * fine_grid # Jacobian from measure. This is dw/dk.
-
-        elif self.freq_parametrization == "fancy_exp":
-            fine_grid = np.exp(self.h * k_values - np.exp(-self.h * k_values))
-            jacobian = self.h * (1 + np.exp(-self.h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
-       
-        else:
-            raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + self.freq_parametrization)
-
-        return fine_grid, k_values, jacobian
 
     def _initialize_kernel(self, jacobian: np.ndarray) -> np.ndarray:
         """
