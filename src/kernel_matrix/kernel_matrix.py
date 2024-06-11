@@ -105,9 +105,9 @@ class KernelMatrix:
        
         # Kernel defined by Fermi distribution and spectral density
         #particle component
-        K_particle = cf.distr_particle(times_arr, fine_grid_complex, self.beta) * self.spec_dens(fine_grid_complex)
+        K_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex, self.beta) * self.spec_dens(fine_grid_complex)
         #hole component (negative sign in beta for hole distribution)
-        K_hole = cf.distr_particle(times_arr, fine_grid_complex, - self.beta) * self.spec_dens(fine_grid_complex)
+        K_hole = cf.dynamic_distr_particle(times_arr, fine_grid_complex, - self.beta) * self.spec_dens(fine_grid_complex)
 
         # Combine particle and hole contributions by stacking them on top of each other
         K = np.vstack((K_particle, K_hole))

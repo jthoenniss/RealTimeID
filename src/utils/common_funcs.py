@@ -63,9 +63,24 @@ def check_error_condition(eps_current, eps_previous):
     return False
 
 
+def fermi_dirac(omega, beta: float, mu: float = 0):
+    """
+    Compute the Fermi-Dirac distribution function, 1 / (1 + exp(beta * (omega - mu))).
+    """
+    # Safe limit for exponent in double precision
+    max_exponent = 700
 
+    # Compute the real and imaginary parts of -beta * (omega - mu)
+    beta_omega_mu_real = (beta * (omega - mu)).real
+    beta_omega_mu_imag = (beta * (omega - mu)).imag
 
-def distr_particle(t, omega, beta: float, mu: float = 0): 
+    # Clip the real part of -beta * (omega - mu) (imag part gives just oscillation)
+    clipped_beta_omega_mu_real = np.clip(beta_omega_mu_real, -max_exponent, max_exponent)
+    clipped_beta_omega_mu = clipped_beta_omega_mu_real + 1.0j * beta_omega_mu_imag
+
+    return 1 / (1 + np.exp(clipped_beta_omega_mu))
+
+def dynamic_distr_particle(t, omega, beta: float, mu: float = 0): 
     """
     Compute time-dependent Kernel of the particle-propagator, e^{i*t*omega} * (1-n_F(omega)), where n_F is Fermi-Dirac distribution
     Note: 1) omega is parametrized as x * e^{i*phi}, where x is real
@@ -93,19 +108,11 @@ def distr_particle(t, omega, beta: float, mu: float = 0):
     clipped_omega_t_imag = np.clip(omega_t_imag, -max_exponent, max_exponent)
     clipped_omega_t = omega_t_real + 1.0j * clipped_omega_t_imag
 
-    # Compute the real and imaginary parts of -beta * (omega - mu)
-    beta_omega_mu_real = (-beta * (omega - mu)).real
-    beta_omega_mu_imag = (-beta * (omega - mu)).imag
-
-    # Clip the real part of -beta * (omega - mu) (imag part gives just oscillation)
-    clipped_beta_omega_mu_real = np.clip(beta_omega_mu_real, -max_exponent, max_exponent)
-    clipped_beta_omega_mu = clipped_beta_omega_mu_real + 1.0j * beta_omega_mu_imag
-
     # Compute the exponentials with clipped arguments
-    numerator = np.exp(1.0j * clipped_omega_t)
-    denominator = 1 + np.exp(clipped_beta_omega_mu)
+    evolution = np.exp(1.0j * clipped_omega_t)
+    distribution = fermi_dirac(omega, - beta, mu)#minus sign in beta results in HOLE distribution (which is relevant for PARTICLE propagator)
     
-    return numerator / denominator
+    return evolution * distribution
 
 
 def compute_singular_values(matrix, relative_error):
@@ -208,8 +215,8 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     #integrand, expressed as a sum of two parts where the first part refers to right segment of the contour and the second part to the left segment
     def integrand (omega): 
         freq = omega * np.exp(1.j * phi)
-        positive_segment = distr_particle(t, freq, beta) * spec_dens(freq)
-        negative_segment = distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj())
+        positive_segment = dynamic_distr_particle(t, freq, beta) * spec_dens(freq)
+        negative_segment = dynamic_distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj())
 
         return (positive_segment + negative_segment) * np.exp(1.0j * phi) #exponential from jacobian
 
