@@ -327,17 +327,19 @@ def cleanup(r, Z, F):
 
     Returns: 
     r : cleaned BarycentricRational object, i.e. without Froissart doublets
+
     """
     zj, fj, wj = r.nodes, r.values, r.weights
+    Z = Z.copy()
+    F = F.copy()
 
     #compute poles and residues
     poles, residues = r.polres()
 
-    M = len(Z) # length of original "fine" grid
     ii = np.where(np.abs(residues) < 1e-10)[0] #indices with vanishing residues (Froissart doublets)
     ni = len(ii) # number of Froissart doublets 
     if ni == 0:
-        return zj, fj, wj
+        return r
 
     print(f'{ni} Froissart doublets')
 
