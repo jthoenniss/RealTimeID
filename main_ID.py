@@ -3,7 +3,7 @@ import numpy as np
 # Import Custom Modules
 from src.utils.module_utils.all_custom_modules import Hdf5Kernel
 from src.kernel_params.kernel_params import KernelParams
-from src.generate_data.data_generation_functions import compute_grid_and_store
+from src.generate_data.data_generation_functions import compute_ID_grid_and_store
 from src.spec_dens.spec_dens import spec_dens_gapless, spec_dens_gapped_sym, spec_dens_exp
 import time
 
@@ -45,7 +45,7 @@ if __name__ == "__main__":
 
     print(f"Starting computation of data on parameter grid with dimensions {param_grid_dims}.")
     # compute data and write to file
-    compute_grid_and_store(
+    compute_ID_grid_and_store(
         h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=h5_kernel, optimize=True, rel_error_diff=0.01
     )
 

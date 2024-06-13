@@ -11,7 +11,7 @@ from src.utils.module_utils.all_custom_modules import (
 from src.kernel_params.kernel_params import KernelParams
 
 
-def compute_grid_and_store(
+def compute_ID_grid_and_store(
     h_vals,
     N_maxs,
     betas,
