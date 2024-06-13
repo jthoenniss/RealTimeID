@@ -67,18 +67,12 @@ def fermi_dirac(omega, beta: float, mu: float = 0):
     """
     Compute the Fermi-Dirac distribution function, 1 / (1 + exp(beta * (omega - mu))).
     """
-    # Safe limit for exponent in double precision
-    max_exponent = 700
-
-    # Compute the real and imaginary parts of -beta * (omega - mu)
-    beta_omega_mu_real = (beta * (omega - mu)).real
-    beta_omega_mu_imag = (beta * (omega - mu)).imag
-
-    # Clip the real part of -beta * (omega - mu) (imag part gives just oscillation)
-    clipped_beta_omega_mu_real = np.clip(beta_omega_mu_real, -max_exponent, max_exponent)
-    clipped_beta_omega_mu = clipped_beta_omega_mu_real + 1.0j * beta_omega_mu_imag
-
-    return 1 / (1 + np.exp(clipped_beta_omega_mu))
+    #handle errors due to division by zero (while errorstate)
+    with np.errstate(divide='ignore', over='ignore', under='ignore', invalid='ignore'):
+        distr = 1 / (1 + np.exp(beta * (omega - mu)))
+        # Set values where exp overflowed to 0
+        distr = np.where(np.isfinite(distr), distr, 0)
+    return distr
 
 def dynamic_distr_particle(t, omega, beta: float, mu: float = 0): 
     """
@@ -267,15 +261,16 @@ def initialize_fine_grid(m: int, n: int, h: float, freq_parametrization: str) ->
         if freq_parametrization == "simple_exp":
             fine_grid = np.exp(h * k_values)
             jacobian = h * fine_grid # Jacobian from measure. This is dw/dk.
+            return fine_grid, k_values, jacobian
 
         elif freq_parametrization == "fancy_exp":
             fine_grid = np.exp(h * k_values - np.exp(-h * k_values))
             jacobian = h * (1 + np.exp(-h * k_values)) * fine_grid  # Jacobian from measure. This is dw/dk.
-       
+            return fine_grid, k_values, jacobian
+        
         else:
             raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + freq_parametrization)
 
-        return fine_grid, k_values, jacobian
 
 
 
