@@ -166,12 +166,13 @@ class BarycentricRational:
 
 
         # compute residues via formula for simple poles of quotients of analytic functions
-        C_pol = 1.0 / (pol[:,None] - zj[None,:])
-        N_pol = C_pol.dot(fj*wj)
-        Ddiff_pol = (-C_pol**2).dot(wj)
-        res = N_pol / Ddiff_pol
+        with np.errstate(divide='ignore', over='ignore', under='ignore', invalid='ignore'):
+            C_pol = 1.0 / (pol[:,None] - zj[None,:])
+            N_pol = C_pol.dot(fj*wj)
+            Ddiff_pol = (-C_pol**2).dot(wj)
+            res = N_pol / Ddiff_pol
 
-        res = np.where(np.isnan(res), 0, res)
+            res = np.where(np.isnan(res), 0, res)#remove nans that are caused by division by zero in C_pol
 
         return pol, res
 
