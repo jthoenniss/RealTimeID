@@ -133,3 +133,22 @@ class AAAKernel:
 
         return (G_particle, G_hole)
     
+    def count_upper_poles(self):
+        """
+        Count the number of poles in the upper half plane for the particle and hole contributions.
+
+        Parameters:
+        - None
+
+        Returns:
+        - tuple: Number of poles in the upper half plane for the particle and hole contributions.
+        """
+
+        poles_particle, _ = self.r_particle.polres()
+        poles_hole, _ = self.r_hole.polres()
+
+        particle_mask = np.imag(poles_particle) > 0
+        hole_mask = np.imag(poles_hole) > 0
+
+        return (np.sum(particle_mask), np.sum(hole_mask))
+    
