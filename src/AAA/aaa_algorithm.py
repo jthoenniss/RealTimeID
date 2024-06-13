@@ -337,7 +337,7 @@ def cleanup(r, Z, F):
     #compute poles and residues
     poles, residues = r.polres()
 
-    ii = np.where(np.abs(residues) < 1e-10)[0] #indices with vanishing residues (Froissart doublets)
+    ii = np.where(np.abs(residues) < 1e-13)[0] #indices with vanishing residues (Froissart doublets)
     ni = len(ii) # number of Froissart doublets 
     if ni == 0:
         return r
