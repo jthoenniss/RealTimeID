@@ -184,6 +184,9 @@ def compute_AAA_grid_and_store(h_vals,
                 #compute the propagator as given by the AAA algorithm
                 propagator_AAA = AAA_kernel.propagator_AAA()
 
+                print("AAA", propagator_AAA[:10])
+                print("cont", cont_integral[:10])
+
                 # compute error between reconstructed and continuous-frequency propagator
                 error_reconstr_vs_cont = cf.error_time_integrated(
                     time_series_exact = cont_integral,

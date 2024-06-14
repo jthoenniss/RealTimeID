@@ -320,6 +320,7 @@ class Hdf5Kernel:
  
         # Initialize dictionary to hold data to be read out
         data_dict = {}
+
         
         for idx in range(kernel_dims_flat):
             # Read parameters and data from file
@@ -328,22 +329,28 @@ class Hdf5Kernel:
             for key in keys:
                 if key in params:
                     data_read = params[key]
+                    data_dict.setdefault(key, []).append(data_read)
                     if data_read.ndim > 0:
                         raise ValueError(f"Parameter {key} is not a scalar.")
                 elif key in data:
                     data_read = data[key]
-                    if data_read.ndim > 0:
-                        raise ValueError(f"Data {key} is not a scalar.")
+                    if data_read.ndim == 1:
+                        data_dict.setdefault(key, []).append(data_read)
+                    else:
+                        # Handle multi-dimensional numpy arrays
+                        data_dict.setdefault(key, []).append(data_read)
+       
                 else:
                     raise KeyError(f"Key {key} not found in file {self._filename}.")
                 
-                # Append data to list in dictionary under the corresponding key
-                data_dict.setdefault(key, []).append(data_read)
 
         # Convert lists to arrays
         for key, value in data_dict.items():
-            data_dict[key] = np.array(value).reshape(self.kernel_dims)
-
+            #check that lenght is equal to unraveled kernel_dimes (then it's a scalar)
+            if isinstance(value, list) and not any(isinstance(i, np.ndarray) for i in value): 
+                data_dict[key] = np.array(value).reshape(self.kernel_dims)
+         
+    
         return self.kernel_dims, data_dict
     
 

@@ -214,21 +214,10 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
 
         return (positive_segment + negative_segment) * np.exp(1.0j * phi) #exponential from jacobian
 
-    #define callable functions for real and imaginary parts of the integrand
-    integrand_real = lambda omega: integrand(omega).real
-    integrand_imag = lambda omega: integrand(omega).imag
 
     # Vectorized integration for real and imaginary parts
-    right_segment_cont_real, _ = integrate.quad_vec(
-        integrand_real,
-        0,
-        upper_cutoff,
-        epsabs=1.49e-15,
-        epsrel=1.49e-13
-    )
-
-    right_segment_cont_imag, _ = integrate.quad_vec(
-        integrand_imag,
+    integral, _ = integrate.quad_vec(
+        integrand,
         0,
         upper_cutoff,
         epsabs=1.49e-15,
@@ -236,7 +225,7 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     )
 
 
-    return right_segment_cont_real + 1.0j * right_segment_cont_imag
+    return integral 
 
 
 

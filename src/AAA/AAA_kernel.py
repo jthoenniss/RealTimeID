@@ -67,7 +67,8 @@ class AAAKernel:
         self.poles_particle, self.residues_particle = self.r_particle.polres()
         self.poles_hole, self.residues_hole = self.r_hole.polres()
 
-        #compute propagator
+        #number of poles in the upper half plane
+        self.nbr_poles_upper = np.sum(np.imag(self.poles_particle) > 0) + np.sum(np.imag(self.poles_hole) > 0)
 
 
     def remove_Froissart(self) -> None:
@@ -80,6 +81,8 @@ class AAAKernel:
         #update poles and residues
         self.poles_particle, self.residues_particle = self.r_particle.polres()
         self.poles_hole, self.residues_hole = self.r_hole.polres()
+        #number of poles in the upper half plane
+        self.nbr_poles_upper = np.sum(np.imag(self.poles_particle) > 0) + np.sum(np.imag(self.poles_hole) > 0)
 
 
     def rational_approx(self, omega: float) -> tuple:
