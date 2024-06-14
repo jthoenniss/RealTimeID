@@ -7,6 +7,7 @@ from src.utils.module_utils.all_custom_modules import (
     DecompKernel,
     cf,
     Hdf5Kernel,
+    AAAKernel,
 )  # Consolidated custom modules import
 from src.kernel_params.kernel_params import KernelParams
 
@@ -21,7 +22,7 @@ def compute_ID_grid_and_store(
     rel_error_diff: float = None,
 ) -> None:
     """
-    Compute discretization error and store results in an HDF5 file.
+    Compute discretization error for ID and store results in an HDF5 file.
 
     This function computes the discretization error and the corresponding DlrKernel object for each point on a data grid
     and stores the resulting data in an HDF5 file associated with 'h5_kernel'.
@@ -41,31 +42,33 @@ def compute_ID_grid_and_store(
     for b, beta in enumerate(betas):
         params.update_parameters({"beta": beta})
 
+        # set time grid for maximal time needed
+        times = cf.set_time_grid(
+            N_max=N_maxs[-1], delta_t=params.get_param("delta_t")
+        )
+        # compute continuous-frequency integral such that they are not recomputed for every value of h below
+        #particle component
+        cont_integral_particle = cf.cont_integral(
+            t=times,
+            beta=params.get_param("beta"),
+            upper_cutoff=params.get_param("upper_cutoff"),
+            spec_dens=params.get_param("spec_dens"),
+        )
+        #hole component (beta -> -beta)
+        cont_integral_hole = cf.cont_integral( 
+            t=times,
+            beta= - params.get_param("beta"),
+            upper_cutoff=params.get_param("upper_cutoff"),
+            spec_dens=params.get_param("spec_dens"),
+        )
+
+
         for tau, N_max in enumerate(N_maxs):
             params.update_parameters({"N_max": N_max})
 
-            # set time grid
-            times = cf.set_time_grid(
-                N_max=params.get_param("N_max"), delta_t=params.get_param("delta_t")
-            )
-            # compute continous-frequency integral
-            #particle component
-            cont_integral_particle = cf.cont_integral(
-                t=times,
-                beta=params.get_param("beta"),
-                upper_cutoff=params.get_param("upper_cutoff"),
-                spec_dens=params.get_param("spec_dens"),
-            )
-            #hole component (beta -> -beta)
-            cont_integral_hole = cf.cont_integral( 
-                t=times,
-                beta= - params.get_param("beta"),
-                upper_cutoff=params.get_param("upper_cutoff"),
-                spec_dens=params.get_param("spec_dens"),
-            )
-            #join the two arrays
-            cont_integral = np.concatenate((cont_integral_particle, cont_integral_hole))
-
+            #join the two arrays for the particle and hole components
+            cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
+        
             for h, h_val in enumerate(h_vals):
                 params.update_parameters(
                     {"h": h_val}
@@ -100,8 +103,8 @@ def compute_ID_grid_and_store(
 
                 # store error data in dictionary whose content will be added to hdf5 file.
                 ID_propagator_error = {
-                    "error_reconstr_vs_cont": error_reconstr_vs_cont,
-                    "error_reconstr_vs_discr": error_reconstr_vs_discr,
+                    "ID_error_reconstr_vs_cont": error_reconstr_vs_cont,
+                    "ID_error_reconstr_vs_discr": error_reconstr_vs_discr,
                 }
 
                 # store to hdf5 file
@@ -110,4 +113,92 @@ def compute_ID_grid_and_store(
                     kernel_object=decomp_kernel,
                     kernel_object2=discr_error,
                     dict_data=ID_propagator_error,
+                )
+
+
+def compute_AAA_grid_and_store(h_vals,
+    N_maxs,
+    betas,
+    params: KernelParams,
+    h5_kernel: Hdf5Kernel,
+    remove_Froissart: bool = True,
+) -> None:
+    """
+    This function computes the error and the corresponding AAAKernel object for each point on a data grid
+
+    Parameters:
+        h_vals (array type): Array of discretization parameter values to be evaluated.
+        N_maxs (array type): Array of total number of time steps values to be evaluated.
+        betas (array type): Array of inverse temperature values to be evaluated.
+        params (KernelParams): An instance of KernelParams that holds the parameter set.
+        h5_kernel (Hdf5Kernel): An instance of Hdf5Kernel associated with the HDF5 file for storing the results.
+        remove_Froissart (bool, optional): If True, Froissart doublets are removed.
+    
+    Returns:
+        None
+    """
+    for b, beta in enumerate(betas):
+        params.update_parameters({"beta": beta})
+
+
+        # set time grid for maximal time needed
+        times = cf.set_time_grid(
+            N_max=N_maxs[-1], delta_t=params.get_param("delta_t")
+        )
+        # compute continuous-frequency integral such that they are not recomputed for every value of h below
+        #particle component
+        cont_integral_particle = cf.cont_integral(
+            t=times,
+            beta=params.get_param("beta"),
+            upper_cutoff=params.get_param("upper_cutoff"),
+            spec_dens=params.get_param("spec_dens"),
+            phi = 0, #along real axis
+        )
+        #hole component (beta -> -beta)
+        cont_integral_hole = cf.cont_integral( 
+            t=times,
+            beta= - params.get_param("beta"),
+            upper_cutoff=params.get_param("upper_cutoff"),
+            spec_dens=params.get_param("spec_dens"),
+            phi = 0, #along real axis
+        )
+
+        for tau, N_max in enumerate(N_maxs):
+            params.update_parameters({"N_max": N_max})
+
+            #join the two arrays for the particle and hole components
+            cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
+
+            for h, h_val in enumerate(h_vals):
+                params.update_parameters(
+                    {"h": h_val}
+                )  # this automatically updates "m" and "n" to reach to discrete cutoffs defined in class 'KernelParams'.
+
+                # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
+                AAA_kernel = AAAKernel(**params.params)
+
+                if remove_Froissart:
+                    AAA_kernel.remove_Froissart()#remove Froissart doublets
+                    
+
+                #compute the propagator as given by the AAA algorithm
+                propagator_AAA = AAA_kernel.propagator_AAA()
+
+                # compute error between reconstructed and continuous-frequency propagator
+                error_reconstr_vs_cont = cf.error_time_integrated(
+                    time_series_exact = cont_integral,
+                    time_series_approx = propagator_AAA,
+                    delta_t = params.get_param("delta_t")
+                )
+
+                # store error data in dictionary whose content will be added to hdf5 file.
+                AAA_propagator_error = {
+                    "AAA_error_reconstr_vs_cont": error_reconstr_vs_cont,
+                }
+
+                # store to hdf5 file
+                h5_kernel.append_kernel_element(
+                    (h, tau, b),
+                    kernel_object=AAA_kernel,
+                    dict_data=AAA_propagator_error,
                 )

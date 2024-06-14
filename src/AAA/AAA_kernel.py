@@ -63,6 +63,11 @@ class AAAKernel:
         #hole contribution
         self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         
+        #determine poles and residues of the rational approximations
+        self.poles_particle, self.residues_particle = self.r_particle.polres()
+        self.poles_hole, self.residues_hole = self.r_hole.polres()
+
+        #compute propagator
 
 
     def remove_Froissart(self) -> None:
@@ -71,6 +76,11 @@ class AAAKernel:
         """
         self.r_particle = cleanup(self.r_particle, self.Z, self.F_particle)
         self.r_hole = cleanup(self.r_hole, self.Z, self.F_hole)
+
+        #update poles and residues
+        self.poles_particle, self.residues_particle = self.r_particle.polres()
+        self.poles_hole, self.residues_hole = self.r_hole.polres()
+
 
     def rational_approx(self, omega: float) -> tuple:
         """
@@ -97,7 +107,7 @@ class AAAKernel:
     
         return (self.r_particle.polres(), self.r_hole.polres())
     
-    def propags(self, time: float = None) -> tuple:
+    def propagator_AAA(self, time: float = None) -> tuple:
         """
         Compute the propagator for a given set of time steps.
 
@@ -105,50 +115,53 @@ class AAAKernel:
         - time (np.ndarray/float, optional): Time argument for the propagator. If not specified, the time grid 'self.times' is used.
 
         Returns:
-        - tuple: Propagator for the particle and hole contributions.
+        - tuple: Propagator for the particle and hole contributions (concatenated to a single array).
         """
         if time is None:
             time = self.times[:, np.newaxis]#cast to column vector
         else:
             time = np.asarray(time)[:, np.newaxis]#cast to column vector
-
-        #compute poles and residues
-        poles_particle, residues_particle = self.r_particle.polres()
-        poles_hole, residues_hole = self.r_hole.polres()
-
-        #determine poles in the upper half plane and the corresponding residues
-        #particles
-        particle_mask = np.imag(poles_particle) > 0#mask for poles in the upper half plane
-        poles_particle_upper = poles_particle[particle_mask]
-        residues_particle_upper = residues_particle[particle_mask]
-
-        #holes
-        hole_mask = np.imag(poles_hole) > 0
-        poles_hole_upper = poles_hole[hole_mask]
-        residues_hole_upper = residues_hole[hole_mask]
+        
+        #compute poles and residues in the upper half plane
+        poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper = self.upper_polres()
 
         #compute particle and hole propagators via residue theorem
         G_particle = 2.j * np.pi * np.sum(residues_particle_upper  * np.exp(1.j * poles_particle_upper * time), axis=1).flatten()
         G_hole = 2.j * np.pi * np.sum(residues_hole_upper * np.exp(1.j * poles_hole_upper * time), axis=1).flatten()
 
-        return (G_particle, G_hole)
+        return np.concatenate((G_particle, G_hole))
     
-    def count_upper_poles(self):
+    def upper_polres(self):
         """
-        Count the number of poles in the upper half plane for the particle and hole contributions.
+        Determine the poles in the upper half plane and the correspondign residues
 
         Parameters:
         - None
 
         Returns:
-        - tuple: Number of poles in the upper half plane for the particle and hole contributions.
+        - tuple: Poles and residues for the particle and hole contributions in the upper half plane.
         """
+        
+        #determine poles in the upper half plane and the corresponding residues
+        #particles
+        particle_mask = np.imag(self.poles_particle) > 0#mask for poles in the upper half plane
+        poles_particle_upper = self.poles_particle[particle_mask]
+        residues_particle_upper = self.residues_particle[particle_mask]
 
-        poles_particle, _ = self.r_particle.polres()
-        poles_hole, _ = self.r_hole.polres()
+        #holes
+        hole_mask = np.imag(self.poles_hole) > 0
+        poles_hole_upper = self.poles_hole[hole_mask]
+        residues_hole_upper = self.residues_hole[hole_mask]
 
-        particle_mask = np.imag(poles_particle) > 0
-        hole_mask = np.imag(poles_hole) > 0
-
-        return (np.sum(particle_mask), np.sum(hole_mask))
+        return (poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper)
     
+    def get_params(self):
+            """
+            Returns a dict containing the parameters associated with an instance of the class and stored as attributes
+            """
+
+            param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "freq_parametrization"]
+
+            param_dict = {key: getattr(self, key) for key in param_keys}
+
+            return param_dict

@@ -130,9 +130,10 @@ class TestAAAKernel(unittest.TestCase):
         G_particle = 2.j * np.pi * np.sum(residues_particle_upper  * np.exp(1.j * poles_particle_upper * times[:,np.newaxis]), axis=1).flatten()
         G_hole = 2.j * np.pi * np.sum(residues_hole_upper  * np.exp(1.j * poles_hole_upper * times[:,np.newaxis]), axis=1).flatten()
 
+        #concatenate particle and hole propagator
+        G = np.concatenate((G_particle, G_hole))
         #compare to values in object
-        self.assertTrue(np.allclose(G_particle, self.K.propags()[0]))
-        self.assertTrue(np.allclose(G_hole, self.K.propags()[1]))
+        self.assertTrue(np.allclose(G, self.K.propagator_AAA()))
 
 if __name__ == "__main__":
     unittest.main()

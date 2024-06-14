@@ -140,8 +140,7 @@ class DiscrError(KernelMatrix):
         Returns:
         - float: time-integrated value
         """
-        time_integrated_value = self.delta_t * np.sum(time_series)
-        return time_integrated_value
+        return cf.time_integrate(time_series, self.delta_t)
 
     def error_time_integrated(self, time_series_exact=None, time_series_approx=None):
         """
@@ -164,14 +163,7 @@ class DiscrError(KernelMatrix):
             self.cont_integral_init if time_series_exact is None else time_series_exact
         )
 
-        # compute absolute time integrated error
-        abs_error_time_integrated = self.time_integrate(
-            abs(time_series_exact - time_series_approx)
-        )
-        # compute norm
-        norm = self.time_integrate(abs(time_series_exact) + abs(time_series_approx))
-        # compute relative error by dividing by norm
-        rel_error_time_integrated = abs_error_time_integrated / norm
+        rel_error_time_integrated = cf.error_time_integrated(time_series_exact, time_series_approx, self.delta_t)
 
         return rel_error_time_integrated
 

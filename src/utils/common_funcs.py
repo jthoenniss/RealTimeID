@@ -271,7 +271,39 @@ def initialize_fine_grid(m: int, n: int, h: float, freq_parametrization: str) ->
         else:
             raise ValueError("Invalid grid parametrization argument. Must be 'simple_exp' or 'fancy_exp'. Got: " + freq_parametrization)
 
+def time_integrate(time_series, delta_t):
+        """
+        Compute the time-integrated value based on a time-series.
+        Parameters:
+        - times_series(np.array(float)): time series to be integrated
+        - delta_t(float): time step
 
+        Returns:
+        - float: time-integrated value
+        """
+        time_integrated_value = delta_t * np.sum(time_series)
+        return time_integrated_value
+
+def error_time_integrated(time_series_exact, time_series_approx, delta_t):
+    """
+    Compute the relative time-integrated error between two time series.
+
+    Parameters:
+    - time_series_exact (numpy.ndarray): Exact time series.
+    - time_series_approx (numpy.ndarray): Approximated time series.
+    - delta_t (float): Time step.
+
+    Returns:
+    - float: Relative time-integrated error.
+    """
+    #absolute time integrated error
+    abs_error_time_integrated = time_integrate(abs(time_series_exact - time_series_approx), delta_t)
+    # compute norm
+    norm = time_integrate(abs(time_series_exact) + abs(time_series_approx), delta_t)
+    # compute relative error by dividing by norm
+    rel_error_time_integrated = abs_error_time_integrated / norm
+
+    return rel_error_time_integrated
 
 
 def point_density(grid, lower_limit, upper_limit, interval_spacing="lin"):

@@ -86,6 +86,26 @@ def spec_dens_exp(omega: np.ndarray, Gamma: float = 1.0, Lambda: float = 1.e4) -
     return val
 
 
+def spec_dens_semi_circle(omega: np.ndarray, Gamma: float = 1.0, half_width: float = 1.0) -> np.ndarray:
+    """
+    Semicircle spectral density.
+
+    Parameters:
+    - omega (scalar/np.ndarray): Frequency values at which the spectral density is evaluated.
+    - Gamma (float, optional): Energy scale of the spectral density.
+    - half_width (float, optional): Half-width of the semicircle.
+
+    Returns:
+    scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
+    """
+    omega = np.asarray(omega)  # Ensure omega is a NumPy array
+    result = np.zeros_like(omega)  # Initialize result array with the same shape as omega
+    
+    mask = np.abs(omega) < half_width  # Boolean mask for values where abs(omega) < half_width
+    result[mask] = np.sqrt(half_width**2 - omega[mask]**2)  # Apply the formula only where the condition is True
+    
+    return Gamma * result
+
 if __name__ == "__main__":
  
     # plot spectral densities

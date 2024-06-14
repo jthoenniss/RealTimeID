@@ -3,6 +3,7 @@ import h5py
 from typing import Tuple, Dict, Any  # for clear function signatures
 import os
 from src.kernel_matrix.kernel_matrix import KernelMatrix
+from src.AAA.AAA_kernel import AAAKernel
 import re#used for sorting keys in hdf5 file
 
 
@@ -196,15 +197,15 @@ class Hdf5Kernel:
         Stores the data of a kernel object in the given HDF5 group.
         """
         #check that kernel_object is of type KernelMatrix (typically is it one of its derived classes)
-        if not isinstance(kernel_object, KernelMatrix):
-            raise TypeError(f"Supplementary kernel object must be of type KernelMatrix, got {type(kernel_object)}.")
+        if not isinstance(kernel_object, KernelMatrix) and not isinstance(kernel_object, AAAKernel):
+            raise TypeError(f"Supplementary kernel object must be of type KernelMatrix or AAAKernel, got {type(kernel_object)}.")
 
         # Store additional attributes of the kernel object
         for key, value in vars(kernel_object).items():
             #Store all kernel-related quantities except for those already stored 
             #Exclude also the spectral density which is a callable function
             #and the kernel matrix which may be a large object
-            if key not in used_keys and key not in ["kernel", "spec_dens"]:
+            if key not in used_keys and key not in ["kernel", "spec_dens", "r_particle", "r_hole"]:
                 group.create_dataset(key, data=value)
                 used_keys.append(key)#append key to list of used keys
 
