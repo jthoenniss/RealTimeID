@@ -39,6 +39,8 @@ def compute_ID_grid_and_store(
         None
 
     """
+
+
     for b, beta in enumerate(betas):
         params.update_parameters({"beta": beta})
 
@@ -116,7 +118,7 @@ def compute_ID_grid_and_store(
                 )
 
 
-def compute_AAA_grid_and_store(h_vals,
+def compute_AAA_grid_and_store(error_tolerances,
     N_maxs,
     betas,
     params: KernelParams,
@@ -127,7 +129,7 @@ def compute_AAA_grid_and_store(h_vals,
     This function computes the error and the corresponding AAAKernel object for each point on a data grid
 
     Parameters:
-        h_vals (array type): Array of discretization parameter values to be evaluated.
+        error_tolerances (array type): Array of errors values which are used as convergence criteria for the AAA algorithm.
         N_maxs (array type): Array of total number of time steps values to be evaluated.
         betas (array type): Array of inverse temperature values to be evaluated.
         params (KernelParams): An instance of KernelParams that holds the parameter set.
@@ -163,26 +165,37 @@ def compute_AAA_grid_and_store(h_vals,
             phi = 0, #along real axis
         )
 
-        for tau, N_max in enumerate(N_maxs):
-            params.update_parameters({"N_max": N_max})
 
-            #join the two arrays for the particle and hole components
-            cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
+        disc_error = DiscrError(
+            **params.params, cont_integral_init = np.concatenate((cont_integral_particle, cont_integral_hole))
+        )
 
-            for h, h_val in enumerate(h_vals):
-                params.update_parameters(
-                    {"h": h_val}
-                )  # this automatically updates "m" and "n" to reach to discrete cutoffs defined in class 'KernelParams'.
+        print("Optimizing m,n. Initial values: ", params.params["m"], params.params["n"])
+        #optimize values for m and n
+        disc_error.optimize(update_params = params, rel_error_diff=1.e-10)
+        print("optimized m,n", params.params["m"], params.params["n"])
+    
 
-                # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
-                AAA_kernel = AAAKernel(**params.params)
+        for tol_iter, tol in enumerate(error_tolerances):
 
-                if remove_Froissart:
-                    AAA_kernel.remove_Froissart()#remove Froissart doublets
+            # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
+            AAA_kernel = AAAKernel(**params.params, tol = tol)
+            
+            print(AAA_kernel.Z)
+            print(AAA_kernel.F_particle)
+            print(AAA_kernel.F_hole)
+            print(AAA_kernel.nbr_poles_upper)
+            
+            if remove_Froissart:
+                AAA_kernel.remove_Froissart()#remove Froissart doublets
                     
-
+            for tau, N_max in enumerate(N_maxs):
+            
+                #join the two arrays for the particle and hole components
+                cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
+                
                 #compute the propagator as given by the AAA algorithm
-                propagator_AAA = AAA_kernel.propagator_AAA()
+                propagator_AAA = AAA_kernel.propagator_AAA(times[:N_max])
 
                 print("AAA", propagator_AAA[:10])
                 print("cont", cont_integral[:10])
@@ -201,7 +214,7 @@ def compute_AAA_grid_and_store(h_vals,
 
                 # store to hdf5 file
                 h5_kernel.append_kernel_element(
-                    (h, tau, b),
+                    (tol_iter, tau, b),
                     kernel_object=AAA_kernel,
                     dict_data=AAA_propagator_error,
                 )

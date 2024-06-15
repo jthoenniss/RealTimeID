@@ -64,14 +64,11 @@ class KernelParams:
             "spec_dens": lambda x: spec_dens_gapless(x),
             "freq_parametrization": "simple_exp"
         }    
-        
-        # For those parameters that are specified as keyword arguments, update the values
-        for key, value in kwargs.items():
-            self._set_param(key, value)
-
 
         # Set the cutoff arguments for the discrete integrals to default value:    
         self.set_discrete_cutoffs()
+
+        self.update_parameters(kwargs)
 
     @property
     def params(self) -> dict:

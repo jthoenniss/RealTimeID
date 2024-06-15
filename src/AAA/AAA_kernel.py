@@ -14,22 +14,20 @@ class AAAKernel:
         m: int,
         n: int,
         beta: float,
-        N_max: int,
-        delta_t: float,
         h: float,
         spec_dens: callable,
         freq_parametrization: str,
+        tol: float = 1.e-13,
         **kwargs
     ):
         # check if all parameters are valid
         KernelParams.validate_m_n(m, n)
         KernelParams.validate_beta(beta)
-        KernelParams.validate_N_max_and_delta_t(N_max, delta_t)
         KernelParams.validate_h(h)
         KernelParams.validate_freq_parametrization(freq_parametrization)
 
         for kwarg in kwargs:# ignore if an upper cutoff is specified as this is only relevant when computing continuous frequency integral as in DiscrKernel
-            if kwarg in ["upper_cutoff", "phi"]: #these keywords are not needed for the AAAKernel
+            if kwarg in ["upper_cutoff", "phi", "N_max", "delta_t"]: #these keywords are not needed for the AAAKernel
                 pass
             else:
                 raise ValueError(f"Invalid keyword argument: {kwarg}")
@@ -38,14 +36,12 @@ class AAAKernel:
         # Store parameters
         self.m, self.n = m, n
         self.beta = beta
-        self.N_max = N_max
-        self.delta_t = delta_t
+    
         self.h = h
         self.spec_dens = spec_dens
         self.freq_parametrization = freq_parametrization
+        self.tol = tol
 
-        # set time grid
-        self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
         # initialize frequency grid: return fine grid (positive freqs), and Jacobian (for positive freqs)
         fine_grid, _, _ = cf.initialize_fine_grid(self.m, self.n, self.h, self.freq_parametrization)
    
@@ -59,9 +55,9 @@ class AAAKernel:
        
         #perform AAA algorithm on spectral density multiplied with Fermi-Dirac distribution
         #particle contribution
-        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True, tol = self.tol,  mmax = 2*(self.m + self.n) + 1)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         #hole contribution
-        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True, tol = self.tol,  mmax = 2*(self.m + self.n) + 1)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         
         #determine poles and residues of the rational approximations
         self.poles_particle, self.residues_particle = self.r_particle.polres()
@@ -115,16 +111,13 @@ class AAAKernel:
         Compute the propagator for a given set of time steps.
 
         Parameters:
-        - time (np.ndarray/float, optional): Time argument for the propagator. If not specified, the time grid 'self.times' is used.
+        - time (np.ndarray/float): Time argument for the propagator.
 
         Returns:
         - tuple: Propagator for the particle and hole contributions (concatenated to a single array).
         """
-        if time is None:
-            time = self.times[:, np.newaxis]#cast to column vector
-        else:
-            time = np.asarray(time)[:, np.newaxis]#cast to column vector
-        
+        time = np.asarray(time)[:, np.newaxis]
+
         #compute poles and residues in the upper half plane
         poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper = self.upper_polres()
 
@@ -163,7 +156,7 @@ class AAAKernel:
             Returns a dict containing the parameters associated with an instance of the class and stored as attributes
             """
 
-            param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "freq_parametrization"]
+            param_keys = ["m", "n", "beta", "h", "freq_parametrization"]
 
             param_dict = {key: getattr(self, key) for key in param_keys}
 

@@ -282,7 +282,7 @@ def aaa(Z, F, tol=1e-13, mmax=100, return_errors=False):
 
     R = np.mean(F) * np.ones_like(F)
 
-    for m in range(mmax):
+    for _ in range(mmax):
         # find largest residual
         jj = np.argmax(abs(F - R))
         zj = np.append(zj, (Z[jj],))

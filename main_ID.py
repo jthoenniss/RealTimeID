@@ -24,37 +24,43 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    h_vals = np.logspace(-2, -.2, 3)
+    h_vals = np.logspace(-2, -.2, 3)#order from small to large
+    error_tolerances_AAA = [1.e-10, 1.e-12, 1.e-14, 1.e-16]
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
     N_maxs = list(map(int, np.logspace(1, 2, 3)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
     betas = [0, 1.e5]#, 1.e3, 1.e4, 1.e5]
 
     # Define filename of hdf5 file holding the data
-    filename_ID = f"data/ID_delta_t=0.1_gapless_exp_Lambda=100_longtime.h5"
-    filename_AAA = f"data/AAA_delta_t=0.1_gapless_exp_Lambda=100_longtime.h5"
+    filename_ID = f"data/ID_delta_t=0.1_semicircle_exp_Lambda=100_longtime.h5"
+    filename_AAA = f"data/AAA_delta_t=0.1_semicircle_exp_Lambda=100_longtime.h5"
 
     # Create instance of Hdf5Kernel to be associated with the file
     ID_h5_kernel = Hdf5Kernel(filename=filename_ID)
     AAA_h5_kernel = Hdf5Kernel(filename=filename_AAA)
 
     # create hdf5 files to write to
-    param_grid_dims = (len(h_vals), len(N_maxs), len(betas))
-    ID_h5_kernel.create_file(kernel_dims=param_grid_dims)
-    AAA_h5_kernel.create_file(kernel_dims=param_grid_dims)
+    param_grid_dims_ID = (len(h_vals), len(N_maxs), len(betas))
+    param_grid_dims_AAA = (len(error_tolerances_AAA), len(N_maxs), len(betas))
+    ID_h5_kernel.create_file(kernel_dims=param_grid_dims_ID)
+    AAA_h5_kernel.create_file(kernel_dims=param_grid_dims_AAA)
+
+    print(f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_ID}.")
 
     # Create instance of KernelParams to hold the parameter set (initialize with default values unless keyword arguments are specified)
-    params = KernelParams(spec_dens = lambda x: spec_dens_semi_circle(x), freq_parametrization = "simple_exp")
-
-    print(f"Starting computation of data on parameter grid with dimensions {param_grid_dims}.")
+    params_ID = KernelParams(spec_dens = lambda x: spec_dens_semi_circle(x), freq_parametrization = "simple_exp")
+    print("ID: m,n", params_ID.params["m"], params_ID.params["n"])
     # compute data and write to file for ID
-    compute_ID_grid_and_store(
-        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=ID_h5_kernel, optimize=True, rel_error_diff=0.01
-    )
+    #compute_ID_grid_and_store(
+    #    h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params_ID, h5_kernel=ID_h5_kernel, optimize=True, rel_error_diff=0.01
+    #)
 
+    print(f"Starting computation of AAA-data on parameter grid with dimensions {param_grid_dims_AAA}.")
+    params_AAA = KernelParams(spec_dens = lambda x: spec_dens_semi_circle(x, half_width=1), freq_parametrization = "simple_exp", h = h_vals[0], phi = 0, N_max = N_maxs[-1])
+    print("m,n", params_AAA.params["m"], params_AAA.params["n"])
     # compute data and write to file for AAA
     compute_AAA_grid_and_store(
-        h_vals=h_vals, N_maxs=N_maxs, betas=betas, params=params, h5_kernel=AAA_h5_kernel, remove_Froissart=True
+        error_tolerances=error_tolerances_AAA, N_maxs=N_maxs, betas=betas, params=params_AAA, h5_kernel=AAA_h5_kernel, remove_Froissart=True
     )
 
     run_time = time.time() - time_init
