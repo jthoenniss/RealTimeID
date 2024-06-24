@@ -213,15 +213,15 @@ def compute_AAA_grid_and_store(error_tolerances,
                 )
 
                 # store error data in dictionary whose content will be added to hdf5 file.
-                AAA_propagator_error = {
-                    "AAA_error_reconstr_vs_cont": error_reconstr_vs_cont,
+                AAA_dict = {
+                    "AAA_error_reconstr_vs_cont": error_reconstr_vs_cont, "delta_t": params.get_param("delta_t"), "N_max": N_max
                 }
 
-                print(f"AAA error = {AAA_propagator_error} for parameters: tolerance = {tol}, m = {params.params["m"]}, n= {params.params["n"]}, beta = {beta}, h = {params.params["h"]}")
+                print(f"AAA error = {AAA_dict["AAA_error_reconstr_vs_cont"]} for parameters: tolerance = {tol}, m = {params.params["m"]}, n= {params.params["n"]}, beta = {beta}, h = {params.params["h"]}")
 
                 # store to hdf5 file
                 h5_kernel.append_kernel_element(
                     (tol_iter, tau, b),
                     kernel_object=AAA_kernel,
-                    dict_data=AAA_propagator_error,
+                    dict_data=AAA_dict,
                 )
