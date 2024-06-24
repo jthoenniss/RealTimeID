@@ -9,6 +9,7 @@ def spec_dens_gapless(
     cutoff_lower: float = -1.e6,
     cutoff_upper: float = 1.e6,
     Gamma: float = 1.0,
+    sharpness = None,
 ) -> np.ndarray:
     """
     Gapless spectral density with smooth cutoffs.
@@ -27,7 +28,8 @@ def spec_dens_gapless(
     scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
     """
     #hard code sharpness (chosen by hand)
-    sharpness = 10 * Gamma
+    if sharpness is None:
+        sharpness = 10 * Gamma
 
     safe_omega_upper = np.clip(sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG/2 )
     safe_omega_lower = np.clip(-sharpness * (omega - cutoff_lower), None, MAX_EXP_ARG/2 )

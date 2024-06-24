@@ -18,6 +18,7 @@ class AAAKernel:
         spec_dens: callable,
         freq_parametrization: str,
         tol: float = 1.e-13,
+        mmax: int = 100,
         **kwargs
     ):
         # check if all parameters are valid
@@ -55,9 +56,9 @@ class AAAKernel:
        
         #perform AAA algorithm on spectral density multiplied with Fermi-Dirac distribution
         #particle contribution
-        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True, tol = self.tol,  mmax = 2*(self.m + self.n) + 1)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True, tol = self.tol,  mmax = np.min([mmax, 2*(self.m + self.n) + 1]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         #hole contribution
-        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True, tol = self.tol,  mmax = 2*(self.m + self.n) + 1)# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True, tol = self.tol,  mmax = np.min([mmax, 2*(self.m + self.n) + 1]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         
         #determine poles and residues of the rational approximations
         self.poles_particle, self.residues_particle = self.r_particle.polres()

@@ -128,16 +128,18 @@ class KernelParams:
             raise TypeError(f"Input must be of type dict, not {type(updates)}.")
         
         # Check for simultaneous updates of 'h', 'm', and 'n' and issue warning if necessary
+        intersection = False
         if "h" in updates:
             intersection = set(updates).intersection({"m", "n"})#get intersection of keys in updates and keys "m", "n"
             if intersection: #if intersection is not empty
+                intersection = True
                 print(f"Warning: Simultaneous updates to parameters 'h' and {intersection} detected. Please double-check for consistency.")
 
         for key, value in updates.items():
             
             self._set_param(key, value)#set parameter value
 
-            if key == "h":  # Special handling when 'h' is updated
+            if key == "h" and not intersection:  # Special handling when 'h' is updated
                 # Update 'm' and 'n' based on the new value of 'h'
                 lower_cutoff_argument_discrete, upper_cutoff_argument_discrete = self.get_discrete_cutoffs()
                 self._set_param("m", math.ceil(upper_cutoff_argument_discrete / value)) 

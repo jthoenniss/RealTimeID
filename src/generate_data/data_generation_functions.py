@@ -148,6 +148,7 @@ def compute_AAA_grid_and_store(error_tolerances,
             N_max=N_maxs[-1], delta_t=params.get_param("delta_t")
         )
         # compute continuous-frequency integral such that they are not recomputed for every value of h below
+        print("computing continuous integral..")
         #particle component
         cont_integral_particle = cf.cont_integral(
             t=times,
@@ -164,23 +165,27 @@ def compute_AAA_grid_and_store(error_tolerances,
             spec_dens=params.get_param("spec_dens"),
             phi = 0, #along real axis
         )
+        print("..finished")
 
-
-        disc_error = DiscrError(
-            **params.params, cont_integral_init = np.concatenate((cont_integral_particle, cont_integral_hole))
-        )
-
-        print("Optimizing m,n. Initial values: ", params.params["m"], params.params["n"])
+        #disc_error = DiscrError(
+        #    **params.params, cont_integral_init = np.concatenate((cont_integral_particle, cont_integral_hole))
+        #)
+        #m_init, n_init = params.params["m"], params.params["n"]
+        #print("Optimizing m,n. Initial values: m = ", params.params["m"], "n= ", params.params["n"], "h= ", params.params["h"])
         #optimize values for m and n
-        disc_error.optimize(update_params = params, rel_error_diff=1.e-10)
-        print("optimized m,n", params.params["m"], params.params["n"])
+        #disc_error.optimize(update_params = params, rel_error_diff=0.01)
+
+        #make m and n large to include some zeros
+        #params.update_parameters({"m":  int(np.min([params.params["m"] * 20, m_init])), "n": int(np.min([params.params["n"] * 20, n_init]))})
+        #print("optimized m,n", params.params["m"], params.params["n"], ". Maximal frequency: ", disc_error.fine_grid[-1], ". Minimal frequency: ", disc_error.fine_grid[0])
     
 
         for tol_iter, tol in enumerate(error_tolerances):
 
+            print("computing AAA")
             # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
             AAA_kernel = AAAKernel(**params.params, tol = tol)
-            
+
             print(AAA_kernel.Z)
             print(AAA_kernel.F_particle)
             print(AAA_kernel.F_hole)
@@ -211,6 +216,8 @@ def compute_AAA_grid_and_store(error_tolerances,
                 AAA_propagator_error = {
                     "AAA_error_reconstr_vs_cont": error_reconstr_vs_cont,
                 }
+
+                print(f"AAA error = {AAA_propagator_error} for parameters: tolerance = {tol}, m = {params.params["m"]}, n= {params.params["n"]}, beta = {beta}, h = {params.params["h"]}")
 
                 # store to hdf5 file
                 h5_kernel.append_kernel_element(

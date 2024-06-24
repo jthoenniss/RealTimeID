@@ -250,7 +250,8 @@ class DiscrError(KernelMatrix):
         Returns:
         - int: number of frequency points dropped without making a error larger than 'rel_diff' (e.g. 10%) of the discretization error
         """
-        for count in range(1, max_count):
+        step_size = 10
+        for count in range(step_size, max_count, step_size):
            
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
             
@@ -259,12 +260,14 @@ class DiscrError(KernelMatrix):
                 "eps_reduced"
             ]
         
-            if eps_reduced / self.eps > rel_error_diff:
-                return count - 1  # Found the optimal count
+            if eps_reduced / self.eps > rel_error_diff and eps_reduced > 1.e-13:
+                print("abort optimization", eps_reduced, self.eps, eps_reduced / self.eps, rel_error_diff)
+                return count - step_size  # Found the optimal count
       
                     
         # In case no optimal count is found, return the last valid count
-        return max_count - 1 
+        return max_count - step_size
+    
 
     def _get_reduced_kernel_and_error(self, lower_idx: int, upper_idx: int) -> dict:
         """
