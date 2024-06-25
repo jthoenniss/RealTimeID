@@ -190,7 +190,7 @@ def set_time_grid(N_max, delta_t):
     return np.arange(1, N_max + 1) * delta_t
 
 
-def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
+def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4, only_positive: bool = False):
     """
     Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff], at fixed time t
     Parameters:
@@ -199,6 +199,7 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     - upper_cutoff (float): Energy upper_cutoff up to which kernel is integrated
     - spec_dens (callable): One-parameter function that returns the spectral density.
     - phi (float): Rotation angle in the complex plane
+    - only_positive (bool, optional): If True, only positive frequency branch is considered
 
     Returns:
     - (np.complex_ or np.ndarray): Result(s) of integration in interval [0, upper_cutoff]
@@ -210,8 +211,11 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4):
     def integrand (omega): 
         freq = omega * np.exp(1.j * phi)
         positive_segment = dynamic_distr_particle(t, freq, beta) * spec_dens(freq)
-        negative_segment = dynamic_distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj())
 
+        if only_positive:
+            return positive_segment * np.exp(1.0j * phi) #exponential from jacobian
+        
+        negative_segment = dynamic_distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj())
         return (positive_segment + negative_segment) * np.exp(1.0j * phi) #exponential from jacobian
 
 
