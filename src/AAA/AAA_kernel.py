@@ -7,7 +7,7 @@ import src.utils.common_funcs as cf
 from src.AAA.aaa_algorithm import aaa, cleanup
 
 
-class AAAKernel:
+class AAARep:
 
     def __init__(
         self,
@@ -28,7 +28,7 @@ class AAAKernel:
         KernelParams.validate_freq_parametrization(freq_parametrization)
 
         for kwarg in kwargs:# ignore if an upper cutoff is specified as this is only relevant when computing continuous frequency integral as in DiscrKernel
-            if kwarg in ["upper_cutoff", "phi", "N_max", "delta_t"]: #these keywords are not needed for the AAAKernel
+            if kwarg in ["upper_cutoff", "phi", "N_max", "delta_t"]: #these keywords are not needed for the AAARep
                 pass
             else:
                 raise ValueError(f"Invalid keyword argument: {kwarg}")
@@ -117,14 +117,11 @@ class AAAKernel:
         Returns:
         - tuple: Propagator for the particle and hole contributions (concatenated to a single array).
         """
-        time = np.asarray(time)[:, np.newaxis]
-
-        #compute poles and residues in the upper half plane
-        poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper = self.upper_polres()
+        kernel_particle, kernel_hole = self.build_kernel(time)
 
         #compute particle and hole propagators via residue theorem
-        G_particle = 2.j * np.pi * np.sum(residues_particle_upper  * np.exp(1.j * poles_particle_upper * time), axis=1).flatten()
-        G_hole = 2.j * np.pi * np.sum(residues_hole_upper * np.exp(1.j * poles_hole_upper * time), axis=1).flatten()
+        G_particle = np.sum(kernel_particle, axis=1).flatten()
+        G_hole = np.sum(kernel_hole, axis=1).flatten()
 
         return np.concatenate((G_particle, G_hole))
     
@@ -162,3 +159,22 @@ class AAAKernel:
             param_dict = {key: getattr(self, key) for key in param_keys}
 
             return param_dict
+    
+    def build_kernel(self, timegrid: np.ndarray) -> np.ndarray:
+        """
+        Compute the kernel matrix based on the AAA decomposition and the time grid.
+
+        Parameters:
+        - time_grid (np.ndarray): Time grid for the kernel matrix.
+
+        Returns:
+        - np.ndarray: Kernel matrix.
+        """
+        #compute poles and residues in the upper half plane
+        poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper = self.upper_polres()
+
+        kernel_particle = 2.j * np.pi * residues_particle_upper  * np.exp(1.j * poles_particle_upper * timegrid[:,np.newaxis])
+        kernel_hole = 2.j * np.pi * residues_hole_upper  * np.exp(1.j * poles_hole_upper * timegrid[:,np.newaxis])
+
+        return kernel_particle, kernel_hole
+        
