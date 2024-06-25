@@ -40,6 +40,7 @@ class DiscrError(KernelMatrix):
         phi: float,
         spec_dens: callable,
         freq_parametrization: str,
+        only_positive_particle: bool,
         cont_integral_init: np.ndarray = None,
     ):
         """
@@ -56,7 +57,9 @@ class DiscrError(KernelMatrix):
         - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
             Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
             Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
+        - only_positive_particle (bool): If True, only the positive frequencies for the particle component are included.
         - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid, for particle and hole component
+        
         """
 
         super().__init__(
@@ -69,6 +72,7 @@ class DiscrError(KernelMatrix):
             phi=phi,
             spec_dens=spec_dens,
             freq_parametrization=freq_parametrization,
+            only_positive_particle=only_positive_particle,
         )
 
         # compute discrete integral
@@ -79,16 +83,20 @@ class DiscrError(KernelMatrix):
         self.upper_cutoff = upper_cutoff
 
         if cont_integral_init is None:
+            
             #particle component
             cont_integral_init_particle = (
-                self.cont_integral_particle() 
+                self._cont_integral_particle()
             )
+
+            if self.only_positive_particle:
+                self.cont_integral_init = cont_integral_init_particle
+                return #no hole component needed
 
             #hole component
             cont_integral_init_hole = (
-                self.cont_integral_hole() 
+                self._cont_integral_hole()
             )
-
             self.cont_integral_init = np.concatenate((cont_integral_init_particle, cont_integral_init_hole))
         else:
             self.cont_integral_init = cont_integral_init
@@ -97,10 +105,13 @@ class DiscrError(KernelMatrix):
         # compute time-integrated error between discrete and continuous integral
         self.eps = self.error_time_integrated()
 
-    def cont_integral_particle(self):
+    def _cont_integral_particle(self):
         """
         Particle component:
         Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff]
+
+        Parameters:
+        - None
 
         Returns:
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
@@ -112,13 +123,16 @@ class DiscrError(KernelMatrix):
             upper_cutoff=self.upper_cutoff,
             spec_dens=self.spec_dens,
             phi=self.phi,
+            only_positive = self.only_positive_particle
         )
     
-    def cont_integral_hole(self):
+    def _cont_integral_hole(self):
         """
         Hole component:
         Perform frequency integral in continuous-frequency limit in interval [0,upper_cutoff]
 
+        Parameters:
+        - None
         Returns:
         - (np.complex_): Result of integration in interval [0,upper_cutoff]
         """
@@ -129,6 +143,7 @@ class DiscrError(KernelMatrix):
             upper_cutoff=self.upper_cutoff,
             spec_dens=self.spec_dens,
             phi=self.phi,
+            only_positive = False # if hole component, always include negative frequencies
         )
 
 
@@ -284,12 +299,17 @@ class DiscrError(KernelMatrix):
         # compute reduced kernel and spec_dens_array_fine
         # the indices lower_idx an upper_idx refer to the positive frequencies. 
 
-        # Determine the corresponding interval on the whole frequency grid
-        L = len(self.fine_grid)
-        interval_positive = np.arange(L + lower_idx, L + upper_idx)
-        interval_negative = np.arange(L - upper_idx, L - lower_idx)
-        #concatenate the indices for positive and negative frequencies
-        indices = np.concatenate((interval_negative, interval_positive))
+        # Determine the corresponding interval 
+        if self.only_positive_particle:#for only positive frequencies
+            indices = np.arange(lower_idx, upper_idx)
+        else:#on the whole frequency grid
+            L = len(self.fine_grid)
+            interval_positive = np.arange(L + lower_idx, L + upper_idx)
+            interval_negative = np.arange(L - upper_idx, L - lower_idx)
+            #concatenate the indices for positive and negative frequencies
+            indices = np.concatenate((interval_negative, interval_positive))
+    
+
         #reduce the kernel to the corresponding interval
         kernel_reduced = self.kernel[:,indices]
         #reduce the spectral density to the corresponding interval

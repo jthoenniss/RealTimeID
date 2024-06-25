@@ -24,6 +24,7 @@ class KernelMatrix:
         - freq_parametrization (str): The parameterization of the frequency grid. Options are "simple_exp" and "fancy_exp".
             Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
             Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
+        - only_positive_particle (bool): If True, only the positive frequencies for the particle component are included.
     """
 
     def __init__(
@@ -37,6 +38,7 @@ class KernelMatrix:
         phi: float,
         spec_dens: callable,
         freq_parametrization: str,
+        only_positive_particle: bool,
         **kwargs
     ):
         # check if all parameters are valid
@@ -63,6 +65,7 @@ class KernelMatrix:
         self.phi = phi
         self.spec_dens = spec_dens
         self.freq_parametrization = freq_parametrization
+        self.only_positive_particle = only_positive_particle
 
         # Initialize kernel matrix and grids
         self._initialize_kernel_and_grids()
@@ -99,10 +102,20 @@ class KernelMatrix:
         - np.ndarray: Kernel matrix.
         """
         times_arr = self.times[:, np.newaxis]  # enable broadcasting
-        fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
+        fine_grid_complex_positive = self.fine_grid * np.exp(1.0j * self.phi)
+        jacobian_cmplx_positive = jacobian * np.exp(1.j * self.phi)#adjust for complex contour
+        
+        if self.only_positive_particle: #if only positive frequencies of the particle component are included
+            # Kernel defined by Fermi distribution and spectral density
+            #particle component
+            K_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex_positive, self.beta) * self.spec_dens(fine_grid_complex_positive)
+    
+            return K_particle * jacobian_cmplx_positive
+
         # add negative frequencies
-        fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
-       
+        fine_grid_complex = np.concatenate((-fine_grid_complex_positive[::-1].conj(), fine_grid_complex_positive))
+        jacobian_cmplx = np.concatenate((jacobian_cmplx_positive[::-1], jacobian_cmplx_positive)) # add negative frequencies
+
         # Kernel defined by Fermi distribution and spectral density
         #particle component
         K_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex, self.beta) * self.spec_dens(fine_grid_complex)
@@ -111,9 +124,7 @@ class KernelMatrix:
 
         # Combine particle and hole contributions by stacking them on top of each other
         K = np.vstack((K_particle, K_hole))
-        jacobian_cmplx = jacobian * np.exp(1.j * self.phi)#adjust for complex contour
-        jacobian_cmplx = np.concatenate((jacobian_cmplx[::-1], jacobian_cmplx)) # add negative frequencies
-        
+
         K *= jacobian_cmplx # multiply by Jacobian from measure. This is dw/dk. Multiply by exp(i*phi) to rotate in the complex plane
 
         return K
@@ -143,6 +154,7 @@ class KernelMatrix:
             "spec_dens",
             "spec_dens_array_fine",
             "freq_parametrization",
+            "only_positive_particle",
         ]
 
         base_class_attrs = {
@@ -156,7 +168,7 @@ class KernelMatrix:
         Returns a dict containing the parameters associated with an instance of the class and stored as attributes
         """
 
-        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi", "freq_parametrization"]
+        param_keys = ["m", "n", "beta", "N_max", "delta_t", "h", "phi", "freq_parametrization", "only_positive_particle"]
 
         param_dict = {key: getattr(self, key) for key in param_keys}
 

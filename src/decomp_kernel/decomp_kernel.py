@@ -7,7 +7,7 @@ from src.discr_error.discr_error import DiscrError
 
 
 class DecompKernel(KernelMatrix):
-    REQUIRED_PARAMS = {"m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps", "spec_dens", "freq_parametrization"}
+    REQUIRED_PARAMS = {"m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps", "spec_dens", "freq_parametrization", "only_positive_particle"}
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
     on a kernel matrix, extending the functionalities of KernelMatrix.
@@ -59,6 +59,7 @@ class DecompKernel(KernelMatrix):
             "N_max",
             "nbr_sv_above_eps",
             "ID_rank",
+            "only_positive_particle"
         ]
         float_attributes = ["beta", "delta_t", "eps", "h", "phi", "singular_values"]
         array_attributes = [

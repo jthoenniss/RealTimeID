@@ -20,6 +20,7 @@ def compute_ID_grid_and_store(
     h5_kernel: Hdf5Kernel,
     optimize: bool = False,
     rel_error_diff: float = None,
+    only_positive_particle: bool = False,
 ) -> None:
     """
     Compute discretization error for ID and store results in an HDF5 file.
@@ -35,6 +36,7 @@ def compute_ID_grid_and_store(
         h5_kernel (Hdf5Kernel): An instance of Hdf5Kernel associated with the HDF5 file for storing the results.
         optimize (bool, optional): If True, the values for m and n are optimized to reduce the frequency interval with addional error at most rel_error_diff of discretization error.
         rel_error_diff (float, optional): If optimize is True, this is the relative error difference that is allowed between the optimized and unoptimized values for m and n. If not set, default value defined in function 'optimize'.
+        only_positive_particle (bool, optional): If True, only the positive frequency part of the particle component is considered.
     Returns:
         None
 
@@ -49,27 +51,34 @@ def compute_ID_grid_and_store(
             N_max=N_maxs[-1], delta_t=params.get_param("delta_t")
         )
         # compute continuous-frequency integral such that they are not recomputed for every value of h below
+
         #particle component
         cont_integral_particle = cf.cont_integral(
             t=times,
             beta=params.get_param("beta"),
             upper_cutoff=params.get_param("upper_cutoff"),
             spec_dens=params.get_param("spec_dens"),
+            only_positive=only_positive_particle
         )
-        #hole component (beta -> -beta)
-        cont_integral_hole = cf.cont_integral( 
-            t=times,
-            beta= - params.get_param("beta"),
-            upper_cutoff=params.get_param("upper_cutoff"),
-            spec_dens=params.get_param("spec_dens"),
-        )
+        if not only_positive_particle:
+            #hole component (beta -> -beta)
+            cont_integral_hole = cf.cont_integral( 
+                t=times,
+                beta= - params.get_param("beta"),
+                upper_cutoff=params.get_param("upper_cutoff"),
+                spec_dens=params.get_param("spec_dens"),
+                only_positive=False
+            )
 
 
         for tau, N_max in enumerate(N_maxs):
             params.update_parameters({"N_max": N_max})
 
-            #join the two arrays for the particle and hole components
-            cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
+            if only_positive_particle:
+                cont_integral = cont_integral_particle[:N_max]
+            else:
+                #join the two arrays for the particle and hole components
+                cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
         
             for h, h_val in enumerate(h_vals):
                 params.update_parameters(
@@ -78,15 +87,17 @@ def compute_ID_grid_and_store(
 
                 # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
                 discr_error = DiscrError(
-                    **params.params, cont_integral_init=cont_integral
+                    **params.params, cont_integral_init=cont_integral, only_positive_particle=only_positive_particle
                 )
 
+                print("BEFORE: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
                 if optimize:
                     discr_error.optimize(
                         rel_error_diff=rel_error_diff
                     )  # optimize values for m and n
 
-         
+                print("AFTER: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
+
                 # create DecompKernel object which holds the kernel matrix and all associated parameters.
                 # Note: big data attributes are not copied but passed as references to the original object, avoiding memory duplication.
                 decomp_kernel = DecompKernel(discr_error)
