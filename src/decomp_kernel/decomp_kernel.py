@@ -174,7 +174,11 @@ class DecompKernel(KernelMatrix):
         """
 
         # the coarse grid is a subset of the full frequency grid (with negative and positive frequencies)
-        fine_grid_full = np.concatenate((-self.fine_grid[::-1], self.fine_grid))
+        if self.only_positive_particle:
+            fine_grid_full = self.fine_grid
+        else:
+            fine_grid_full = np.concatenate((-self.fine_grid[::-1], self.fine_grid))
+            
         coarse_grid = np.array(fine_grid_full[self.idx[:self.ID_rank]])
 
         return coarse_grid
