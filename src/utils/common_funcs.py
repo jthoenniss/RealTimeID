@@ -210,13 +210,13 @@ def cont_integral(t, beta, upper_cutoff, spec_dens: callable, phi=np.pi / 4, onl
     #integrand, expressed as a sum of two parts where the first part refers to right segment of the contour and the second part to the left segment
     def integrand (omega): 
         freq = omega * np.exp(1.j * phi)
-        positive_segment = dynamic_distr_particle(t, freq, beta) * spec_dens(freq) * np.exp(1.0j * phi)
+        positive_segment = dynamic_distr_particle(t, freq, beta) * spec_dens(freq) * np.exp(1.0j * phi)#exponential from jacobian
 
         if only_positive:
-            return positive_segment  #exponential from jacobian
+            return positive_segment  
         
-        negative_segment = dynamic_distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj()) * np.exp(-1.0j * phi)
-        return (positive_segment + negative_segment) #exponential from jacobian
+        negative_segment = dynamic_distr_particle(t, -freq.conj(), beta) * spec_dens(- freq.conj()) * np.exp(-1.0j * phi)#exponential from jacobian
+        return (positive_segment + negative_segment) 
 
 
     # Vectorized integration for real and imaginary parts
