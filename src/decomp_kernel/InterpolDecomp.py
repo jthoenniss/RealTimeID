@@ -4,7 +4,7 @@ from src.utils import common_funcs as cf
 
 
 
-class DecompKernel:
+class InterpolDecomp:
 
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)

@@ -133,7 +133,7 @@ class AAARep:
         - None
 
         Returns:
-        - tuple: Poles and residues for the particle and hole contributions in the upper half plane.
+        - tuple: poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper
         """
         
         #determine poles in the upper half plane and the corresponding residues

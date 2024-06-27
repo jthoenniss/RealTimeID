@@ -213,7 +213,6 @@ class DecompKernel(KernelMatrix):
         kernel = (
             self.kernel if self.include_additional_poles is False else self._full_kernel()
         )
-
         ID_rank, idx, proj = sli.interp_decomp(kernel, _eps, rand=False)
 
         return ID_rank, idx, proj
@@ -231,7 +230,7 @@ class DecompKernel(KernelMatrix):
             )
         else:
             fine_grid_complex_full = self.fine_grid_complex
-
+            
         coarse_grid = fine_grid_complex_full[self.idx[: self.ID_rank]]
 
         return coarse_grid

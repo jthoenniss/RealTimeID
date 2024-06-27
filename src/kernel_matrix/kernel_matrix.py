@@ -155,16 +155,22 @@ class KernelMatrix:
         if len(additional_poles) != len(additional_residues):
             raise ValueError("The number of poles and residues must be the same")
         
-        self.additional_poles = additional_poles
-        self.additional_residues = additional_residues
+        if self.only_positive_particle:#only consider poles with positive real part
+            self.additional_poles = np.array([pole for pole in additional_poles if pole.real > 0])
+            self.additional_residues = np.array([res for pole, res in zip(additional_poles,additional_residues) if pole.real > 0])
+        else:
+            self.additional_poles = additional_poles
+            self.additional_residues = additional_residues
         
         #particle component
-        K_particle_add = 2.j * np.pi * additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], additional_poles, self.beta) 
-        #hole component (negative sign in beta for hole distribution)
-        K_hole_add = 2.j * np.pi * additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], additional_poles, -self.beta) 
-
-        # Combine particle and hole contributions by stacking them on top of each other
-        self.kernel_additional = np.vstack((K_particle_add, K_hole_add))
+        K_particle_add = 2.j * np.pi * self.additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], self.additional_poles, self.beta) 
+        if self.only_positive_particle:
+            self.kernel_additional = K_particle_add
+        else:
+            #hole component (negative sign in beta for hole distribution)
+            K_hole_add = 2.j * np.pi * self.additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], self.additional_poles, -self.beta) 
+            # Combine particle and hole contributions by stacking them on top of each other
+            self.kernel_additional = np.vstack((K_particle_add, K_hole_add))
 
     def _full_kernel(self):
         """

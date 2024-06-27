@@ -41,7 +41,7 @@ def compute_ID_grid_and_store(
         None
 
     """
-
+    additional_poles, additional_residues = params.params["spec_dens"].poles_residues()
 
     for b, beta in enumerate(betas):
         params.update_parameters({"beta": beta})
@@ -69,7 +69,7 @@ def compute_ID_grid_and_store(
                 spec_dens=params.get_param("spec_dens"),
                 only_positive=False
             )
-        """
+        
         #particle component
         cont_integral_particle_ra = cf.cont_integral(
             t=times,
@@ -86,18 +86,18 @@ def compute_ID_grid_and_store(
                 upper_cutoff=params.get_param("upper_cutoff"),
                 spec_dens=params.get_param("spec_dens"),
                 only_positive=False, phi = 0
-            )"""
+            )
 
         for tau, N_max in enumerate(N_maxs):
             params.update_parameters({"N_max": N_max})
 
             if only_positive_particle:
                 cont_integral = cont_integral_particle[:N_max]
-                #cont_integral_ra = cont_integral_particle_ra[:N_max]
+                cont_integral_ra = cont_integral_particle_ra[:N_max]
             else:
                 #join the two arrays for the particle and hole components
                 cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
-                #cont_integral_ra = np.concatenate((cont_integral_particle_ra[:N_max], cont_integral_hole_ra[:N_max]))
+                cont_integral_ra = np.concatenate((cont_integral_particle_ra[:N_max], cont_integral_hole_ra[:N_max]))
 
             for h, h_val in enumerate(h_vals):
                 params.update_parameters(
@@ -106,38 +106,34 @@ def compute_ID_grid_and_store(
 
                 # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
                 discr_error = DiscrError(
-                    **params.params, cont_integral_init=cont_integral, only_positive_particle=only_positive_particle
+                    **params.params, cont_integral_init=cont_integral, only_positive_particle=only_positive_particle,
+                    additional_poles = additional_poles, additional_residues = additional_residues
                 )
-                print("length: ", discr_error.discrete_integral_init.shape, cont_integral_particle.shape)
-                print("discr partc",discr_error.discrete_integral_init[:10])
-                print("cont part",cont_integral_particle[:10])
-                #print("discr hole",discr_error.discrete_integral_init[N_max:N_max+10])
-                #print("cont hole",cont_integral_hole[:10])
-              
-                print("error before: ", discr_error.eps)
-                print("BEFORE: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
+            
                 if optimize:
                     discr_error.optimize(
                         rel_error_diff=rel_error_diff
                     )  # optimize values for m and n
-                print("error after: ", discr_error.eps)
-                print("AFTER: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
-
-
+             
+                print("eps", discr_error.eps)
                 # create DecompKernel object which holds the kernel matrix and all associated parameters.
-                decomp_kernel = DecompKernel(discr_error)
+                decomp_kernel = DecompKernel(discr_error, include_additional_poles=True)
 
                 # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
                 propagator_reconstr = decomp_kernel.reconstruct_propagator_ID()
 
                 # compute error between reconstructed and continuous-frequency propagator
                 error_reconstr_vs_cont = discr_error.error_time_integrated(
-                    time_series_approx=propagator_reconstr
+                    time_series_approx=propagator_reconstr, time_series_exact=cont_integral_particle_ra[:N_max]
                 )
+                print(propagator_reconstr[:10])
+                print(cont_integral_ra[:10])
                 # compute error between reconstructed and discrete propagator
                 error_reconstr_vs_discr = discr_error.error_time_integrated(
                     time_series_exact=propagator_reconstr
                 )
+
+                print(error_reconstr_vs_cont)
 
                 # store error data in dictionary whose content will be added to hdf5 file.
                 ID_propagator_error = {

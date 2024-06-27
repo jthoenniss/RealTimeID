@@ -13,6 +13,7 @@ from src.spec_dens.spec_dens import (
     spec_dens_gapped_sym,
     spec_dens_exp,
     spec_dens_semi_circle,
+    SpecDensGapless
 )
 import time
 
@@ -49,7 +50,8 @@ if __name__ == "__main__":
 
     ID_h5_kernel.create_file(kernel_dims=param_grid_dims_ID)
 
-    spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower=-10, cutoff_upper=10)
+    #spec_dens = lambda x: spec_dens_gapless(x)
+    spec_dens = SpecDensGapless(Lambda = 1)
     print(
         f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_ID}."
     )
@@ -65,7 +67,7 @@ if __name__ == "__main__":
         h5_kernel=ID_h5_kernel,
         optimize=True,
         rel_error_diff=0.1,
-        only_positive_particle=False,
+        only_positive_particle=True,
     )
 
     run_time = time.time() - time_init
