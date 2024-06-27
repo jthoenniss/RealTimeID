@@ -107,12 +107,12 @@ class AAARep:
     
         return (self.r_particle.polres(), self.r_hole.polres())
     
-    def propagator_AAA(self, time: float = None) -> tuple:
+    def propagator_AAA(self, time: np.ndarray = None) -> tuple:
         """
         Compute the propagator for a given set of time steps.
 
         Parameters:
-        - time (np.ndarray/float): Time argument for the propagator.
+        - time (np.ndarray): Time argument for the propagator.
 
         Returns:
         - tuple: Propagator for the particle and hole contributions (concatenated to a single array).

@@ -29,7 +29,7 @@ class TestKernelMatrix(unittest.TestCase):
 
 
     def test_all_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine", "freq_parametrization"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "freq_parametrization"]
 
         KernelMatrix_keys = vars(self.K).keys()
 
@@ -66,8 +66,8 @@ class TestKernelMatrix(unittest.TestCase):
         fine_grid_complex = fine_grid_check * np.exp(1j * self.K.phi)
         #add negative frequencies
         fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
-        K_check_particle = np.exp(1.j * times_arr * fine_grid_complex) / (1 + np.exp(- self.K.beta * fine_grid_complex)) * self.K.spec_dens_array_fine
-        K_check_hole = np.exp(1.j *  times_arr * fine_grid_complex) / (1 + np.exp( self.K.beta * fine_grid_complex)) * self.K.spec_dens_array_fine
+        K_check_particle = np.exp(1.j * times_arr * fine_grid_complex) / (1 + np.exp(- self.K.beta * fine_grid_complex)) * self.params_KernelMatrix["spec_dens"](fine_grid_complex)
+        K_check_hole = np.exp(1.j *  times_arr * fine_grid_complex) / (1 + np.exp( self.K.beta * fine_grid_complex)) * self.params_KernelMatrix["spec_dens"](fine_grid_complex)
 
         #combine particle and hole contributions
         K_check = np.vstack((K_check_particle, K_check_hole))
@@ -107,8 +107,8 @@ class TestKernelMatrix(unittest.TestCase):
         fine_grid_complex = fine_grid_check * np.exp(1j * K_simple_exp.phi)
         #add negative frequencies
         fine_grid_complex = np.concatenate((-fine_grid_complex[::-1].conj(), fine_grid_complex))
-        K_check_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex, self.K.beta) * self.K.spec_dens_array_fine
-        K_check_hole = cf.dynamic_distr_particle(times_arr, fine_grid_complex, -self.K.beta) * self.K.spec_dens_array_fine
+        K_check_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex, self.K.beta) * self.params_KernelMatrix["spec_dens"](fine_grid_complex)
+        K_check_hole = cf.dynamic_distr_particle(times_arr, fine_grid_complex, -self.K.beta)  * self.params_KernelMatrix["spec_dens"](fine_grid_complex)
 
         #combine particle and hole contributions
         K_check = np.vstack((K_check_particle, K_check_hole))

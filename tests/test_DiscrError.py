@@ -27,11 +27,11 @@ class TestDiscError(unittest.TestCase):
             "spec_dens": lambda x: spec_dens_gapped_sym(x),
             "freq_parametrization": "fancy_exp",
         }
-        self.D = DiscrError(**self.params_DiscrError)
+        self.D = DiscrError(**self.params_DiscrError, only_positive_particle=False)
 
 
     def test_base_attrs_present(self):
-        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "spec_dens_array_fine","freq_parametrization"]
+        KernelMatrix_keys_required = ["m","n","beta","N_max","delta_t", "h","phi","times","fine_grid","k_values","kernel", "spec_dens", "freq_parametrization"]
 
         KernelMatrix_keys = vars(self.D).keys()
 
@@ -67,7 +67,6 @@ class TestDiscError(unittest.TestCase):
 
         #check shapes
         self.assertEqual(grids_reduced["kernel_reduced"].shape, (2*nbr_times, 2*(upper_idx - lower_idx))) #first factor of: particle and holes, second factor of 2: negative and positive frequencies
-        self.assertEqual(grids_reduced["spec_dens_array_fine_reduced"].shape, (2*upper_idx - 2*lower_idx,)) #factor 2: negative and positive frequencies
         self.assertEqual(grids_reduced["discrete_integral_reduced"].shape, (2*nbr_times,)) #factor 2: particle and holes
         self.assertEqual(grids_reduced["eps_reduced"].shape, ())
 
@@ -75,7 +74,6 @@ class TestDiscError(unittest.TestCase):
         L = len(self.D.fine_grid)
         reduced_interval = np.concatenate((np.arange(L-upper_idx, L-lower_idx), np.arange(L+lower_idx, L+upper_idx)))
         self.assertTrue(np.array_equal(grids_reduced["kernel_reduced"], self.D.kernel[:, reduced_interval]))
-        self.assertTrue(np.array_equal(grids_reduced["spec_dens_array_fine_reduced"], self.D.spec_dens_array_fine[reduced_interval]))
         
         
         #______Check that the discrete integral and error are computed correctly_____
@@ -83,7 +81,7 @@ class TestDiscError(unittest.TestCase):
         params_comp = self.params_DiscrError.copy()
         params_comp["m"] =  6
         params_comp["n"] = 3
-        D_comp = DiscrError(**params_comp)
+        D_comp = DiscrError(**params_comp, only_positive_particle=False)
         self.assertTrue(np.allclose(grids_reduced["discrete_integral_reduced"], D_comp.discrete_integral_init[:]))
 
         #grids_reduced["eps_reduced"] is the relative error between the reduced and the orginial discretized 
@@ -169,8 +167,8 @@ class TestDiscError(unittest.TestCase):
             "spec_dens": lambda x: spec_dens_gapped_sym(x),
             "freq_parametrization": "simple_exp",
         }
-        D_wide = DiscrError(**params_DiscrError_wide) #will be reference
-        D_opt = DiscrError(**params_DiscrError_wide) #will be optimized
+        D_wide = DiscrError(**params_DiscrError_wide, only_positive_particle=False) #will be reference
+        D_opt = DiscrError(**params_DiscrError_wide, only_positive_particle=False) #will be optimized
 
         print("error_original: " , D_wide.error_time_integrated())
         print("original frequency bounds: ", D_wide.fine_grid[0], D_wide.fine_grid[-1])

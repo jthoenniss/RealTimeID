@@ -219,7 +219,7 @@ class KernelParams:
             
     @staticmethod
     def validate_eps(eps: float):
-        if not 0 < eps < KernelParams.MAX_EPS:
+        if not 0 <= eps < KernelParams.MAX_EPS:
             raise ValueError(f"'eps' must be between 0 and {KernelParams.MAX_EPS}, got {eps}")
 
     @staticmethod

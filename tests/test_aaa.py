@@ -6,12 +6,12 @@ if project_path and project_path not in sys.path:
     sys.path.append(project_path)
     print("Project path successfully added.")
 
-from src.AAA.AAA_kernel import AAAKernel
+from src.AAA.AAA_kernel import AAARep
 from src.AAA.aaa_algorithm import aaa, cleanup
 from src.spec_dens.spec_dens import spec_dens_semi_circle
 from src.utils.common_funcs import initialize_fine_grid, set_time_grid
 
-class TestAAAKernel(unittest.TestCase):
+class TestAAARep(unittest.TestCase):
     def setUp(self):
 
         self.params = {
@@ -27,15 +27,13 @@ class TestAAAKernel(unittest.TestCase):
             "freq_parametrization": "simple_exp",
         }
 
-        self.K = AAAKernel(**self.params)
+        self.K = AAARep(**self.params)
 
     def test_init(self):
-        print("Test initialization of AAAKernel object.")
+        print("Test initialization of AAARep object.")
         self.assertEqual(self.K.m, 10)
         self.assertEqual(self.K.n, 5)
         self.assertEqual(self.K.beta, 1.0)
-        self.assertEqual(self.K.N_max, 10)
-        self.assertEqual(self.K.delta_t, 0.1)
         self.assertEqual(self.K.h, 0.2)
         self.assertEqual(self.K.freq_parametrization, "simple_exp")
 
@@ -133,7 +131,7 @@ class TestAAAKernel(unittest.TestCase):
         #concatenate particle and hole propagator
         G = np.concatenate((G_particle, G_hole))
         #compare to values in object
-        self.assertTrue(np.allclose(G, self.K.propagator_AAA()))
+        self.assertTrue(np.allclose(G, self.K.propagator_AAA(times)))
 
 if __name__ == "__main__":
     unittest.main()

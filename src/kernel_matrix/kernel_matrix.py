@@ -25,6 +25,8 @@ class KernelMatrix:
             Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
             Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
         - only_positive_particle (bool): If True, only the positive frequencies for the particle component are included.
+        - additional_poles (np.ndarray): Array containing additional poles to be considered
+        - additional_residues (np.ndarray): Array containing additional residues to be considered
     """
 
     def __init__(
@@ -38,7 +40,9 @@ class KernelMatrix:
         phi: float,
         spec_dens: callable,
         freq_parametrization: str,
-        only_positive_particle: bool,
+        only_positive_particle: bool = False,
+        additional_poles: np.ndarray = np.empty(0),
+        additional_residues: np.ndarray = np.empty(0),
         **kwargs
     ):
         # check if all parameters are valid
@@ -70,6 +74,10 @@ class KernelMatrix:
         # Initialize kernel matrix and grids
         self._initialize_kernel_and_grids()
 
+        #from additional poles and residues, compute the additional kernel matrix
+        self._add_additional_poles_and_residues(additional_poles, additional_residues)
+            
+
     def _initialize_kernel_and_grids(
         self,
     ) -> None:
@@ -85,10 +93,15 @@ class KernelMatrix:
         self.times = cf.set_time_grid(N_max=self.N_max, delta_t=self.delta_t)
         # initialize frequency grid 
         self.fine_grid, self.k_values, jacobian = cf.initialize_fine_grid(self.m, self.n, self.h, self.freq_parametrization)
+        #full fine grid in complex plane
+        self.fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
+        if not self.only_positive_particle: #if negative frequencies are included
+            #add negative frequencies
+            self.fine_grid_complex = np.concatenate((-self.fine_grid_complex[::-1].conj(), self.fine_grid_complex))
+        
         # initialize matrix kernel
         self.kernel = self._initialize_kernel(jacobian=jacobian)
-        # initialize the spectral density as 1 for all values of the fine grid (spec_dens is included in the kernel matrix)
-        self.spec_dens_array_fine = np.ones_like(self.kernel[0,:])
+   
 
 
 
@@ -102,25 +115,23 @@ class KernelMatrix:
         - np.ndarray: Kernel matrix.
         """
         times_arr = self.times[:, np.newaxis]  # enable broadcasting
-        fine_grid_complex_positive = self.fine_grid * np.exp(1.0j * self.phi)
         jacobian_cmplx_positive = jacobian * np.exp(1.j * self.phi)#adjust for complex contour
         
         if self.only_positive_particle: #if only positive frequencies of the particle component are included
             # Kernel defined by Fermi distribution and spectral density
             #particle component
-            K_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex_positive, self.beta) * self.spec_dens(fine_grid_complex_positive)
+            K_particle = cf.dynamic_distr_particle(times_arr, self.fine_grid_complex, self.beta) * self.spec_dens(self.fine_grid_complex)
     
             return K_particle * jacobian_cmplx_positive
 
-        # add negative frequencies
-        fine_grid_complex = np.concatenate((-fine_grid_complex_positive[::-1].conj(), fine_grid_complex_positive))
-        jacobian_cmplx = np.concatenate((jacobian_cmplx_positive[::-1], jacobian_cmplx_positive)) # add negative frequencies
+        # add negative frequencies to jacobian
+        jacobian_cmplx = np.concatenate((jacobian_cmplx_positive[::-1].conj(), jacobian_cmplx_positive)) # add negative frequencies
 
         # Kernel defined by Fermi distribution and spectral density
         #particle component
-        K_particle = cf.dynamic_distr_particle(times_arr, fine_grid_complex, self.beta) * self.spec_dens(fine_grid_complex)
+        K_particle = cf.dynamic_distr_particle(times_arr, self.fine_grid_complex, self.beta) * self.spec_dens(self.fine_grid_complex)
         #hole component (negative sign in beta for hole distribution)
-        K_hole = cf.dynamic_distr_particle(times_arr, fine_grid_complex, - self.beta) * self.spec_dens(fine_grid_complex)
+        K_hole = cf.dynamic_distr_particle(times_arr, self.fine_grid_complex, - self.beta) * self.spec_dens(self.fine_grid_complex)
 
         # Combine particle and hole contributions by stacking them on top of each other
         K = np.vstack((K_particle, K_hole))
@@ -129,6 +140,38 @@ class KernelMatrix:
 
         return K
 
+    def _add_additional_poles_and_residues(self, additional_poles: np.ndarray, additional_residues: np.ndarray) -> None:
+        """
+        Compute the additional Kernel matrix if there are additional poles and residues given. If both are empty, the additional kernel matrix is an empty array.
+
+        Parameters:
+        - additional_poles (np.ndarray): array containing the additional poles of the spectral density to be considered. 
+        - additional_residues (np.ndarray): array containing the additional residues of the spectral density. 
+        Returns:
+        - None
+        """
+
+        #from additional poles and residues, compute the kernel matrix
+        if len(additional_poles) != len(additional_residues):
+            raise ValueError("The number of poles and residues must be the same")
+        
+        self.additional_poles = additional_poles
+        self.additional_residues = additional_residues
+        
+        #particle component
+        K_particle_add = 2.j * np.pi * additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], additional_poles, self.beta) 
+        #hole component (negative sign in beta for hole distribution)
+        K_hole_add = 2.j * np.pi * additional_residues * cf.dynamic_distr_particle(self.times[:, np.newaxis], additional_poles, -self.beta) 
+
+        # Combine particle and hole contributions by stacking them on top of each other
+        self.kernel_additional = np.vstack((K_particle_add, K_hole_add))
+
+    def _full_kernel(self):
+        """
+        Compute the full kernel matrix including all additional poles
+        """
+        kernel_full = np.hstack((self.kernel, self.kernel_additional))
+        return kernel_full
 
     def get_shared_attributes(self) -> dict:
         """
@@ -152,9 +195,12 @@ class KernelMatrix:
             "k_values",
             "kernel",
             "spec_dens",
-            "spec_dens_array_fine",
             "freq_parametrization",
             "only_positive_particle",
+            "fine_grid_complex",
+            "additional_poles",
+            "additional_residues",
+            "kernel_additional",
         ]
 
         base_class_attrs = {
@@ -175,25 +221,24 @@ class KernelMatrix:
         return param_dict
     
     def discrete_integral(
-        self, kernel: np.ndarray = None, spec_dens_array_fine: np.ndarray = None
+        self, kernel: np.ndarray = None, include_additional_poles:bool = False
     ) -> np.ndarray:
         """
         Computes the discrete approximation to the frequency integral at the times defined on the time grid
 
         Parameters:
         - kernel (np.ndarray, optional): Kernel matrix, where different rows correspond to different time steps, and different columns correspond to different frequencies
-        - spec_dens_array_fine (np.ndarray, optional): Array of spectral density values at the frequency points in the complex plane
-
+        - include_additional_poles (bool): If True, additional poles are included when computing the discrete integral
         Returns:
         - np.ndarray: Discrete approximation result to frequency integral at times on time grid
         """
 
-        # Use provided or default kernel and spec_dens_array
-        kernel_eff = self.kernel if kernel is None else kernel
-        spec_dens_array_eff_cmplx = (
-            self.spec_dens_array_fine
-            if spec_dens_array_fine is None
-            else spec_dens_array_fine
+        # Use provided or default kernel 
+        if kernel is not None:
+            kernel_eff = kernel
+        else:
+            kernel_eff = (
+            self.kernel if include_additional_poles is False else self._full_kernel()
         )
 
         if not isinstance(kernel_eff, np.ndarray):
@@ -201,16 +246,8 @@ class KernelMatrix:
                 f"'kernel' must be of type np.ndarray. Found {type(kernel_eff).__name__}"
             )
 
-        if not isinstance(spec_dens_array_eff_cmplx, np.ndarray):
-            raise TypeError(
-                f"'spec_dens_array' must be of type np.ndarray. Found {type(spec_dens_array_eff_cmplx).__name__}"
-            )
-        if kernel_eff.shape[1] != len(spec_dens_array_eff_cmplx):
-            raise RuntimeError(
-                f"Frequency dimension of 'kernel' must match length of 'spec_dens_array'. Respective values found: {kernel_eff.shape[1]}, {len(spec_dens_array_fine)}"
-            )
 
         # Sum over the frequency axis
-        right_segment = kernel_eff @ spec_dens_array_eff_cmplx
+        propag = np.sum(kernel_eff, axis = 1).flatten()
 
-        return right_segment
+        return propag

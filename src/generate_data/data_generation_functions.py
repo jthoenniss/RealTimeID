@@ -7,7 +7,7 @@ from src.utils.module_utils.all_custom_modules import (
     DecompKernel,
     cf,
     Hdf5Kernel,
-    AAAKernel,
+    AAARep,
 )  # Consolidated custom modules import
 from src.kernel_params.kernel_params import KernelParams
 
@@ -69,17 +69,36 @@ def compute_ID_grid_and_store(
                 spec_dens=params.get_param("spec_dens"),
                 only_positive=False
             )
-
+        """
+        #particle component
+        cont_integral_particle_ra = cf.cont_integral(
+            t=times,
+            beta=params.get_param("beta"),
+            upper_cutoff=params.get_param("upper_cutoff"),
+            spec_dens=params.get_param("spec_dens"),
+            only_positive=only_positive_particle, phi = 0
+        )
+        if not only_positive_particle:
+            #hole component (beta -> -beta)
+            cont_integral_hole_ra = cf.cont_integral( 
+                t=times,
+                beta= - params.get_param("beta"),
+                upper_cutoff=params.get_param("upper_cutoff"),
+                spec_dens=params.get_param("spec_dens"),
+                only_positive=False, phi = 0
+            )"""
 
         for tau, N_max in enumerate(N_maxs):
             params.update_parameters({"N_max": N_max})
 
             if only_positive_particle:
                 cont_integral = cont_integral_particle[:N_max]
+                #cont_integral_ra = cont_integral_particle_ra[:N_max]
             else:
                 #join the two arrays for the particle and hole components
                 cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
-        
+                #cont_integral_ra = np.concatenate((cont_integral_particle_ra[:N_max], cont_integral_hole_ra[:N_max]))
+
             for h, h_val in enumerate(h_vals):
                 params.update_parameters(
                     {"h": h_val}
@@ -89,17 +108,23 @@ def compute_ID_grid_and_store(
                 discr_error = DiscrError(
                     **params.params, cont_integral_init=cont_integral, only_positive_particle=only_positive_particle
                 )
-
+                print("length: ", discr_error.discrete_integral_init.shape, cont_integral_particle.shape)
+                print("discr partc",discr_error.discrete_integral_init[:10])
+                print("cont part",cont_integral_particle[:10])
+                #print("discr hole",discr_error.discrete_integral_init[N_max:N_max+10])
+                #print("cont hole",cont_integral_hole[:10])
+              
+                print("error before: ", discr_error.eps)
                 print("BEFORE: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
                 if optimize:
                     discr_error.optimize(
                         rel_error_diff=rel_error_diff
                     )  # optimize values for m and n
-
+                print("error after: ", discr_error.eps)
                 print("AFTER: max. and min. freq: ", discr_error.fine_grid[-1], discr_error.fine_grid[0])
 
+
                 # create DecompKernel object which holds the kernel matrix and all associated parameters.
-                # Note: big data attributes are not copied but passed as references to the original object, avoiding memory duplication.
                 decomp_kernel = DecompKernel(discr_error)
 
                 # compute reconstruction error (between reconstructed propagator and continuous-frequency propagator)
@@ -137,7 +162,7 @@ def compute_AAA_grid_and_store(error_tolerances,
     remove_Froissart: bool = True,
 ) -> None:
     """
-    This function computes the error and the corresponding AAAKernel object for each point on a data grid
+    This function computes the error and the corresponding AAARep object for each point on a data grid
 
     Parameters:
         error_tolerances (array type): Array of errors values which are used as convergence criteria for the AAA algorithm.
@@ -195,7 +220,7 @@ def compute_AAA_grid_and_store(error_tolerances,
 
             print("computing AAA")
             # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
-            AAA_kernel = AAAKernel(**params.params, tol = tol)
+            AAA_kernel = AAARep(**params.params, tol = tol)
 
             print(AAA_kernel.Z)
             print(AAA_kernel.F_particle)

@@ -71,17 +71,18 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
                 
                 for key, val in params.items():
-                    if key not in ["spec_dens_array_fine", "freq_parametrization"]:
+                    if key not in ["freq_parametrization", "only_positive_particle"]:
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
                     elif key == "freq_parametrization":
                         self.assertEqual(val, self.params_DecompKernel[key])
+                    elif key == "only_positive_particle":
+                        self.assertFalse(val)
                     else:
                         self.assertEqual(val, getattr(self.params_DecompKernel, key), f"parameters differ for key {key}")
                         self.assertEqual(val(0), 1.)
                         
                 self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
-                self.assertTrue(np.allclose(data["spec_dens_array_fine"], self.kernel.spec_dens_array_fine))
-
+                
 
     def test_append_element(self):
         #ToDo: Extend to test all other attributes
@@ -104,18 +105,19 @@ class Test_store_kernel(unittest.TestCase):
                 params, data  = hdf_kernel.read_kernel_element((i,j))
      
                 for key, val in params.items():
-                    if key not in ["spec_dens_array_fine", "freq_parametrization"]:
+                    if key not in ["freq_parametrization", "only_positive_particle"]:
                         self.assertTrue(np.allclose(val,self.params_DecompKernel[key]), f"parameters differ for key {key}")
                     elif key == "freq_parametrization":
                         self.assertEqual(val, self.params_DecompKernel[key])
+                    elif key == "only_positive_particle":
+                        self.assertFalse(val)
                     else:
                         self.assertEqual(val, self.params_DecompKernel[key], f"parameters differ for key {key}")
                         self.assertEqual(val(0), 1.)
                         
 
                 self.assertEqual(data["ID_rank"], self.kernel.ID_rank)
-                self.assertTrue(np.allclose(data["spec_dens_array_fine"], self.kernel.spec_dens_array_fine))
-
+                
     def test_append_element_two_kernels_and_dict(self):
         #take over parameters specified in setUp
         params_DiscrError = self.params_DecompKernel.copy()
@@ -151,8 +153,10 @@ class Test_store_kernel(unittest.TestCase):
      
                 #check that parameters are equal
                 for key, val in params.items():  
-                    if key != "freq_parametrization":
+                    if key not in ["freq_parametrization", "only_positive_particle"]:
                         self.assertTrue(np.allclose(val,getattr(kernel_discr,key)), f"parameters differ for key {key}: {val, self.params_DecompKernel[key]}")
+                    elif key == "only_positive_particle":
+                        self.assertFalse(val)
                     else:
                         self.assertEqual(val, self.params_DecompKernel[key])
                 

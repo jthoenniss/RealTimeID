@@ -5,4 +5,4 @@ from src.utils import common_funcs as cf
 from src.data_interpolation.data_interpolation import DataInterp
 from src.store_kernel.store_kernel import Hdf5Kernel
 from src.utils.plot_utils import fit_logarithmic, log_func
-from src.AAA.AAA_kernel import AAAKernel
+from src.AAA.AAA_kernel import AAARep

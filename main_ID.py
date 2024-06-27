@@ -33,8 +33,8 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 2.7, 5)))
-    h_vals = np.logspace(-2.1, -0.2, 20)  # order from small to large
+    N_maxs = list(map(int, np.logspace(1, 2., 5)))
+    h_vals = np.logspace(-2, -0.2, 20)  # order from small to large
     # Array specifying all values for inverse temperature, beta, that should be evaluated
     betas = [0, 1.0e4]  # , 1.e3, 1.e4, 1.e5]
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     ID_h5_kernel.create_file(kernel_dims=param_grid_dims_ID)
 
-    spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower=-10, cutoff_upper=10, sharpness= .1)
+    spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower=-10, cutoff_upper=10)
     print(
         f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_ID}."
     )
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         h5_kernel=ID_h5_kernel,
         optimize=True,
         rel_error_diff=0.1,
-        only_positive_particle=True,
+        only_positive_particle=False,
     )
 
     run_time = time.time() - time_init

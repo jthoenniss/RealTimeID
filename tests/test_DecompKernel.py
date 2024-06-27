@@ -27,6 +27,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             phi=np.pi / 4,
             spec_dens = lambda x: spec_dens_gapless(x),
             freq_parametrization="fancy_exp",
+            only_positive_particle=True,
         )
 
     def test_initialization(self):
@@ -58,7 +59,7 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
 
     def test_kernel_matrix_shape(self):
         K = self.K.kernel
-        expected_shape = (2*len(self.K.times), 2*(self.K.m + self.K.n + 1)) # first factor 2: particle and hole component, second factor 2: negative and positive frequencies
+        expected_shape = (len(self.K.times), (self.K.m + self.K.n + 1))
         self.assertEqual(K.shape, expected_shape)
 
     def test_perform_SVD_maxrank(self):
@@ -97,7 +98,6 @@ class TestDecompKernel_with_kwargs(unittest.TestCase):
             "singular_values",
             "nbr_sv_above_eps",
             "spec_dens",
-            "spec_dens_array_fine",
             "freq_parametrization",
         }
 
@@ -129,7 +129,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "spec_dens": lambda x: spec_dens_gapless(x),
             "freq_parametrization": "fancy_exp",
         }
-        D = DiscrError(**params_DiscrError)
+        D = DiscrError(**params_DiscrError, only_positive_particle=True)
 
         self.dck = DecompKernel(D)
 
@@ -139,7 +139,7 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
         
         params_DiscrError.pop("upper_cutoff")
 
-        self.dck_kwargs = DecompKernel(**params_DiscrError)
+        self.dck_kwargs = DecompKernel(**params_DiscrError, only_positive_particle=True)
 
     def test_base_attrs_present(self):
         KernelMatrix_keys_required = [
@@ -155,7 +155,6 @@ class TestDecompKernel_with_DiscError(unittest.TestCase):
             "k_values",
             "kernel",
             "spec_dens",
-            "spec_dens_array_fine",
             "freq_parametrization",
         ]
 

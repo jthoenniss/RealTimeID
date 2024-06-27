@@ -7,7 +7,18 @@ from src.discr_error.discr_error import DiscrError
 
 
 class DecompKernel(KernelMatrix):
-    REQUIRED_PARAMS = {"m", "n", "beta", "N_max", "delta_t", "h", "phi", "eps", "spec_dens", "freq_parametrization", "only_positive_particle"}
+    REQUIRED_PARAMS = {
+        "m",
+        "n",
+        "beta",
+        "N_max",
+        "delta_t",
+        "h",
+        "phi",
+        "eps",
+        "spec_dens",
+        "freq_parametrization",
+    }
     """
     Class for performing Singular Value Decomposition (SVD) and Interpolative Decomposition (ID)
     on a kernel matrix, extending the functionalities of KernelMatrix.
@@ -16,8 +27,12 @@ class DecompKernel(KernelMatrix):
     def __init__(
         self,
         *args,
-        compute_SVD = False,
-        **kwargs
+        compute_SVD: bool = False,
+        only_positive_particle: bool = False,
+        additional_poles: np.ndarray = np.empty(0),
+        additional_residues: np.ndarray = np.empty(0),
+        include_additional_poles: bool = False,
+        **kwargs,
     ):
         """
         Initialize the RtKernel with kernel matrix parameters and an error threshold for SVD and ID.
@@ -27,24 +42,29 @@ class DecompKernel(KernelMatrix):
         - eps (float): Error threshold for SVD and ID.
         - spec_dens (callable): Single-parameter function that ouputs the spectral density.
         - compute_SVD (bool): Flag that determines whether the SVD or the kernel should be evaluated
+        - additional_poles (np.ndarray): Array of additional poles for the kernel matrix.
+        - additional_residues (np.ndarray): Array of additional residues for the kernel matrix.
+        - include_additional_poles (bool): If True, include additional poles in ID and SVD
         """
 
         if args:
             if args[0] is None:
                 self._initialize_with_defaults()
             elif isinstance(args[0], DiscrError):
-                self._initialize_from_DiscrError(args[0], compute_SVD)
+                self._initialize_from_DiscrError(args[0], compute_SVD, include_additional_poles)
             else:
                 raise ValueError(
                     f"No known method to initialize DecompKernel from object of type {type(args[0]).__name__}."
                 )
 
         elif kwargs:
-            self._initialize_from_kwargs(kwargs, compute_SVD)
-        
+            self._initialize_from_kwargs(
+                kwargs, compute_SVD, only_positive_particle, additional_poles, additional_residues, include_additional_poles
+            )
+
         else:
             raise ValueError("Arguments required for initialization not provided.")
-
+        
 
     # _______________End Initialization Routine___________________________
     def _initialize_with_defaults(self) -> None:
@@ -59,7 +79,8 @@ class DecompKernel(KernelMatrix):
             "N_max",
             "nbr_sv_above_eps",
             "ID_rank",
-            "only_positive_particle"
+            "only_positive_particle",
+            "include_additional_poles"
         ]
         float_attributes = ["beta", "delta_t", "eps", "h", "phi", "singular_values"]
         array_attributes = [
@@ -69,7 +90,10 @@ class DecompKernel(KernelMatrix):
             "idx",
             "proj",
             "coarse_grid",
-            "spec_dens_array_fine"
+            "fine_grid_complex",
+            "additional_poles",
+            "additional_residues",
+            "kernel_additional",
         ]
 
         for member in integer_attributes:
@@ -78,11 +102,11 @@ class DecompKernel(KernelMatrix):
             setattr(self, member, 0.0)
         for member in array_attributes:
             setattr(self, member, np.array([]))
-        
-        self.spec_dens = None #this attribute is either None or a callable function that outputs the spectral density
-        self.freq_parametrization = None #this attribute is either None or a string that specifies the frequency parametrization
 
-    def _initialize_from_DiscrError(self, D: DiscrError, compute_SVD: bool) -> None:
+        self.spec_dens = None  # this attribute is either None or a callable function that outputs the spectral density
+        self.freq_parametrization = None  # this attribute is either None or a string that specifies the frequency parametrization
+
+    def _initialize_from_DiscrError(self, D: DiscrError, compute_SVD: bool, include_additional_poles: bool) -> None:
         """
         Initializes DecompKernel from an instance of DiscrError.
         Takes over all attributes from the shared base class KernelMatrix,
@@ -99,27 +123,41 @@ class DecompKernel(KernelMatrix):
         for key, value in params_KernelMatrix.items():
             setattr(self, key, value)
 
+        self.include_additional_poles = include_additional_poles
         # Perform ID and set coarse grid
         self._initialize_ID()
-        #if flag is True, initialize SVD
+        # if flag is True, initialize SVD
         self._initialize_SVD(compute_SVD=compute_SVD)
 
-    def _initialize_from_kwargs(self,kwargs, compute_SVD: bool) -> None:
+    def _initialize_from_kwargs(
+        self,
+        kwargs,
+        compute_SVD: bool,
+        only_positive_particle: bool,
+        additional_poles: np.ndarray,
+        additional_residues: np.ndarray,
+        include_additional_poles: bool
+    ) -> None:
         # Check that all required parameters (defined in RtDlr.REQUIRED_PARAMS) are present
-        KernelParams.validate_required_params(
-            kwargs, DecompKernel.REQUIRED_PARAMS
-        )
+        KernelParams.validate_required_params(kwargs, DecompKernel.REQUIRED_PARAMS)
         # read error and initialize.
         eps = kwargs.pop("eps", None)  # Extract 'eps' and remove it from kwargs
         KernelParams.validate_eps(eps)
         self.eps = eps
         # initialize base class
-        super().__init__(**kwargs)
+        super().__init__(
+            **kwargs,
+            only_positive_particle=only_positive_particle,
+            additional_poles=additional_poles,
+            additional_residues=additional_residues,
+        )
+
+        self.include_additional_poles = include_additional_poles
+
         # Perform SVD and ID and set coarse grid
         self._initialize_ID()
-        #if flag is True, initialize SVD
+        # if flag is True, initialize SVD
         self._initialize_SVD(compute_SVD=compute_SVD)
-        
 
     def _initialize_ID(self):
         """
@@ -138,33 +176,48 @@ class DecompKernel(KernelMatrix):
         else:
             self.nbr_sv_above_eps = 0
             self.singular_values = np.array([])
-    
 
-    def perform_SVD(self, eps=None):
+    def perform_SVD(self, eps=None) -> tuple:
         """
         Perform SVD on the kernel matrix and count the number of singular values above the error threshold.
+
+        Parameters:
+        - eps (float): SVD error
+        - include_additional_poles(bool): If True, ID is performed on "full" kernel matrix, including the additional poles
 
         Returns:
         Tuple[int, np.ndarray]: Count of singular values above threshold and array of singular values.
         """
         _eps = self.eps if eps is None else eps
-        nbr_sv_above_eps, singular_values = cf.compute_singular_values(
-            self.kernel, _eps
+
+        kernel = (
+            self.kernel if self.include_additional_poles is False else self._full_kernel()
         )
+
+        nbr_sv_above_eps, singular_values = cf.compute_singular_values(kernel, _eps)
         return nbr_sv_above_eps, singular_values
 
-    def perform_ID(self, eps=None):
+    def perform_ID(self, eps=None, include_additional_poles: bool = False) -> tuple:
         """
         Perform interpolative decomposition (ID) on the kernel matrix using the error threshold.
+
+        Parameters:
+        - eps (float): ID error
+        - include_additional_poles(bool): If True, ID is performed on "full" kernel matrix, including the additional poles
 
         Returns:
         Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
         _eps = self.eps if eps is None else eps
-        ID_rank, idx, proj = sli.interp_decomp(self.kernel, _eps, rand = False)
-        
+
+        kernel = (
+            self.kernel if self.include_additional_poles is False else self._full_kernel()
+        )
+
+        ID_rank, idx, proj = sli.interp_decomp(kernel, _eps, rand=False)
+
         return ID_rank, idx, proj
-    
+
     def _compute_coarse_grid(self):
         """
         Compute the coarse grid consisting of frequencies selected by ID from the fine grid.
@@ -172,17 +225,17 @@ class DecompKernel(KernelMatrix):
         Returns:
         np.ndarray: Coarse grid array.
         """
-
-        # the coarse grid is a subset of the full frequency grid (with negative and positive frequencies)
-        if self.only_positive_particle:
-            fine_grid_full = self.fine_grid
+        if self.include_additional_poles:
+            fine_grid_complex_full = np.concatenate(
+                (self.fine_grid_complex, self.additional_poles)
+            )
         else:
-            fine_grid_full = np.concatenate((-self.fine_grid[::-1], self.fine_grid))
-            
-        coarse_grid = np.array(fine_grid_full[self.idx[:self.ID_rank]])
+            fine_grid_complex_full = self.fine_grid_complex
+
+        coarse_grid = fine_grid_complex_full[self.idx[: self.ID_rank]]
 
         return coarse_grid
-    
+
     def get_params(self):
         """
         Returns a dict containing the parameters associated with an instance of the class and stored as attributes
@@ -190,10 +243,11 @@ class DecompKernel(KernelMatrix):
 
         param_dict = super().get_params()
 
-        param_dict["eps"] = getattr(self, "eps")#add parameters for eps which does not exist in base class KernelMatrix.
+        param_dict["eps"] = getattr(
+            self, "eps"
+        )  # add parameters for eps which does not exist in base class KernelMatrix.
 
         return param_dict
-    
 
     def get_projection_matrix(self):
         """
@@ -204,15 +258,14 @@ class DecompKernel(KernelMatrix):
         ]  # projection matrix
 
         return P
-    
+
     def coupl_eff(self):
         """
         Compute effective couplings: multiply vector of spectral density at fine grid points with projection matrix P.
         """
         P = self.get_projection_matrix()
-        coupl_eff = P @ self.spec_dens_array_fine
+        coupl_eff = np.sum(P, axis = 1).flatten()
         return coupl_eff
-    
 
     def reconstr_interp_matrix(self):
         """
@@ -223,12 +276,15 @@ class DecompKernel(KernelMatrix):
         """
 
         # __reconstruct kernel matrix__:
-        B = sli.reconstruct_skel_matrix(self.kernel, self.ID_rank, self.idx)
+        kernel = (
+            self.kernel if self.include_additional_poles is False else self._full_kernel()
+        )
+        B = sli.reconstruct_skel_matrix(kernel, self.ID_rank, self.idx)
         # reconstructed kernelmatrix:
         kernel_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
 
         return kernel_reconstr
-    
+
     def reconstruct_propagator_ID(self):
         """
         Reconstructs the propagator from the ID approximation.
@@ -242,9 +298,8 @@ class DecompKernel(KernelMatrix):
         """
 
         # Reconstruct the kernel matrix from the ID approximation
-        K_reconstr = self.reconstr_interp_matrix()  
+        K_reconstr = self.reconstr_interp_matrix()
         # Reconstruct the propagator from the reconstructed kernel matrix
-        G_reconstr = K_reconstr @ self.spec_dens_array_fine
+        G_reconstr = np.sum(K_reconstr, axis = 1).flatten()
 
         return G_reconstr
-

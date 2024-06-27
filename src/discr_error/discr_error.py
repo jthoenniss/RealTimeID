@@ -40,7 +40,9 @@ class DiscrError(KernelMatrix):
         phi: float,
         spec_dens: callable,
         freq_parametrization: str,
-        only_positive_particle: bool,
+        only_positive_particle: bool = False,
+        additional_poles: np.ndarray = np.empty(0),
+        additional_residues: np.ndarray = np.empty(0),
         cont_integral_init: np.ndarray = None,
     ):
         """
@@ -73,6 +75,8 @@ class DiscrError(KernelMatrix):
             spec_dens=spec_dens,
             freq_parametrization=freq_parametrization,
             only_positive_particle=only_positive_particle,
+            additional_poles=additional_poles,
+            additional_residues=additional_residues,
         )
 
         # compute discrete integral
@@ -88,16 +92,17 @@ class DiscrError(KernelMatrix):
             cont_integral_init_particle = (
                 self._cont_integral_particle()
             )
-
-            if self.only_positive_particle:
+    
+            if only_positive_particle:
                 self.cont_integral_init = cont_integral_init_particle
-                return #no hole component needed
+            
+            else:
+                #hole component
+                cont_integral_init_hole = (
+                    self._cont_integral_hole()
+                )
+                self.cont_integral_init = np.concatenate((cont_integral_init_particle, cont_integral_init_hole))
 
-            #hole component
-            cont_integral_init_hole = (
-                self._cont_integral_hole()
-            )
-            self.cont_integral_init = np.concatenate((cont_integral_init_particle, cont_integral_init_hole))
         else:
             self.cont_integral_init = cont_integral_init
 
@@ -195,18 +200,19 @@ class DiscrError(KernelMatrix):
         freq_limits_prev =  (self.fine_grid[0], self.fine_grid[-1])
         eps_prev = self.eps
 
-        # search for number of points one can spare in m and n without making an error that dominate the discretization error w.r.t. to continuous integration
-        m_count_final = self._optimize_mode_count(self.m, lambda mc: [0, nbr_freqs - mc], rel_error_diff)
-        n_count_final = self._optimize_mode_count(self.n, lambda nc: [nc, nbr_freqs], rel_error_diff)
+        if self.eps > 0:
+            # search for number of points one can spare in m and n without making an error that dominate the discretization error w.r.t. to continuous integration
+            m_count_final = self._optimize_mode_count(self.m, lambda mc: [0, nbr_freqs - mc], rel_error_diff)
+            n_count_final = self._optimize_mode_count(self.n, lambda nc: [nc, nbr_freqs], rel_error_diff)
 
-        # update m,n, kernel, grids for frequency, and spectr. density, discrete integral, and eps
-        self._update_reduced_kernel_and_grids(m_count_final, n_count_final)
+            # update m,n, kernel, grids for frequency, and spectr. density, discrete integral, and eps
+            self._update_reduced_kernel_and_grids(m_count_final, n_count_final)
 
-        if update_params is not None:  
-            self._update_external_params(update_params)
+            if update_params is not None:  
+                self._update_external_params(update_params)
 
-        #uncomment to print optimization results
-        #self._print_optimization_results(freq_limits_prev, eps_prev)
+            #uncomment to print optimization results
+            #self._print_optimization_results(freq_limits_prev, eps_prev)
 
         return self
     
@@ -265,7 +271,7 @@ class DiscrError(KernelMatrix):
         Returns:
         - int: number of frequency points dropped without making a error larger than 'rel_diff' (e.g. 10%) of the discretization error
         """
-        step_size = 10
+        step_size = np.min([10, max_count])
         for count in range(step_size, max_count, step_size):
            
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
@@ -294,9 +300,9 @@ class DiscrError(KernelMatrix):
         - upper_idx (int): upper index of frequency interval
 
         Returns:
-        - dict: dictionary containing the reduced kernel, reduced spec_dens_array_fine, reduced discrete integral, and reduced error
+        - dict: dictionary containing the reduced kernel,  reduced discrete integral, and reduced error
         """
-        # compute reduced kernel and spec_dens_array_fine
+        # compute reduced kernel 
         # the indices lower_idx an upper_idx refer to the positive frequencies. 
 
         # Determine the corresponding interval 
@@ -312,12 +318,11 @@ class DiscrError(KernelMatrix):
 
         #reduce the kernel to the corresponding interval
         kernel_reduced = self.kernel[:,indices]
-        #reduce the spectral density to the corresponding interval
-        spec_dens_array_fine_reduced = self.spec_dens_array_fine[indices]
+        
         
         # compute the corresponding discrete-frequency approximation
         discrete_integral_reduced = self.discrete_integral(
-            kernel=kernel_reduced, spec_dens_array_fine=spec_dens_array_fine_reduced
+            kernel=kernel_reduced
         )
         # compute relative error between the discrete integral approximation with current m and n and the discrete integral with previous m and n
         eps_reduced = self.error_time_integrated(
@@ -327,7 +332,6 @@ class DiscrError(KernelMatrix):
    
         return {
             "kernel_reduced": kernel_reduced,
-            "spec_dens_array_fine_reduced": spec_dens_array_fine_reduced,
             "discrete_integral_reduced": discrete_integral_reduced,
             "eps_reduced": eps_reduced,
         }
@@ -351,16 +355,13 @@ class DiscrError(KernelMatrix):
         self.m -= m_count
         self.n -= n_count
 
-        # get reduced kernel, spec_dens_array_fine, discrete integral, and error
+        # get reduced kernel,  discrete integral, and error
         new_kernel_and_grids = self._get_reduced_kernel_and_error(
             lower_idx=n_count, upper_idx=nbr_freqs - m_count
         )
 
-        # update kernel, spec_dens_array_fine, discrete integral, and error
+        # update kernel,  discrete integral, and error
         self.kernel = new_kernel_and_grids["kernel_reduced"]
-        self.spec_dens_array_fine = new_kernel_and_grids[
-            "spec_dens_array_fine_reduced"
-        ]
         self.discrete_integral_init = new_kernel_and_grids["discrete_integral_reduced"]
 
         # update error between discrete and continuos integral, both stored as attributes

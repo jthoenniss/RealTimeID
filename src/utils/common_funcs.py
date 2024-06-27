@@ -289,10 +289,17 @@ def error_time_integrated(time_series_exact, time_series_approx, delta_t):
     Returns:
     - float: Relative time-integrated error.
     """
-    #absolute time integrated error
-    abs_error_time_integrated = time_integrate(abs(time_series_exact - time_series_approx), delta_t)
+
     # compute norm
     norm = time_integrate(abs(time_series_exact) + abs(time_series_approx), delta_t)
+
+    #if time series is only numerical noise, do not compute relative error (which would be large although absolute values are essentially 0)
+    if norm < 1.e-14 * len(time_series_exact):
+        return 0
+
+    #absolute time integrated error
+    abs_error_time_integrated = time_integrate(abs(time_series_exact - time_series_approx), delta_t)
+    
     # compute relative error by dividing by norm
     rel_error_time_integrated = abs_error_time_integrated / norm
 
