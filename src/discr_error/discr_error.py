@@ -41,6 +41,8 @@ class DiscrError(KernelMatrix):
         spec_dens: callable,
         freq_parametrization: str,
         only_positive_particle: bool = False,
+        explicit_poles: np.ndarray = np.empty(0),
+        explicit_residues: np.ndarray = np.empty(0),
         additional_poles: np.ndarray = np.empty(0),
         additional_residues: np.ndarray = np.empty(0),
         cont_integral_init: np.ndarray = None,
@@ -60,6 +62,10 @@ class DiscrError(KernelMatrix):
             Simple exp: The grid is parametrized by omega_k = exp(h*k) for k in [-n, m].
             Fancy exp: The grid is parametrized by omega_k = exp(h*k - exp(-h*k)) for k in [-n, m].
         - only_positive_particle (bool): If True, only the positive frequencies for the particle component are included.
+        - explicit_poles (np.ndarray): Array containing the explicit poles.
+        - explicit_residues (np.ndarray): Array containing the residues of the explicit poles.
+        - additional_poles (np.ndarray): Array containing the additional poles.
+        - additional_residues (np.ndarray): Array containing the residues of the additional poles.
         - cont_integral_init (np.ndarray, optional): Array containing the continuous-time integral at all all points of the time grid, for particle and hole component
         
         """
@@ -75,6 +81,8 @@ class DiscrError(KernelMatrix):
             spec_dens=spec_dens,
             freq_parametrization=freq_parametrization,
             only_positive_particle=only_positive_particle,
+            explicit_poles=explicit_poles,
+            explicit_residues=explicit_residues,
             additional_poles=additional_poles,
             additional_residues=additional_residues,
         )
@@ -272,6 +280,9 @@ class DiscrError(KernelMatrix):
         - int: number of frequency points dropped without making a error larger than 'rel_diff' (e.g. 10%) of the discretization error
         """
         step_size = np.min([10, max_count])
+
+
+        eps_prev = 0
         for count in range(step_size, max_count, step_size):
            
             lower_idx, upper_idx = interval_idcs(count)[0], interval_idcs(count)[1]
@@ -281,11 +292,12 @@ class DiscrError(KernelMatrix):
                 "eps_reduced"
             ]
         
-            if eps_reduced / self.eps > rel_error_diff and eps_reduced > 1.e-13:
-                print("abort optimization", eps_reduced, self.eps, eps_reduced / self.eps, rel_error_diff)
+            if eps_reduced / self.eps > rel_error_diff:
+                print(f"Finished grid optimization. Rel. error between new and old discrete integral: {eps_prev}. Rel. discretization error w.r.t to continuous integral: {self.eps}.")
                 return count - step_size  # Found the optimal count
       
-                    
+            eps_prev = eps_reduced
+
         # In case no optimal count is found, return the last valid count
         return max_count - step_size
     

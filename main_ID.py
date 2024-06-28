@@ -51,7 +51,7 @@ if __name__ == "__main__":
     ID_h5_kernel.create_file(kernel_dims=param_grid_dims_ID)
 
     #spec_dens = lambda x: spec_dens_gapless(x)
-    spec_dens = SpecDensGapless(Lambda = 1)
+    spec_dens = SpecDensGapless(Lambda = 200, sharpness=.05)
     print(
         f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_ID}."
     )

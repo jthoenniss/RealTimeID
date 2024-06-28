@@ -29,6 +29,8 @@ class DecompKernel(KernelMatrix):
         *args,
         compute_SVD: bool = False,
         only_positive_particle: bool = False,
+        explicit_poles: np.ndarray = np.empty(0),
+        explicit_residues: np.ndarray = np.empty(0),
         additional_poles: np.ndarray = np.empty(0),
         additional_residues: np.ndarray = np.empty(0),
         include_additional_poles: bool = False,
@@ -42,6 +44,9 @@ class DecompKernel(KernelMatrix):
         - eps (float): Error threshold for SVD and ID.
         - spec_dens (callable): Single-parameter function that ouputs the spectral density.
         - compute_SVD (bool): Flag that determines whether the SVD or the kernel should be evaluated
+        - only_positive_particle (bool): If True, only the positive particle is considered in the spectral density.
+        - explicit_poles (np.ndarray): Array of explicit poles for the kernel matrix.
+        - explicit_residues (np.ndarray): Array of explicit residues for the kernel matrix.
         - additional_poles (np.ndarray): Array of additional poles for the kernel matrix.
         - additional_residues (np.ndarray): Array of additional residues for the kernel matrix.
         - include_additional_poles (bool): If True, include additional poles in ID and SVD
@@ -59,7 +64,7 @@ class DecompKernel(KernelMatrix):
 
         elif kwargs:
             self._initialize_from_kwargs(
-                kwargs, compute_SVD, only_positive_particle, additional_poles, additional_residues, include_additional_poles
+                kwargs, compute_SVD, only_positive_particle, explicit_poles, explicit_residues, additional_poles, additional_residues, include_additional_poles
             )
 
         else:
@@ -91,6 +96,8 @@ class DecompKernel(KernelMatrix):
             "proj",
             "coarse_grid",
             "fine_grid_complex",
+            "explicit_poles",
+            "explicit_residues",
             "additional_poles",
             "additional_residues",
             "kernel_additional",
@@ -134,6 +141,8 @@ class DecompKernel(KernelMatrix):
         kwargs,
         compute_SVD: bool,
         only_positive_particle: bool,
+        explicit_poles: np.ndarray,
+        explicit_residues: np.ndarray,
         additional_poles: np.ndarray,
         additional_residues: np.ndarray,
         include_additional_poles: bool
@@ -148,6 +157,8 @@ class DecompKernel(KernelMatrix):
         super().__init__(
             **kwargs,
             only_positive_particle=only_positive_particle,
+            explicit_poles=explicit_poles,
+            explicit_residues=explicit_residues,
             additional_poles=additional_poles,
             additional_residues=additional_residues,
         )
@@ -190,29 +201,25 @@ class DecompKernel(KernelMatrix):
         """
         _eps = self.eps if eps is None else eps
 
-        kernel = (
-            self.kernel if self.include_additional_poles is False else self._full_kernel()
-        )
+        kernel = self._full_kernel(include_additional_poles=self.include_additional_poles)
 
         nbr_sv_above_eps, singular_values = cf.compute_singular_values(kernel, _eps)
         return nbr_sv_above_eps, singular_values
 
-    def perform_ID(self, eps=None, include_additional_poles: bool = False) -> tuple:
+    def perform_ID(self, eps=None) -> tuple:
         """
         Perform interpolative decomposition (ID) on the kernel matrix using the error threshold.
 
         Parameters:
         - eps (float): ID error
-        - include_additional_poles(bool): If True, ID is performed on "full" kernel matrix, including the additional poles
-
+       
         Returns:
         Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
         _eps = self.eps if eps is None else eps
 
-        kernel = (
-            self.kernel if self.include_additional_poles is False else self._full_kernel()
-        )
+        kernel = self._full_kernel(include_additional_poles=self.include_additional_poles)
+
         ID_rank, idx, proj = sli.interp_decomp(kernel, _eps, rand=False)
 
         return ID_rank, idx, proj
@@ -224,13 +231,9 @@ class DecompKernel(KernelMatrix):
         Returns:
         np.ndarray: Coarse grid array.
         """
-        if self.include_additional_poles:
-            fine_grid_complex_full = np.concatenate(
-                (self.fine_grid_complex, self.additional_poles)
-            )
-        else:
-            fine_grid_complex_full = self.fine_grid_complex
-            
+
+        fine_grid_complex_full = self._full_grid(include_additional_poles=self.include_additional_poles)
+
         coarse_grid = fine_grid_complex_full[self.idx[: self.ID_rank]]
 
         return coarse_grid
@@ -274,10 +277,8 @@ class DecompKernel(KernelMatrix):
         2D matrix with np.complex_: ID reconstructed matrix
         """
 
-        # __reconstruct kernel matrix__:
-        kernel = (
-            self.kernel if self.include_additional_poles is False else self._full_kernel()
-        )
+        kernel = self._full_kernel(include_additional_poles=self.include_additional_poles)
+
         B = sli.reconstruct_skel_matrix(kernel, self.ID_rank, self.idx)
         # reconstructed kernelmatrix:
         kernel_reconstr = sli.reconstruct_matrix_from_id(B, self.idx, self.proj)
