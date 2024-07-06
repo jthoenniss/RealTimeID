@@ -297,6 +297,7 @@ class DiscrError(KernelMatrix):
         
             if eps_reduced / self.eps > rel_error_diff:
                 print(f"Finished grid optimization. Rel. error between new and old discrete integral: {eps_prev}. Rel. discretization error w.r.t to continuous integral: {self.eps}.")
+                print(f"Count reduced from {max_count} to {max_count - (count - step_size)}.")
                 return count - step_size  # Found the optimal count
       
             eps_prev = eps_reduced
@@ -387,6 +388,15 @@ class DiscrError(KernelMatrix):
         # update frequency grid and k values
         self.fine_grid = self.fine_grid[n_count : nbr_freqs - m_count]
         self.k_values = self.k_values[n_count : nbr_freqs - m_count]
+
+        #update complex grid
+        # full fine grid in complex plane
+        self.fine_grid_complex = self.fine_grid * np.exp(1.0j * self.phi)
+        if not self.only_positive_particle:  # if negative frequencies are included
+            # add negative frequencies
+            self.fine_grid_complex = np.concatenate(
+                (-self.fine_grid_complex[::-1].conj(), self.fine_grid_complex)
+            )
 
     def get_params(self):
         """
