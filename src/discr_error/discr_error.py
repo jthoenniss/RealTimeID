@@ -239,6 +239,9 @@ class DiscrError(KernelMatrix):
         Returns:
         - None
         """
+        #verify that m and n are positive integers
+        KernelParams.validate_m_n(self.m, self.n)
+
         # update parameters in external KernelParams object
         update_params.update_parameters({"m": self.m,"n": self.n})
 
@@ -364,8 +367,8 @@ class DiscrError(KernelMatrix):
 
         nbr_freqs = len(self.fine_grid)
 
-        self.m -= m_count
-        self.n -= n_count
+        self.m = int(self.m - m_count)
+        self.n = int(self.n - n_count)
 
         # get reduced kernel,  discrete integral, and error
         new_kernel_and_grids = self._get_reduced_kernel_and_error(
