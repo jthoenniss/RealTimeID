@@ -158,6 +158,7 @@ def generate_composite_chebyshev_grid_dyadic(M_intervals, m_chebyshev, upper_cut
     Parameters:
     - M_intervals (int): Number of intervals in the composite grid.
     - m_chebyshev (int): Order of the Chebyshev grid in each interval.
+    - upper_cutoff (float): Scaling factor of the grid. The final composite grid reaches up to upper_cutoff.
 
     Returns:
     numpy.ndarray: Composite Chebyshev grid with nodes.
