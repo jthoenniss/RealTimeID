@@ -7,10 +7,10 @@ MAX_FLOAT = np.finfo(np.float64).max
 # define a collection of vectorized spectral densities
 def spec_dens_gapless(
     omega: np.ndarray,
+    sharpness: float,
     cutoff_lower: float = -1.0e6,
     cutoff_upper: float = 1.0e6,
     Gamma: float = 1.0,
-    sharpness=None,
 ) -> np.ndarray:
     """
     Gapless spectral density with smooth cutoffs.
@@ -21,6 +21,7 @@ def spec_dens_gapless(
 
     Parameters:
     - omega (scalar/np.ndarray): Frequency values at which the spectral density is evaluated.
+    - sharpness (float): Determines the sharpness of the cutoff at Lambda.
     - cutoff_lower (float, optional): Lower cutoff frequency.
     - cutoff_upper (float, optional): Upper cutoff frequency.
     - Gamma (float, optional): Energy scale of the spectral density.
@@ -28,10 +29,7 @@ def spec_dens_gapless(
     Returns:
     scalar/np.ndarray: Spectral density evaluated at the specified frequency values.
     """
-    # hard code sharpness (chosen by hand)
-    if sharpness is None:
-        sharpness = 10 * Gamma
-
+ 
     safe_omega_upper = np.clip(
         sharpness * (omega - cutoff_upper), None, MAX_EXP_ARG / 2
     )
@@ -57,7 +55,7 @@ class SpecDensGapless:
         self.Lambda = Lambda
         self.Gamma = Gamma
         if sharpness is None:
-            self.sharpness = 10 * Gamma
+            self.sharpness = 20 * Lambda
         else:
             self.sharpness = sharpness
 
