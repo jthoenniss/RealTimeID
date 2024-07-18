@@ -145,12 +145,15 @@ class SpecDensGapless:
 
         return poles, residues
 
-    def explicit_poles_and_residues(self, h: float, phi: float = np.pi/4):
+    def explicit_poles_and_residues(self, h: float, phi: float = np.pi/4, phi_low: float = np.pi/8, phi_up: float = 3*np.pi/8):
         """
         Compute the "explicit" poles and residues that should always be considered in discrete sum along complex contour when approximating continous intgegral along complex path.
 
         Parameters:
+        - h(float): discretization parameter.
         - phi (float, optional): Angle of the integration contour.
+        - phi_low (float, optional): Lower angle of the integration contour.
+        - phi_up (float, optional): Upper angle of the integration contour.
 
         Returns:
         - tuple: Poles and residues of the spectral density multiplied with the Fermi-Dirac distribution.
@@ -176,8 +179,8 @@ class SpecDensGapless:
             return poles_pos, poles_neg
         
     
-        add_poles_up_pos, add_poles_up_neg = _explicit_poles(phi_low = np.pi/4, phi_up = 3*np.pi/8, Lambda = self.Lambda, sharpness = self.sharpness)
-        add_poles_low_pos, add_poles_low_neg = _explicit_poles(phi_low = np.pi/8, phi_up = np.pi/4, Lambda = self.Lambda, sharpness = self.sharpness)
+        add_poles_up_pos, add_poles_up_neg = _explicit_poles(phi_low = phi, phi_up = phi_up, Lambda = self.Lambda, sharpness = self.sharpness)
+        add_poles_low_pos, add_poles_low_neg = _explicit_poles(phi_low = phi_low, phi_up = phi, Lambda = self.Lambda, sharpness = self.sharpness)
 
         #positive frequencies
         def upper_residues_pos(w, sharpness, h, Lambda, phi):
