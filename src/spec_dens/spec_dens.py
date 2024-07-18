@@ -55,7 +55,7 @@ class SpecDensGapless:
         self.Lambda = Lambda
         self.Gamma = Gamma
         if sharpness is None:
-            self.sharpness = 20 * Lambda
+            self.sharpness = 20 / Lambda
         else:
             self.sharpness = sharpness
 
