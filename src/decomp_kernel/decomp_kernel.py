@@ -320,22 +320,20 @@ class DecompKernel(KernelMatrix):
         - None
 
         Returns:
-        - None
+        - ID_rank_renorm, idx_renorm, proj_renorm: Rank, indices, and projection matrix of the renormalized kernel matrix.
         """
 
-        #update the kernel matrix with the selected coulmns
+        #get the reduced kernel matrix
         kernel_full = self._full_kernel(include_additional_poles=self.include_additional_poles)
-        self.kernel = sli.reconstruct_skel_matrix(kernel_full, self.ID_rank, self.idx)
-
-        #update the full grid with the coarse grid
-        self.fine_grid_complex = self.coarse_grid
+        kernel_reduced = sli.reconstruct_skel_matrix(kernel_full, self.ID_rank, self.idx)
 
         #get effective spectral density
         coupl_eff = self.coupl_eff()[np.newaxis,:]
    
         #multiply the columns of the reduced kernel matrix elementwise with the entries of the vector coupl_eff
-        self.kernel *= coupl_eff
+        kernel_reduced *= coupl_eff
         
-        #perform ID
-        self._initialize_ID(include_additional_poles=False)
+        #perform ID on renormalized kernel matrix
+        ID_rank_renorm, idx_renorm, proj_renorm = sli.interp_decomp(kernel_reduced, self.eps, rand=False)
 
+        return ID_rank_renorm, idx_renorm, proj_renorm
