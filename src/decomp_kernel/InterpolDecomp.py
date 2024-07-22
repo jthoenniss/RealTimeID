@@ -91,9 +91,10 @@ class InterpolDecomp:
         Returns:
         np.ndarray: Coarse grid array.
         """
-
+        print("full grid: ", self.full_grid.shape)
         # the coarse grid is a subset of the full frequency grid (with negative and positive frequencies)
         coarse_grid = np.array(self.full_grid[self.idx[:self.ID_rank]])
+        print("coarse grid: ", coarse_grid.shape)
 
         return coarse_grid
     
@@ -151,4 +152,31 @@ class InterpolDecomp:
         G_reconstr = np.sum(K_reconstr, axis = 1).flatten()
 
         return G_reconstr
+    
+    def renormalize(self) -> None:
+        """
+        Renormalize all coupling by the effective spectral density. 
+        Updates the kernel matrix.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
+
+        #update the kernel matrix with the selected coulmns
+        self.kernel = sli.reconstruct_skel_matrix(self.kernel, self.ID_rank, self.idx)
+
+        #update the full grid with the coarse grid
+        self.full_grid = self.coarse_grid
+
+        #get effective spectral density
+        coupl_eff = self.coupl_eff()[np.newaxis,:]
+
+        #multiply the columns of the reduced kernel matrix elementwise with the entries of the vector coupl_eff
+        self.kernel *= coupl_eff
+
+        #perform ID
+        self._initialize_ID()
 
