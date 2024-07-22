@@ -5,47 +5,43 @@ import numpy as np
 from src.kernel_params.kernel_params import KernelParams
 import src.utils.common_funcs as cf
 from src.AAA.aaa_algorithm import aaa, cleanup
+from src.decomp_kernel.InterpolDecomp import InterpolDecomp
 
 
 class AAARep:
 
     def __init__(
         self,
-        m: int,
-        n: int,
+        fine_grid: np.ndarray,
         beta: float,
-        h: float,
         spec_dens: callable,
-        freq_parametrization: str,
         tol: float = 1.e-13,
         mmax: int = 100,
-        **kwargs
     ):
+        """
+        Parameters:
+        - fine_grid (np.ndarray): Fine frequency grid for positive frequencies. Negative frequencies will be constructed by reflecting the positive frequencies at 0.
+        - beta (float): Inverse temperature.
+        - spec_dens (callable): Spectral density function.
+        - tol (float): Tolerance for the AAA algorithm.
+        - mmax (int): Maximal number of iterations for the AAA algorithm.
+        """
+
         # check if all parameters are valid
-        KernelParams.validate_m_n(m, n)
         KernelParams.validate_beta(beta)
-        KernelParams.validate_h(h)
-        KernelParams.validate_freq_parametrization(freq_parametrization)
 
-        for kwarg in kwargs:# ignore if an upper cutoff is specified as this is only relevant when computing continuous frequency integral as in DiscrKernel
-            if kwarg in ["upper_cutoff", "phi", "N_max", "delta_t"]: #these keywords are not needed for the AAARep
-                pass
-            else:
-                raise ValueError(f"Invalid keyword argument: {kwarg}")
-    
-
-        # Store parameters
-        self.m, self.n = m, n
+        # Store parameters as attributes
         self.beta = beta
-    
-        self.h = h
         self.spec_dens = spec_dens
-        self.freq_parametrization = freq_parametrization
         self.tol = tol
 
-        # initialize frequency grid: return fine grid (positive freqs), and Jacobian (for positive freqs)
-        fine_grid, _, _ = cf.initialize_fine_grid(self.m, self.n, self.h, self.freq_parametrization)
-   
+        #check if fine grid contains only positive values
+        if not np.all(fine_grid >= 0):
+            raise ValueError("The fine grid must contain only positive values.")
+        
+        #sort fine grid in ascending order
+        fine_grid = np.sort(fine_grid)
+
         #full frequency grid including also negative frequencies:
         self.Z = np.concatenate((-fine_grid[::-1], fine_grid))
 
@@ -56,13 +52,16 @@ class AAARep:
        
         #perform AAA algorithm on spectral density multiplied with Fermi-Dirac distribution
         #particle contribution
-        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True, tol = self.tol,  mmax = np.min([mmax, 2*(self.m + self.n) + 1]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_particle, self.errors_particle = aaa(Z = self.Z, F = self.F_particle, return_errors=True, tol = self.tol,  mmax = np.min([mmax, len(self.Z)]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         #hole contribution
-        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True, tol = self.tol,  mmax = np.min([mmax, 2*(self.m + self.n) + 1]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
+        self.r_hole, self.errors_hole = aaa(Z = self.Z, F = self.F_hole, return_errors=True, tol = self.tol,  mmax = np.min([mmax, len(self.Z)]))# if default argument for maximal iterations is not sufficient, increase. Maximal allowed value is: mmax = 2*(self.m + self.n) + 1
         
         #determine poles and residues of the rational approximations
         self.poles_particle, self.residues_particle = self.r_particle.polres()
         self.poles_hole, self.residues_hole = self.r_hole.polres()
+
+        #compute poles and residues in the upper half plane
+        self.poles_particle_upper, self.residues_particle_upper, self.poles_hole_upper, self.residues_hole_upper = self._upper_polres()
 
         #number of poles in the upper half plane
         self.nbr_poles_upper = np.sum(np.imag(self.poles_particle) > 0) + np.sum(np.imag(self.poles_hole) > 0)
@@ -125,7 +124,7 @@ class AAARep:
 
         return np.concatenate((G_particle, G_hole))
     
-    def upper_polres(self):
+    def _upper_polres(self):
         """
         Determine the poles in the upper half plane and the correspondign residues
 
@@ -151,16 +150,12 @@ class AAARep:
     
     def get_params(self):
             """
-            Returns a dict containing the parameters associated with an instance of the class and stored as attributes
+            Returns the temperature as dictionary (for compatibility with KernelMatrix class)
             """
 
-            param_keys = ["m", "n", "beta", "h", "freq_parametrization"]
-
-            param_dict = {key: getattr(self, key) for key in param_keys}
-
-            return param_dict
+            return {"beta": self.beta}
     
-    def build_kernel(self, timegrid: np.ndarray) -> np.ndarray:
+    def build_kernel(self, time_grid: np.ndarray) -> np.ndarray:
         """
         Compute the kernel matrix based on the AAA decomposition and the time grid.
 
@@ -170,11 +165,98 @@ class AAARep:
         Returns:
         - np.ndarray: Kernel matrix.
         """
-        #compute poles and residues in the upper half plane
-        poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper = self.upper_polres()
 
-        kernel_particle = 2.j * np.pi * residues_particle_upper  * np.exp(1.j * poles_particle_upper * timegrid[:,np.newaxis])
-        kernel_hole = 2.j * np.pi * residues_hole_upper  * np.exp(1.j * poles_hole_upper * timegrid[:,np.newaxis])
+        kernel_particle = 2.j * np.pi * self.residues_particle_upper  * np.exp(1.j * self.poles_particle_upper * time_grid[:,np.newaxis])
+        kernel_hole = 2.j * np.pi * self.residues_hole_upper  * np.exp(1.j * self.poles_hole_upper * time_grid[:,np.newaxis])
 
         return kernel_particle, kernel_hole
+    
+
+    def compress(self,
+        time_grid : np.ndarray,
+        eps: float = 1.e-15,
+        compute_SVD = False) -> None:
+        """
+        Compress AAA kernel using ID and, if requested, SVD.
+
+        Parameters:
+        - time_grid (np.ndarray): Time grid for the kernel matrix.
+        - eps (float): Error threshold for ID.
+        - compute_SVD (bool): Flag to compute SVD.
+
+        Returns:
+        - None
+        """
+        #create kernel matrices for particles and holes
+        kernel_particle, kernel_hole = self.build_kernel(time_grid)
+
+        #create object of type InterpolDecomp for particles and holes, respectively.
+        ID_particle = InterpolDecomp(kernel_particle, full_grid = self.poles_particle_upper, eps = eps, compute_SVD = compute_SVD)
+        ID_hole = InterpolDecomp(kernel_hole, full_grid = self.poles_hole_upper, eps = eps, compute_SVD = compute_SVD)
+
+        #store ID objects
+        self.ID_particle = ID_particle
+        self.ID_hole = ID_hole
+
+        #store ID ranks, poles and residues as attributes
+        self.ID_rank_particle = ID_particle.ID_rank
+        self.ID_rank_hole = ID_hole.ID_rank
+
+        #poles in upper plane as chosen by ID
+        self.ID_poles_particle_upper = self.ID_particle._compute_coarse_grid()
+        self.ID_poles_hole_upper = self.ID_hole._compute_coarse_grid()
+
+        #residues in upper plane as chosen by ID
+        self.ID_residues_particle_upper, self.ID_residues_hole_upper = self._residues_ID()
+    
+    def _residues_ID(self) -> tuple:
+        """
+        Return the residues of the compressed kernel matrix.
+
+        Parameters:
+        - None
+
+        Returns:
+        - tuple: eff_residues_particle, eff_residues_hole
+        """
+        #if ID objects are not yet computed, raise an error
+        if not hasattr(self, 'ID_particle'):
+            raise ValueError("The kernel matrix has not been compressed yet. Please call the 'compress' method first.")
+
+        idx_particle = self.ID_particle.idx
+        idx_hole = self.ID_hole.idx
+
+        ID_rank_particle = self.ID_particle.ID_rank
+        ID_rank_hole = self.ID_hole.ID_rank
+
+        eff_residues_particle = self.residues_particle_upper[idx_particle[:ID_rank_particle]]
+        eff_residues_hole = self.residues_hole_upper[idx_hole[:ID_rank_hole]]
+
+        return (eff_residues_particle, eff_residues_hole)
+        
+
+    def propagator_AAA_compressed(self) -> np.ndarray:
+
+        """
+        Returns the propagator computed from the compressed kernel matrix.
+
+        Parameters:
+        - None
+
+        Returns:
+        - np.ndarray: Propagator for the particle and hole contributions (concatenated to a single array).
+        """
+
+        #if ID objects are not yet computed, raise an error
+        if not hasattr(self, 'ID_particle'):
+            raise ValueError("The kernel matrix has not been compressed yet. Please call the 'compress' method first.")
+        
+        #compute propagator from compressed kernel matrices
+        G_particle = self.ID_particle.reconstruct_propagator_ID()
+        G_hole = self.ID_hole.reconstruct_propagator_ID()
+
+        return np.concatenate((G_particle, G_hole))
+       
+
+
         
