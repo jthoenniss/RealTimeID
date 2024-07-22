@@ -234,6 +234,8 @@ class DecompKernel(KernelMatrix):
 
         fine_grid_complex_full = self._full_grid(include_additional_poles=self.include_additional_poles)
 
+        print("full grid: ", fine_grid_complex_full[0], fine_grid_complex_full[-1])
+
         coarse_grid = fine_grid_complex_full[self.idx[: self.ID_rank]]
 
         return coarse_grid
