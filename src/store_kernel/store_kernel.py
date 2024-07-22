@@ -205,7 +205,7 @@ class Hdf5Kernel:
             #Store all kernel-related quantities except for those already stored 
             #Exclude also the spectral density which is a callable function
             #and the kernel matrix which may be a large object
-            if key not in used_keys and key not in ["kernel", "spec_dens", "r_particle", "r_hole"]:
+            if key not in used_keys and key not in ["kernel", "spec_dens", "r_particle", "r_hole", "ID_particle", "ID_hole"]:
                 group.create_dataset(key, data=value)
                 used_keys.append(key)#append key to list of used keys
 
