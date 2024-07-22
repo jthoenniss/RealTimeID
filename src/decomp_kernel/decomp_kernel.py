@@ -170,11 +170,14 @@ class DecompKernel(KernelMatrix):
         # if flag is True, initialize SVD
         self._initialize_SVD(compute_SVD=compute_SVD)
 
-    def _initialize_ID(self):
+    def _initialize_ID(self, include_additional_poles: bool = None):
         """
         Performs ID on the kernel matrix.
+
+        Parameters:
+        - include_additional_poles(bool): If not None, additional poles are included according to the value of this parameter. Otherwise, the value of self.include_additional_poles is used.
         """
-        self.ID_rank, self.idx, self.proj = self.perform_ID()
+        self.ID_rank, self.idx, self.proj = self.perform_ID(include_additional_poles=include_additional_poles)
         # compute coarse ID grid
         self.coarse_grid = self._compute_coarse_grid()
 
@@ -206,19 +209,21 @@ class DecompKernel(KernelMatrix):
         nbr_sv_above_eps, singular_values = cf.compute_singular_values(kernel, _eps)
         return nbr_sv_above_eps, singular_values
 
-    def perform_ID(self, eps=None) -> tuple:
+    def perform_ID(self, eps=None, include_additional_poles: bool = None) -> tuple:
         """
         Perform interpolative decomposition (ID) on the kernel matrix using the error threshold.
 
         Parameters:
         - eps (float): ID error
-       
+        - include_additional_poles(bool): If not None, additional poles are included according to the value of this parameter. Otherwise, the value of self.include_additional_poles is used.
         Returns:
         Tuple[int, np.ndarray, np.ndarray]: The rank of ID, indices, and projection matrix.
         """
         _eps = self.eps if eps is None else eps
 
-        kernel = self._full_kernel(include_additional_poles=self.include_additional_poles)
+        _include_additional_poles = self.include_additional_poles if include_additional_poles is None else include_additional_poles
+
+        kernel = self._full_kernel(include_additional_poles=_include_additional_poles)
 
         ID_rank, idx, proj = sli.interp_decomp(kernel, _eps, rand=False)
 
@@ -305,3 +310,32 @@ class DecompKernel(KernelMatrix):
         G_reconstr = np.sum(K_reconstr, axis = 1).flatten()
 
         return G_reconstr
+
+    def renormalize(self) -> None:
+        """
+        Renormalize all coupling by the effective spectral density. 
+        Updates the kernel matrix.
+
+        Parameters:
+        - None
+
+        Returns:
+        - None
+        """
+
+        #update the kernel matrix with the selected coulmns
+        kernel_full = self._full_kernel(include_additional_poles=self.include_additional_poles)
+        self.kernel = sli.reconstruct_skel_matrix(kernel_full, self.ID_rank, self.idx)
+
+        #update the full grid with the coarse grid
+        self.fine_grid_complex = self.coarse_grid
+
+        #get effective spectral density
+        coupl_eff = self.coupl_eff()[np.newaxis,:]
+   
+        #multiply the columns of the reduced kernel matrix elementwise with the entries of the vector coupl_eff
+        self.kernel *= coupl_eff
+        
+        #perform ID
+        self._initialize_ID(include_additional_poles=False)
+
