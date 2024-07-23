@@ -24,14 +24,15 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    error_tolerances_AAA = [1.e-2, 1.e-4, 1.e-6, 1.e-8, 1.e-10, 1.e-12]#, 1.e-14, 1.e-16]
+    error_tolerances_AAA = np.logspace(-2, -12, 100)
+    
     # Array specifying all values for the total number of time steps, N_max, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 2.5, 3)))
+    N_maxs = list(map(int, np.logspace(1, 3, 10)))
     # Array specifying all values for inverse temperature, beta, that should be evaluated
-    betas = [0, 1.e5]#, 1.e3, 1.e4, 1.e5]
+    betas = [0, 1.e4]#, 1.e3, 1.e4, 1.e5]
 
     # Define filename of hdf5 file holding the data
-    filename_AAA = f"data/AAA_delta_t=0.1_semicircle_Lambda=1.h5"
+    filename_AAA = f"data/test_AAA_semicircle_no_smoothening.h5"
 
     # Create instance of Hdf5Kernel to be associated with the file
     AAA_h5_kernel = Hdf5Kernel(filename=filename_AAA)
@@ -41,8 +42,19 @@ if __name__ == "__main__":
 
     AAA_h5_kernel.create_file(kernel_dims=param_grid_dims_AAA)
 
-    #spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower= -10, cutoff_upper=10)
-    spec_dens = lambda x: spec_dens_semi_circle(x)
+    #spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower= -25, cutoff_upper=25, sharpness=20/25)
+    #semicircle
+    spec_dens = lambda x: spec_dens_semi_circle(x) #* spec_dens_gapless(x, cutoff_lower= -.8, cutoff_upper=.8, sharpness=10)
+
+    #linear spectral density
+    #first version
+    #spec_dens = lambda x: abs(x) * spec_dens_gapless(x, cutoff_lower= -20, cutoff_upper=20, sharpness=1) 
+    #second version
+    #spec_dens = lambda x: abs(x) * np.exp(-abs(x)/10) 
+
+    # gapped
+    #spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower= -20, cutoff_upper=-5, sharpness=2) + spec_dens_gapless(x, cutoff_lower= 5, cutoff_upper=20, sharpness=2)
+
     print(f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_AAA}.")
 
  

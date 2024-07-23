@@ -8,8 +8,10 @@ from src.utils.module_utils.all_custom_modules import (
     cf,
     Hdf5Kernel,
     AAARep,
+    InterpolDecomp,
 )  # Consolidated custom modules import
 from src.kernel_params.kernel_params import KernelParams
+from src.spec_dens.spec_dens import SpecDensGapless
 
 
 def compute_ID_grid_and_store(
@@ -41,8 +43,9 @@ def compute_ID_grid_and_store(
         None
 
     """
-    #additional_poles, additional_residues = params.params["spec_dens"].poles_residues()
 
+    #additional_poles, additional_residues = params.params["spec_dens"].poles_residues()
+    
     for b, beta in enumerate(betas):
         params.update_parameters({"beta": beta})
 
@@ -103,11 +106,18 @@ def compute_ID_grid_and_store(
                 params.update_parameters(
                     {"h": h_val}
                 )  # this automatically updates "m" and "n" to reach to discrete cutoffs defined in class 'KernelParams'.
+                
+
+                explicit_poles, explicit_residues = params.params["spec_dens"].explicit_poles_and_residues(h = h_val, phi_low = 0, phi_up = np.pi/4 + np.pi/6 )
+                #spec_dens_gapless = SpecDensGapless(Lambda = 20)
+                #explicit_poles, explicit_residues = spec_dens_gapless.explicit_poles_and_residues(h = h_val, phi_low = 0, phi_up = np.pi/4 + np.pi/6 )
+                #explicit_residues *= np.abs(explicit_poles)
 
                 # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
                 discr_error = DiscrError(
                     **params.params, cont_integral_init=cont_integral, only_positive_particle=only_positive_particle,
-                    #additional_poles = additional_poles, additional_residues = additional_residues
+                    #additional_poles = additional_poles, additional_residues = additional_residues,
+                    explicit_poles = explicit_poles, explicit_residues = explicit_residues
                 )
             
                 if optimize:
@@ -170,9 +180,37 @@ def compute_AAA_grid_and_store(error_tolerances,
     Returns:
         None
     """
+
+    
+    #generate fine grid for AAA
+    #fine_grid =  cf.generate_composite_chebyshev_grid_dyadic(M_intervals=20, m_chebyshev=50, upper_cutoff= 20)
+    #fine_grid = np.concatenate((fine_grid, 20 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=20, m_chebyshev=50, upper_cutoff= 10)))
+    #fine_grid = np.concatenate((fine_grid, 30 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=20, m_chebyshev=50, upper_cutoff= 50)))
+
+    #semicircle
+    fine_grid = cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 1.5)
+    fine_grid = np.concatenate((fine_grid, 0.9 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 1.0)))
+
+    #linear spectral density
+    #fine_grid = cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 1)
+    #fine_grid = np.concatenate((fine_grid, 1 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 15)))
+    #fine_grid = np.concatenate((fine_grid, 16 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, #upper_cutoff= 20)))
+
+    #linear, version 2
+    #fine_grid = cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 200)
+    #gapped
+    #fine_grid = cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 3)
+    #fine_grid = np.concatenate((fine_grid, 3 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 15)))
+    #fine_grid = np.concatenate((fine_grid, 18 + cf.generate_composite_chebyshev_grid_dyadic(M_intervals=100, m_chebyshev=60, upper_cutoff= 20)))
+
+
+    import matplotlib.pyplot as plt
+    plt.plot(fine_grid, params.params["spec_dens"](fine_grid), "o")
+    plt.show()
+
     for b, beta in enumerate(betas):
         params.update_parameters({"beta": beta})
-
+        
 
         # set time grid for maximal time needed
         times = cf.set_time_grid(
@@ -198,43 +236,23 @@ def compute_AAA_grid_and_store(error_tolerances,
         )
         print("..finished")
 
-        #disc_error = DiscrError(
-        #    **params.params, cont_integral_init = np.concatenate((cont_integral_particle, cont_integral_hole))
-        #)
-        #m_init, n_init = params.params["m"], params.params["n"]
-        #print("Optimizing m,n. Initial values: m = ", params.params["m"], "n= ", params.params["n"], "h= ", params.params["h"])
-        #optimize values for m and n
-        #disc_error.optimize(update_params = params, rel_error_diff=0.01)
-
-        #make m and n large to include some zeros
-        #params.update_parameters({"m":  int(np.min([params.params["m"] * 20, m_init])), "n": int(np.min([params.params["n"] * 20, n_init]))})
-        #print("optimized m,n", params.params["m"], params.params["n"], ". Maximal frequency: ", disc_error.fine_grid[-1], ". Minimal frequency: ", disc_error.fine_grid[0])
-    
+        print("computing AAA")
+        AAA_kernel = AAARep(fine_grid=fine_grid, beta = beta, spec_dens = params.params["spec_dens"], tol = 1.e-13, mmax = 200)
+        print("number of poles", len(AAA_kernel.poles_particle_upper)) 
 
         for tol_iter, tol in enumerate(error_tolerances):
-
-            print("computing AAA")
-            # Create DiscrError object which holds the error w.r.t. to the continous results, and all associated parameters.
-            AAA_kernel = AAARep(**params.params, tol = tol)
-
-            print(AAA_kernel.Z)
-            print(AAA_kernel.F_particle)
-            print(AAA_kernel.F_hole)
-            print(AAA_kernel.nbr_poles_upper)
-            
-            if remove_Froissart:
-                AAA_kernel.remove_Froissart()#remove Froissart doublets
                     
             for tau, N_max in enumerate(N_maxs):
-            
+
+                #effective time grid
+                time_grid_eff = times[:N_max]
+                AAA_kernel.compress(time_grid = time_grid_eff, eps = tol)
+                    
                 #join the two arrays for the particle and hole components
                 cont_integral = np.concatenate((cont_integral_particle[:N_max], cont_integral_hole[:N_max]))
                 
                 #compute the propagator as given by the AAA algorithm
-                propagator_AAA = AAA_kernel.propagator_AAA(times[:N_max])
-
-                print("AAA", propagator_AAA[:10])
-                print("cont", cont_integral[:10])
+                propagator_AAA = AAA_kernel.propagator_AAA_compressed()
 
                 # compute error between reconstructed and continuous-frequency propagator
                 error_reconstr_vs_cont = cf.error_time_integrated(

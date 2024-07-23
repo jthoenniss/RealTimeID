@@ -34,13 +34,13 @@ if __name__ == "__main__":
 
     # _______________Set Parameter Grid (choose values to explore)____________________
     # Array specifying all values for the discreitzation parameter, h, that should be evaluated
-    N_maxs = list(map(int, np.logspace(1, 2., 5)))
-    h_vals = np.logspace(-2, -0.2, 20)  # order from small to large
+    N_maxs = list(map(int, np.logspace(1, 3.5, 15)))
+    h_vals = np.logspace(-1.8, -0.05, 25)  # order from small to large
     # Array specifying all values for inverse temperature, beta, that should be evaluated
-    betas = [0, 1.0e4]  # , 1.e3, 1.e4, 1.e5]
+    betas = [0, 1.e4]  # , 1.e3, 1.e4, 1.e5]
 
     # Define filename of hdf5 file holding the data
-    filename_ID = f"data/test_ID.h5"
+    filename_ID = f"data/test_ID_Lambda100000_opt.h5"
 
     # Create instance of Hdf5Kernel to be associated with the file
     ID_h5_kernel = Hdf5Kernel(filename=filename_ID)
@@ -50,8 +50,11 @@ if __name__ == "__main__":
 
     ID_h5_kernel.create_file(kernel_dims=param_grid_dims_ID)
 
-    #spec_dens = lambda x: spec_dens_gapless(x)
-    spec_dens = SpecDensGapless(Lambda = 200, sharpness=.05)
+    #spec_dens = lambda x: spec_dens_gapless(x, cutoff_lower=-20, cutoff_upper=-5, sharpness=2) + spec_dens_gapless(x, cutoff_lower=5, cutoff_upper=20, sharpness=2)
+    spec_dens = SpecDensGapless(Lambda = 100000)
+    #spec_dens = lambda x: abs(x) * np.exp(abs(x)/10)
+    #spec_dens = lambda x: abs(x) * spec_dens_gapless(x, cutoff_lower=-20, cutoff_upper=20, sharpness=1)
+
     print(
         f"Starting computation of ID-data on parameter grid with dimensions {param_grid_dims_ID}."
     )
