@@ -101,7 +101,7 @@ class AAARep:
         - None
 
         Returns:
-        - tuple: Poles and residues for the particle and hole contributions.
+        - tuple: (polres_particles, polres_holes)
         """
     
         return (self.r_particle.polres(), self.r_hole.polres())

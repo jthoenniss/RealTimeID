@@ -8,48 +8,44 @@ if project_path and project_path not in sys.path:
 
 from src.AAA.AAA_kernel import AAARep
 from src.AAA.aaa_algorithm import aaa, cleanup
-from src.spec_dens.spec_dens import spec_dens_semi_circle
+from src.spec_dens.spec_dens import spec_dens_gapless
 from src.utils.common_funcs import initialize_fine_grid, set_time_grid
 
 class TestAAARep(unittest.TestCase):
     def setUp(self):
 
         self.params = {
-            "m": 10,
-            "n": 5,
-            "beta": 1.0,
-            "N_max": 10,
+            "m": 1000,
+            "n": 800,
+            "beta": 0.0,
+            "N_max": 100,
             "delta_t": 0.1,
-            "h": 0.2,
+            "h": 0.01,
             "phi": np.pi / 4,
             "upper_cutoff" : 600,
-            "spec_dens": lambda x: spec_dens_semi_circle(x),
+            "spec_dens": lambda x: spec_dens_gapless(x, cutoff_lower = -1, cutoff_upper = 1, sharpness=1),
             "freq_parametrization": "simple_exp",
         }
 
-        self.K = AAARep(**self.params)
+        #initialize fine grid
+        self.fine_grid, _, _ = initialize_fine_grid(self.params["m"], self.params["n"], self.params["h"], freq_parametrization= "simple_exp")
+       
+        self.K = AAARep(fine_grid=self.fine_grid, beta = self.params["beta"], spec_dens=self.params["spec_dens"])
 
     def test_init(self):
-        print("Test initialization of AAARep object.")
-        self.assertEqual(self.K.m, 10)
-        self.assertEqual(self.K.n, 5)
-        self.assertEqual(self.K.beta, 1.0)
-        self.assertEqual(self.K.h, 0.2)
-        self.assertEqual(self.K.freq_parametrization, "simple_exp")
-
+        print("Test parameter beta.")
+        self.assertEqual(self.K.beta, 0.0)
     
     def test_grids(self):
         print("Test AAA algorithm.")
         
-        self.assertEqual(self.K.Z.size, 2 * (self.K.m + self.K.n + 1))
-        self.assertEqual(self.K.F_particle.size, 2 * (self.K.m + self.K.n + 1))
-        self.assertEqual(self.K.F_hole.size, 2 * (self.K.m + self.K.n + 1))
+        self.assertEqual(self.K.Z.size, 2 * len(self.fine_grid))
+        self.assertEqual(self.K.F_particle.size, 2 * len(self.fine_grid))
+        self.assertEqual(self.K.F_hole.size, 2 * len(self.fine_grid))
 
 
-        #explicitly get the fine frequency grid
-        fine_grid, _, _ = initialize_fine_grid(self.params["m"], self.params["n"], self.params["h"], freq_parametrization= "simple_exp")
         # frequency points in for negativ and positive part on real axis
-        Z = np.concatenate((-fine_grid[::-1], fine_grid)) 
+        Z = np.concatenate((-self.fine_grid[::-1], self.fine_grid)) 
         self.assertTrue(np.allclose(self.K.Z, Z))
 
         #create function values by hand:
@@ -114,20 +110,20 @@ class TestAAARep(unittest.TestCase):
 
         #get poles and residues
         polres_particle, polres_hole = self.K.polres() 
-
+   
         #identify poles in upper half plane and corresponding residues
         poles_particle_upper = polres_particle[0][np.imag(polres_particle[0]) > 0]
         residues_particle_upper = polres_particle[1][np.imag(polres_particle[0]) > 0]
 
-        poles_hole_upper = polres_hole[0][np.imag(polres_hole[0]) > 0]
-        residues_hole_upper = polres_hole[1][np.imag(polres_hole[0]) > 0]
+        poles_hole_lower= polres_hole[0][np.imag(polres_hole[0]) < 0]
+        residues_hole_lower = polres_hole[1][np.imag(polres_hole[0]) < 0]
 
         #define time gid
         times = set_time_grid(N_max=self.params["N_max"], delta_t=self.params["delta_t"])
         #sum over all modes expliclity
         G_particle = 2.j * np.pi * np.sum(residues_particle_upper  * np.exp(1.j * poles_particle_upper * times[:,np.newaxis]), axis=1).flatten()
-        G_hole = 2.j * np.pi * np.sum(residues_hole_upper  * np.exp(1.j * poles_hole_upper * times[:,np.newaxis]), axis=1).flatten()
-
+        G_hole = - 2.j * np.pi * np.sum(residues_hole_lower  * np.exp(-1.j * poles_hole_lower * times[:,np.newaxis]), axis=1).flatten()
+        print(residues_particle_upper)
         #concatenate particle and hole propagator
         G = np.concatenate((G_particle, G_hole))
         #compare to values in object
