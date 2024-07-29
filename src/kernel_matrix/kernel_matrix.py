@@ -158,9 +158,9 @@ class KernelMatrix:
             times_arr, self.fine_grid_complex, self.beta
         ) * self.spec_dens(self.fine_grid_complex)
         # hole component (negative sign in beta for hole distribution)
-        K_hole = cf.dynamic_distr_particle(
+        K_hole = (cf.dynamic_distr_particle(
             times_arr, self.fine_grid_complex, -self.beta
-        ) * self.spec_dens(self.fine_grid_complex)
+        ) * self.spec_dens(self.fine_grid_complex)).conj() #complex conjugate for hole component. This is because is frequencies with negative imagnanry part are used here
 
         # Combine particle and hole contributions by stacking them on top of each other
         K = np.vstack((K_particle, K_hole))
