@@ -132,7 +132,7 @@ class AAARep:
         - None
 
         Returns:
-        - tuple: poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper
+        - tuple: poles_particle_upper, residues_particle_upper, poles_hole_lower, residues_hole_lower
         """
         
         #determine poles in the upper half plane and the corresponding residues
