@@ -61,10 +61,10 @@ class AAARep:
         self.poles_hole, self.residues_hole = self.r_hole.polres()
 
         #compute poles and residues in the upper half plane
-        self.poles_particle_upper, self.residues_particle_upper, self.poles_hole_lower, self.residues_hole_lower = self._eff_polres()
+        self.poles_particle_upper, self.residues_particle_upper, self.poles_hole_upper, self.residues_hole_upper = self._eff_polres()
 
-        #number of effective poles (in upper plane for particles and in lower plane for holes)
-        self.nbr_poles_upper = len(self.poles_particle_upper) + len(self.poles_hole_lower)
+        #number of effective poles (in upper plane for particles and in upper plane for holes)
+        self.nbr_poles_upper = len(self.poles_particle_upper) + len(self.poles_hole_upper)
 
 
     def remove_Froissart(self) -> None:
@@ -126,13 +126,13 @@ class AAARep:
     
     def _eff_polres(self):
         """
-        Determine the effetive poles in the i) upper half plane for particles and ii) lower half plane for holes, and get the correspondign residues
+        Determine the effetive poles in the i) upper half plane for particles and ii) upper half plane for holes, and get the correspondign residues
 
         Parameters:
         - None
 
         Returns:
-        - tuple: poles_particle_upper, residues_particle_upper, poles_hole_lower, residues_hole_lower
+        - tuple: poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper
         """
         
         #determine poles in the upper half plane and the corresponding residues
@@ -142,11 +142,11 @@ class AAARep:
         residues_particle_upper = self.residues_particle[particle_mask]
 
         #holes
-        hole_mask = np.imag(self.poles_hole) < 0
-        poles_hole_lower = self.poles_hole[hole_mask]
-        residues_hole_lower = self.residues_hole[hole_mask]
+        hole_mask = np.imag(self.poles_hole) > 0
+        poles_hole_upper = self.poles_hole[hole_mask]
+        residues_hole_upper = self.residues_hole[hole_mask]
 
-        return (poles_particle_upper, residues_particle_upper, poles_hole_lower, residues_hole_lower)
+        return (poles_particle_upper, residues_particle_upper, poles_hole_upper, residues_hole_upper)
     
     def get_params(self):
             """
@@ -167,7 +167,7 @@ class AAARep:
         """
 
         kernel_particle = 2.j * np.pi * self.residues_particle_upper  * np.exp(1.j * self.poles_particle_upper * time_grid[:,np.newaxis])
-        kernel_hole = - 2.j * np.pi * self.residues_hole_lower  * np.exp(-1.j * self.poles_hole_lower * time_grid[:,np.newaxis])
+        kernel_hole = 2.j * np.pi * self.residues_hole_upper  * np.exp(1.j * self.poles_hole_upper * time_grid[:,np.newaxis])
 
         return kernel_particle, kernel_hole
     
@@ -192,7 +192,7 @@ class AAARep:
 
         #create object of type InterpolDecomp for particles and holes, respectively.
         ID_particle = InterpolDecomp(kernel_particle, full_grid = self.poles_particle_upper, eps = eps, compute_SVD = compute_SVD)
-        ID_hole = InterpolDecomp(kernel_hole, full_grid = self.poles_hole_lower, eps = eps, compute_SVD = compute_SVD)
+        ID_hole = InterpolDecomp(kernel_hole, full_grid = self.poles_hole_upper, eps = eps, compute_SVD = compute_SVD)
 
         #store ID objects
         self.ID_particle = ID_particle
@@ -204,10 +204,10 @@ class AAARep:
 
         #poles in upper plane as chosen by ID
         self.ID_poles_particle_upper = self.ID_particle._compute_coarse_grid()
-        self.ID_poles_hole_lower = self.ID_hole._compute_coarse_grid()
+        self.ID_poles_hole_upper = self.ID_hole._compute_coarse_grid()
 
         #residues in upper plane as chosen by ID
-        self.ID_residues_particle_upper, self.ID_residues_hole_lower = self._residues_ID()
+        self.ID_residues_particle_upper, self.ID_residues_hole_upper = self._residues_ID()
     
     def _residues_ID(self) -> tuple:
         """
@@ -230,7 +230,7 @@ class AAARep:
         ID_rank_hole = self.ID_hole.ID_rank
 
         eff_residues_particle = self.residues_particle_upper[idx_particle[:ID_rank_particle]]
-        eff_residues_hole = self.residues_hole_lower[idx_hole[:ID_rank_hole]]
+        eff_residues_hole = self.residues_hole_upper[idx_hole[:ID_rank_hole]]
 
         return (eff_residues_particle, eff_residues_hole)
         
